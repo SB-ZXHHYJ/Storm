@@ -10,7 +10,7 @@ HarmonyOS上的SQL DSL库，其设计思想部分来源于[Ktorm](https://www.kt
 安装库：
 
 ```text
-ohpm install @zxhhyj/strom
+ohpm install @zxhhyj/storm
 ```
 
 ## 基本用法
