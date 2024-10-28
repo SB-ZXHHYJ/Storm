@@ -1,4 +1,5 @@
 import { database } from '@zxhhyj/storm';
+import { books } from '../model/Book';
 import { Bookcase, bookcases } from '../model/Bookcase';
 
 @Entry
@@ -32,6 +33,9 @@ struct Index {
         .beginTransaction((it) => {
           it.inserts(bookcaseList)
           it.update([{ id: 1, name: "我的世界" }])
+          it.removeIf((it) => {
+            return it.equalTo(books.id, 1)
+          })
         })
     } catch (e) {
       this.message.push(`${e}`)
