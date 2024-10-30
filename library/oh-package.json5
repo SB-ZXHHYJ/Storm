@@ -1,7 +1,7 @@
 {
   "name": "@zxhhyj/storm",
   "version": "1.0.0",
-  "description": "ArkTS ORM框架",
+  "description": "SQL ORM框架",
   "main": "Index.ts",
   "author": "黄浩",
   "license": "Apache-2.0",
