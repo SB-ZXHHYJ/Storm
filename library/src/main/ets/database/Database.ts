@@ -8,6 +8,8 @@ import { getSqlTable } from '../annotation/SqlTable';
 import { getSqlColumn } from '../annotation/SqlColumn';
 import { ResultSetUtils } from '../utils/ResultSetUtils';
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence';
+import { LazyInitValue } from '../utils/ILazyInit';
+import { ErrorUtils } from '../utils/ErrorUtils';
 
 export class Database {
   private rdbStore: relationalStore.RdbStore
@@ -47,6 +49,14 @@ export class Database {
 export class DatabaseSequenceQueues<T> {
   private readonly rdbStore: relationalStore.RdbStore
   private readonly targetTable: Table<T>
+  private readonly idColumnLazy = new LazyInitValue(() => {
+    const idColumn: Column<any> =
+      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
+    if (idColumn == undefined) {
+      ErrorUtils.IdColumnNotDefined(this.targetTable)
+    }
+    return idColumn
+  })
 
   constructor(rdbStore: relationalStore.RdbStore, targetTable: Table<T>) {
     this.rdbStore = rdbStore
@@ -117,22 +127,19 @@ export class DatabaseSequenceQueues<T> {
     // 创建目标表（如果不存在）
     this.rdbStore.executeSync(SqlUtils.getTableCreateSql(this.targetTable));
 
-    // 获取主键列
-    const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
-    if (idColumn) {
+    if (this.idColumnLazy.value) {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket) => {
-        if (valueBucket[idColumn._fieldName] == null) {
+        if (valueBucket[this.idColumnLazy.value._fieldName] == null) {
           // 获取表对应的最新自增id
           const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName);
           if (sqlSequence) {
-            valueBucket[idColumn._fieldName] = sqlSequence.seq += 1;
+            valueBucket[this.idColumnLazy.value._fieldName] = sqlSequence.seq += 1;
           } else {
             // 如果没有找到序列，则创建一个新的序列
             const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 };
             sqlSequenceQuery.push(newSqlSequence);
-            valueBucket[idColumn._fieldName] = newSqlSequence.seq;
+            valueBucket[this.idColumnLazy.value._fieldName] = newSqlSequence.seq;
           }
         }
       })
@@ -167,13 +174,12 @@ export class DatabaseSequenceQueues<T> {
     if (models.length == 0) {
       return 0
     }
-    const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
     const valueBuckets = this.modelsToValueBuckets(models)
     const updatedCount = valueBuckets
       .map(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.idColumnLazy.value,
+            item[this.idColumnLazy.value._fieldName] as ValueType)
         return this.rdbStore.updateSync(item, wrapper.rdbPredicates) !=
           -1;
       })
@@ -193,13 +199,12 @@ export class DatabaseSequenceQueues<T> {
     if (models.length == 0) {
       return 0
     }
-    const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
     const valueBuckets = this.modelsToValueBuckets(models)
     const updatedCount = valueBuckets
       .map(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.idColumnLazy.value,
+            item[this.idColumnLazy.value._fieldName] as ValueType)
         return this.rdbStore.deleteSync(wrapper.rdbPredicates) != -1;
       })
       .filter((item) => {

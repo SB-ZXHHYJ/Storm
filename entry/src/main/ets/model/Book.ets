@@ -4,7 +4,7 @@ import { Bookcase } from './Bookcase';
 class Books extends Table<Book> {
   override tableName = 't_book'
   readonly bookcase = Column.entity('bookcase_id', Bookcase)
-  readonly id = Column.number('id').id(true)
+  readonly id = Column.number('id').primaryKey(true)
   readonly name = Column.string('name').notNull().unique()
 }
 

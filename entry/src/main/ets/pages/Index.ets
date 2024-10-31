@@ -24,7 +24,7 @@ struct Index {
         .beginTransaction((it) => {
           it.inserts(bookcaseList)
           bookcaseList[0].name = "三体"
-          it.inserts(bookcaseList)
+          it.update(bookcaseList)
         })
       const endTime = new Date();
       this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)

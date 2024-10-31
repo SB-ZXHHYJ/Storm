@@ -6,9 +6,9 @@ export interface ICommon {
 
 export abstract class Table<T> implements ICommon, Object {
   /**
-   * 用来避免编译器提示泛型T没有被使用
+   * 单纯用来避免编译器提示泛型T没有被使用
    */
-  declare readonly entity: T
+  private declare readonly nothing: T
 
   /**
    * @returns 表名
@@ -124,7 +124,7 @@ export class Column<E extends ValueType> implements ICommon {
    * 设置为主键
    * @param autoincrement 是否为自增列
    */
-  id(autoincrement?: boolean): Column<E> {
+  primaryKey(autoincrement?: boolean): Column<E> {
     if (autoincrement && this._dataType != 'INTEGER') {
       throw TypeError('autoincrement only support dataType as INTEGER');
     }
