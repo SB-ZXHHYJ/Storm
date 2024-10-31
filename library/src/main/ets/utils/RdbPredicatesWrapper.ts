@@ -10,12 +10,12 @@ export class RdbPredicatesWrapper<T> {
   }
 
   equalTo(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.equalTo(column.fieldName, value)
+    this.rdbPredicates.equalTo(column._fieldName, value)
     return this
   }
 
   notEqualTo(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.notEqualTo(column.fieldName, value)
+    this.rdbPredicates.notEqualTo(column._fieldName, value)
     return this
   }
 
@@ -40,77 +40,77 @@ export class RdbPredicatesWrapper<T> {
   }
 
   isNull(column: Column<ValueType>) {
-    this.rdbPredicates.isNull(column.fieldName)
+    this.rdbPredicates.isNull(column._fieldName)
     return this
   }
 
   isNotNull(column: Column<ValueType>) {
-    this.rdbPredicates.isNotNull(column.fieldName)
+    this.rdbPredicates.isNotNull(column._fieldName)
     return this
   }
 
   like(column: Column<ValueType>, value: string) {
-    this.rdbPredicates.like(column.fieldName, value)
+    this.rdbPredicates.like(column._fieldName, value)
     return this
   }
 
   contains(column: Column<ValueType>, value: string) {
-    this.rdbPredicates.contains(column.fieldName, value)
+    this.rdbPredicates.contains(column._fieldName, value)
     return this
   }
 
   beginsWith(column: Column<ValueType>, value: string) {
-    this.rdbPredicates.beginsWith(column.fieldName, value)
+    this.rdbPredicates.beginsWith(column._fieldName, value)
     return this
   }
 
   endsWith(column: Column<ValueType>, value: string) {
-    this.rdbPredicates.endsWith(column.fieldName, value)
+    this.rdbPredicates.endsWith(column._fieldName, value)
     return this
   }
 
   glob(column: Column<ValueType>, value: string) {
-    this.rdbPredicates.glob(column.fieldName, value)
+    this.rdbPredicates.glob(column._fieldName, value)
     return this
   }
 
   between(column: Column<ValueType>, low: ValueType, high: ValueType) {
-    this.rdbPredicates.between(column.fieldName, low, high)
+    this.rdbPredicates.between(column._fieldName, low, high)
     return this
   }
 
   notBetween(column: Column<ValueType>, low: ValueType, high: ValueType) {
-    this.rdbPredicates.notBetween(column.fieldName, low, high)
+    this.rdbPredicates.notBetween(column._fieldName, low, high)
     return this
   }
 
   greaterThan(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.greaterThan(column.fieldName, value)
+    this.rdbPredicates.greaterThan(column._fieldName, value)
     return this
   }
 
   lessThan(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.lessThan(column.fieldName, value)
+    this.rdbPredicates.lessThan(column._fieldName, value)
     return this
   }
 
   greaterThanOrEqualTo(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.greaterThanOrEqualTo(column.fieldName, value)
+    this.rdbPredicates.greaterThanOrEqualTo(column._fieldName, value)
     return this
   }
 
   lessThanOrEqualTo(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.lessThanOrEqualTo(column.fieldName, value)
+    this.rdbPredicates.lessThanOrEqualTo(column._fieldName, value)
     return this
   }
 
   orderByAsc(column: Column<ValueType>) {
-    this.rdbPredicates.orderByAsc(column.fieldName)
+    this.rdbPredicates.orderByAsc(column._fieldName)
     return this
   }
 
   orderByDesc(column: Column<ValueType>) {
-    this.rdbPredicates.orderByDesc(column.fieldName)
+    this.rdbPredicates.orderByDesc(column._fieldName)
     return this
   }
 
@@ -131,33 +131,33 @@ export class RdbPredicatesWrapper<T> {
 
   groupBy(columns: Column<ValueType>[]) {
     this.rdbPredicates.groupBy(columns.map(item => {
-      return item.fieldName
+      return item._fieldName
     }))
     return this
   }
 
   indexedBy(column: Column<ValueType>) {
-    this.rdbPredicates.indexedBy(column.fieldName)
+    this.rdbPredicates.indexedBy(column._fieldName)
     return this
   }
 
   in(column: Column<ValueType>, value: Array<ValueType>) {
-    this.rdbPredicates.in(column.fieldName, value)
+    this.rdbPredicates.in(column._fieldName, value)
     return this
   }
 
   notIn(column: Column<ValueType>, value: Array<ValueType>) {
-    this.rdbPredicates.notIn(column.fieldName, value)
+    this.rdbPredicates.notIn(column._fieldName, value)
     return this
   }
 
   notContains(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.notContains(column.fieldName, value.toString())
+    this.rdbPredicates.notContains(column._fieldName, value.toString())
     return this
   }
 
   notLike(column: Column<ValueType>, value: ValueType) {
-    this.rdbPredicates.notLike(column.fieldName, value.toString())
+    this.rdbPredicates.notLike(column._fieldName, value.toString())
     return this
   }
 }

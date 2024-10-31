@@ -1,7 +1,7 @@
 import { ValueType } from '@kit.ArkData';
 
 export interface ICommon {
-  entityPrototype?: any
+  _entityPrototype?: any
 }
 
 export abstract class Table<T> implements ICommon, Object {
@@ -18,7 +18,7 @@ export abstract class Table<T> implements ICommon, Object {
   /**
    * 这个表所绑定的实体的构造函数
    */
-  readonly entityPrototype?: ObjectConstructor
+  readonly _entityPrototype?: ObjectConstructor
 }
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB';
@@ -31,37 +31,37 @@ export class Column<E extends ValueType> implements ICommon {
   /**
    * 实际的sql类型
    */
-  dataType: DataTypes;
+  _dataType: DataTypes;
 
   /**
    * 列名
    */
-  fieldName: string;
+  _fieldName: string;
 
   /**
    * 是否主键
    */
-  isPrimaryKey?: boolean;
+  _isPrimaryKey?: boolean;
 
   /**
    * 是否自增
    */
-  isAutoincrement?: boolean;
+  _isAutoincrement?: boolean;
 
   /**
    * 是否不可空
    */
-  isNotNull?: boolean;
+  _isNotNull?: boolean;
 
   /**
    * 是否不可重复
    */
-  isUnique?: boolean;
+  _isUnique?: boolean;
 
   /**
    * 实体构造函数
    */
-  readonly entityPrototype?: ObjectConstructor;
+  readonly _entityPrototype?: ObjectConstructor;
 
   /**
    * 绑定实体绑定函数
@@ -71,7 +71,7 @@ export class Column<E extends ValueType> implements ICommon {
    * @param entity - 需要绑定属性的实体对象
    * @param value - 要绑定的值
    */
-  entityBindFunction?: (entity: any, value: any) => void;
+  _entityBindFunction?: (entity: any, value: any) => void;
 
   /**
    * 创建数值类型的列
@@ -79,8 +79,8 @@ export class Column<E extends ValueType> implements ICommon {
    */
   static number(name: string): Column<number> {
     const column = new Column();
-    column.fieldName = name;
-    column.dataType = 'INTEGER';
+    column._fieldName = name;
+    column._dataType = 'INTEGER';
     return column;
   }
 
@@ -90,8 +90,8 @@ export class Column<E extends ValueType> implements ICommon {
    */
   static string(name: string): Column<string> {
     const column = new Column();
-    column.fieldName = name;
-    column.dataType = 'TEXT';
+    column._fieldName = name;
+    column._dataType = 'TEXT';
     return column;
   }
 
@@ -101,8 +101,8 @@ export class Column<E extends ValueType> implements ICommon {
    */
   static boolean(name: string): Column<boolean> {
     const column = new Column();
-    column.fieldName = name;
-    column.dataType = 'TEXT';
+    column._fieldName = name;
+    column._dataType = 'TEXT';
     return column;
   }
 
@@ -113,10 +113,10 @@ export class Column<E extends ValueType> implements ICommon {
    */
   static entity(name: string, entityPrototype: Function): Column<number> {
     const column = new Column();
-    column.fieldName = name;
-    column.dataType = 'INTEGER';
+    column._fieldName = name;
+    column._dataType = 'INTEGER';
     const common = (column as ICommon);
-    common.entityPrototype = entityPrototype;
+    common._entityPrototype = entityPrototype;
     return column;
   }
 
@@ -125,11 +125,11 @@ export class Column<E extends ValueType> implements ICommon {
    * @param autoincrement 是否为自增列
    */
   id(autoincrement?: boolean): Column<E> {
-    if (autoincrement && this.dataType != 'INTEGER') {
+    if (autoincrement && this._dataType != 'INTEGER') {
       throw TypeError('autoincrement only support dataType as INTEGER');
     }
-    this.isPrimaryKey = true;
-    this.isAutoincrement = autoincrement;
+    this._isPrimaryKey = true;
+    this._isAutoincrement = autoincrement;
     return this;
   }
 
@@ -137,7 +137,7 @@ export class Column<E extends ValueType> implements ICommon {
    * 设置为不可为空
    */
   notNull(): Column<E> {
-    this.isNotNull = true;
+    this._isNotNull = true;
     return this;
   }
 
@@ -145,7 +145,7 @@ export class Column<E extends ValueType> implements ICommon {
    * 设置唯一约束
    */
   unique(): Column<E> {
-    this.isUnique = true;
+    this._isUnique = true;
     return this;
   }
 }

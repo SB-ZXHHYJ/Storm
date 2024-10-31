@@ -1,5 +1,4 @@
 import { database } from '@zxhhyj/storm';
-import { books } from '../model/Book';
 import { Bookcase, bookcases } from '../model/Bookcase';
 
 @Entry
@@ -7,7 +6,7 @@ import { Bookcase, bookcases } from '../model/Bookcase';
 struct Index {
   @State message: Array<string> = []
 
-  aboutToAppear() {
+  queryDataPrint() {
     for (let queryElement of database.sequenceOf(bookcases).query()) {
       this.message.push(`bookcase id:${queryElement.id},name:${queryElement.name}`)
     }
@@ -17,33 +16,23 @@ struct Index {
     const bookcaseList: Array<Bookcase> = [
       {
         name: "《百年孤独》"
-      },
-      {
-        name: "《三体》"
-      },
-      {
-        name: "《番茄工作法》"
-      },
-      {
-        name: "《西方哲学史》"
       }]
     try {
+      const startTime = new Date();
       database
         .sequenceOf(bookcases)
         .beginTransaction((it) => {
           it.inserts(bookcaseList)
-          it.update([{ id: 1, name: "我的世界" }])
-          it.removeIf((it) => {
-            return it.equalTo(books.id, 1)
-          })
+          bookcaseList[0].name = "三体"
+          it.inserts(bookcaseList)
         })
+      const endTime = new Date();
+      this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
+      this.queryDataPrint()
+      database
+        .sequenceOf(bookcases).clear()
     } catch (e) {
       this.message.push(`${e}`)
-    }
-
-    this.message.push(`bookcase size:${database.sequenceOf(bookcases).query().length}`)
-    for (let queryElement of database.sequenceOf(bookcases).query()) {
-      this.message.push(`bookcase id:${queryElement.id},name:${queryElement.name}`)
     }
   }
 

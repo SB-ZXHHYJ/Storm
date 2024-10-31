@@ -6,7 +6,7 @@ const ColumnMetadataKey = Symbol('SqlColumn')
 
 export function SqlColumn(value: Column<ValueType>): PropertyDecorator {
   return (target, primaryKey) => {
-    value.entityBindFunction ??= (entity, value) => {
+    value._entityBindFunction ??= (entity, value) => {
       entity[primaryKey] = value
     }
     Reflect.defineMetadata(ColumnMetadataKey, value, target, primaryKey);

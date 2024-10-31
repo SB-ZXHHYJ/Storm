@@ -6,10 +6,10 @@ const SqlTableMetadataKey = Symbol('SqlTable')
 export function SqlTable<A>(table: Table<A>): ClassDecorator {
   return (target) => {
     const common = (table as ICommon)
-    if (common.entityPrototype != null) {
+    if (common._entityPrototype != null) {
       throw TypeError('Table is repeatedly bound by multiple entities')
     }
-    Reflect.defineMetadata(SqlTableMetadataKey, table, common.entityPrototype = target);
+    Reflect.defineMetadata(SqlTableMetadataKey, table, common._entityPrototype = target);
   }
 }
 

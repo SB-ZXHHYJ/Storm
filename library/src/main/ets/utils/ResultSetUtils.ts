@@ -23,28 +23,28 @@ export class ResultSetUtils {
       for (let i = 0; i < resultSet.columnNames.length; i++) {
         //处理每一个column
         const column = columns.find(value => {
-          return value.fieldName == resultSet.columnNames[i]
+          return value._fieldName == resultSet.columnNames[i]
         })
         //获取table中fieldName与columnName一致的列
         const value = resultSet.getValue(i)
         //这个column的值
         if (column) {
-          if (column.entityPrototype) {
+          if (column._entityPrototype) {
             //判断是不是列绑定
-            const sEntity = Object.create(column.entityPrototype)
+            const sEntity = Object.create(column._entityPrototype)
             //创建这个列所绑定类型的对象
             const table = getSqlTable(sEntity)
             //获取这个绑定对象所对应的table
             const idColumn: Column<ValueType> = Object.values(table).find((item => {
-              return (item instanceof Column) && item.isPrimaryKey
+              return (item instanceof Column) && item._isPrimaryKey
             }))
             const predicatesWrapper = new RdbPredicatesWrapper(table)
             predicatesWrapper.equalTo(idColumn, value as ValueType)
             //通过这个主键和value信息进行查询绑定
-            column.entityBindFunction(entity, ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, table)[0])
+            column._entityBindFunction(entity, ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, table)[0])
             continue
           }
-          column.entityBindFunction(entity, value)
+          column._entityBindFunction(entity, value)
         }
       }
       entityArray.push(entity)

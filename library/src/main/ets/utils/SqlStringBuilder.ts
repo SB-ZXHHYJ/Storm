@@ -11,14 +11,14 @@ export class SqlUtils {
     for (const key of Object.keys(table)) {
       const value = table[key]
       if (value instanceof Column) {
-        if (!value.fieldName || !value.dataType) {
+        if (!value._fieldName || !value._dataType) {
           throw new Error('table var in this.value() not use string(..) or number(..)..');
         }
-        if (value.fieldName === undefined || value.dataType === undefined) {
+        if (value._fieldName === undefined || value._dataType === undefined) {
           throw new Error('table var in this.value() not use string(..) or number(..)..')
         }
-        tableArgsBuilder.append(`${value.fieldName} ${value.dataType} ${value.isNotNull ? 'NOT NULL' :
-          ''} ${value.isUnique ? 'UNIQUE' : ''} ${value.isPrimaryKey ? 'PRIMARY KEY' : ''} ${value.isAutoincrement ?
+        tableArgsBuilder.append(`${value._fieldName} ${value._dataType} ${value._isNotNull ? 'NOT NULL' :
+          ''} ${value._isUnique ? 'UNIQUE' : ''} ${value._isPrimaryKey ? 'PRIMARY KEY' : ''} ${value._isAutoincrement ?
           'AUTOINCREMENT' : ''},`)
       }
     }

@@ -16,10 +16,18 @@ export class Database {
     this.rdbStore = rdbStore
   }
 
+  /**
+   * 关闭数据库
+   */
   async close(): Promise<void> {
     return this.rdbStore.close()
   }
 
+  /**
+   * 对表进行增删改查的操作
+   * @param targetTable 要操作的表
+   * @returns 返回这个表的操作对象
+   */
   sequenceOf<T>(table: Table<T>) {
     return new DatabaseSequenceQueues<T>(this.rdbStore, table)
   }
@@ -50,23 +58,23 @@ export class DatabaseSequenceQueues<T> {
       const valueBucket: relationalStore.ValuesBucket = {};
       for (const keysElement of Object.keys(value)) {
         const currentValue = value[keysElement];
-        const column = getSqlColumn(this.targetTable.entityPrototype.prototype, keysElement);
+        const column = getSqlColumn(this.targetTable._entityPrototype.prototype, keysElement);
         if (column) {
-          if (column.entityPrototype) {
-            const subTable = getSqlTable(column.entityPrototype);
+          if (column._entityPrototype) {
+            const subTable = getSqlTable(column._entityPrototype);
             if (subTable) {
-              const idColumn = Object.values(subTable).find((item) => item instanceof Column && item.isPrimaryKey);
+              const idColumn = Object.values(subTable).find((item) => item instanceof Column && item._isPrimaryKey);
               if (idColumn) {
                 // 从插入的数据里获取id
                 const itemId = currentValue[idColumn.fieldName];
                 if (itemId) {
-                  valueBucket[column.fieldName] = itemId;
+                  valueBucket[column._fieldName] = itemId;
                   continue;
                 }
               }
             }
           }
-          valueBucket[column.fieldName] = currentValue;
+          valueBucket[column._fieldName] = currentValue;
         }
       }
       return valueBucket;
@@ -74,6 +82,11 @@ export class DatabaseSequenceQueues<T> {
     return valueBuckets
   }
 
+  /**
+   * 开启事务
+   * @param scope 仅限在这个lambda中的操作
+   * @returns this
+   */
   beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void) {
     try {
       this.rdbStore.beginTransaction()
@@ -86,6 +99,11 @@ export class DatabaseSequenceQueues<T> {
     return this
   }
 
+  /**
+   * 从表中插入内容
+   * @param models 要插入的内容
+   * @returns 插入的内容行数
+   */
   inserts(models: T[]) {
     if (models.length == 0) {
       return 0
@@ -101,20 +119,20 @@ export class DatabaseSequenceQueues<T> {
 
     // 获取主键列
     const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item.isPrimaryKey);
+      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
     if (idColumn) {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket) => {
-        if (valueBucket[idColumn.fieldName] == null) {
+        if (valueBucket[idColumn._fieldName] == null) {
           // 获取表对应的最新自增id
           const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName);
           if (sqlSequence) {
-            valueBucket[idColumn.fieldName] = sqlSequence.seq += 1;
+            valueBucket[idColumn._fieldName] = sqlSequence.seq += 1;
           } else {
             // 如果没有找到序列，则创建一个新的序列
             const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 };
             sqlSequenceQuery.push(newSqlSequence);
-            valueBucket[idColumn.fieldName] = newSqlSequence.seq;
+            valueBucket[idColumn._fieldName] = newSqlSequence.seq;
           }
         }
       })
@@ -140,17 +158,22 @@ export class DatabaseSequenceQueues<T> {
     return insertedCount; // 返回插入操作成功的数量
   }
 
+  /**
+   * 从表中更新内容
+   * @param models 要更新的内容
+   * @returns 更新的内容行数
+   */
   update(models: T[]) {
     if (models.length == 0) {
       return 0
     }
     const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item.isPrimaryKey);
+      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
     const valueBuckets = this.modelsToValueBuckets(models)
     const updatedCount = valueBuckets
       .map(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn.fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
         return this.rdbStore.updateSync(item, wrapper.rdbPredicates) !=
           -1;
       })
@@ -161,13 +184,53 @@ export class DatabaseSequenceQueues<T> {
     return updatedCount
   }
 
+  /**
+   * 从表中移除内容
+   * @param models 要移除的内容
+   * @returns 删除的内容行数
+   */
+  remove(models: T[]) {
+    if (models.length == 0) {
+      return 0
+    }
+    const idColumn: Column<any> =
+      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
+    const valueBuckets = this.modelsToValueBuckets(models)
+    const updatedCount = valueBuckets
+      .map(item => {
+        const wrapper =
+          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
+        return this.rdbStore.deleteSync(wrapper.rdbPredicates) != -1;
+      })
+      .filter((item) => {
+        return item
+      })
+      .length
+    return updatedCount
+  }
+
+  /**
+   * 根据条件删除表中的内容
+   * @param wrapperFunction
+   * @returns
+   */
   removeIf(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>) {
     const wrapper = wrapperFunction(new RdbPredicatesWrapper(this.targetTable))
     return this.rdbStore.deleteSync(wrapper.rdbPredicates)
   }
 
   /**
-   *
+   * 清空表
+   * @returns 返回受影响的内容行数
+   */
+  clear() {
+    return this.removeIf((it) => {
+      return it
+    })
+  }
+
+  /**
+   * 根据条件查询表中的内容
    * @param wrapperFunction 查询条件表达式
    * @returns 查询到的数据集合
    */
@@ -180,16 +243,15 @@ export class DatabaseSequenceQueues<T> {
 }
 
 export namespace database {
-  export let globalDatabase: Database | undefined
+  export declare let globalDatabase: Database
 
   export async function close() {
     return globalDatabase!!.close().finally(() => {
-      globalDatabase = undefined
+      globalDatabase = null
     })
   }
 
   export function sequenceOf<T>(targetTable: Table<T>) {
     return globalDatabase!!.sequenceOf(targetTable)
   }
-
 }
