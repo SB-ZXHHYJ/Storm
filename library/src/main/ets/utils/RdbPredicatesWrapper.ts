@@ -2,6 +2,10 @@ import { relationalStore } from '@kit.ArkData';
 import { Column, Table } from '../schema/Table';
 import { ValueType } from '@ohos.data.ValuesBucket';
 
+/**
+ * 与官方的relationalStore.RdbPredicates等价。
+ * @link https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates
+ */
 export class RdbPredicatesWrapper<T> {
   readonly rdbPredicates: relationalStore.RdbPredicates
 

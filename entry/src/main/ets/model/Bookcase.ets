@@ -12,7 +12,7 @@ export const bookcases = new Bookcases()
 @SqlTable(bookcases)
 export class Bookcase {
   @SqlColumn(bookcases.id)
-  declare id?: number;
+  declare id?: number
   @SqlColumn(bookcases.name)
-  declare name: string;
+  declare name: string
 }
