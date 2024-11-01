@@ -75,33 +75,33 @@ export class Column<E extends ValueType> implements ICommon {
 
   /**
    * 创建数值类型的列
-   * @param name 在表中的名称
+   * @param fieldName 列名
    */
-  static number(name: string): Column<number> {
+  static number(fieldName: string): Column<number> {
     const column = new Column();
-    column._fieldName = name;
+    column._fieldName = fieldName;
     column._dataType = 'INTEGER';
     return column;
   }
 
   /**
    * 创建字符串类型的列
-   * @param name 在表中的名称
+   * @param fieldName 列名
    */
-  static string(name: string): Column<string> {
+  static string(fieldName: string): Column<string> {
     const column = new Column();
-    column._fieldName = name;
+    column._fieldName = fieldName;
     column._dataType = 'TEXT';
     return column;
   }
 
   /**
    * 创建布尔类型的列
-   * @param name 在表中的名称
+   * @param fieldName 列名
    */
-  static boolean(name: string): Column<boolean> {
+  static boolean(fieldName: string): Column<boolean> {
     const column = new Column();
-    column._fieldName = name;
+    column._fieldName = fieldName;
     column._dataType = 'TEXT';
     return column;
   }

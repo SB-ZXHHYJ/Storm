@@ -11,12 +11,6 @@ export class SqlUtils {
     for (const key of Object.keys(table)) {
       const value = table[key]
       if (value instanceof Column) {
-        if (!value._fieldName || !value._dataType) {
-          throw new Error('table var in this.value() not use string(..) or number(..)..');
-        }
-        if (value._fieldName === undefined || value._dataType === undefined) {
-          throw new Error('table var in this.value() not use string(..) or number(..)..')
-        }
         tableArgsBuilder.append(`${value._fieldName} ${value._dataType} ${value._isNotNull ? 'NOT NULL' :
           ''} ${value._isUnique ? 'UNIQUE' : ''} ${value._isPrimaryKey ? 'PRIMARY KEY' : ''} ${value._isAutoincrement ?
           'AUTOINCREMENT' : ''},`)
