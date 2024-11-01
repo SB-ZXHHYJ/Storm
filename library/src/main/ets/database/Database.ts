@@ -1,15 +1,11 @@
-import { Context } from '@ohos.arkui.UIContext';
-import { relationalStore, ValueType } from '@kit.ArkData';
-import { Column, Table } from '../schema/Table';
-import { SqlUtils } from '../utils/SqlStringBuilder';
-import 'reflect-metadata';
-import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper';
-import { getSqlTable } from '../annotation/SqlTable';
-import { getSqlColumn } from '../annotation/SqlColumn';
-import { ResultSetUtils } from '../utils/ResultSetUtils';
-import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence';
-import { LazyInitValue } from '../utils/ILazyInit';
-import { ErrorUtils } from '../utils/ErrorUtils';
+import { Context } from '@ohos.arkui.UIContext'
+import { relationalStore, ValueType } from '@kit.ArkData'
+import { Table } from '../schema/Table'
+import { SqlUtils } from '../utils/SqlStringBuilder'
+import 'reflect-metadata'
+import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
+import { ResultSetUtils } from '../utils/ResultSetUtils'
+import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 
 export class Database {
   private rdbStore: relationalStore.RdbStore
@@ -30,7 +26,7 @@ export class Database {
    * @param targetTable 要操作的表
    * @returns 返回这个表的操作对象
    */
-  sequenceOf<T>(table: Table<T>) {
+  of<T>(table: Table<T>): DatabaseSequenceQueues<T> {
     return new DatabaseSequenceQueues<T>(this.rdbStore, table)
   }
 
@@ -49,55 +45,47 @@ export class Database {
 export class DatabaseSequenceQueues<T> {
   private readonly rdbStore: relationalStore.RdbStore
   private readonly targetTable: Table<T>
-  private readonly idColumnLazy = new LazyInitValue(() => {
-    const idColumn: Column<any> =
-      Object.values(this.targetTable).find((item) => item instanceof Column && item._isPrimaryKey);
-    if (idColumn == undefined) {
-      ErrorUtils.IdColumnNotDefined(this.targetTable)
-    }
-    return idColumn
-  })
 
   constructor(rdbStore: relationalStore.RdbStore, targetTable: Table<T>) {
     this.rdbStore = rdbStore
     this.targetTable = targetTable
   }
 
-  private modelsToValueBuckets(models: any[]) {
-    const valueBuckets = models.map((value) => {
-      const valueBucket: relationalStore.ValuesBucket = {};
-      for (const keysElement of Object.keys(value)) {
-        const currentValue = value[keysElement];
-        const column = getSqlColumn(this.targetTable._entityPrototype.prototype, keysElement);
-        if (column) {
-          if (column._entityPrototype) {
-            const subTable = getSqlTable(column._entityPrototype);
-            if (subTable) {
-              const idColumn = Object.values(subTable).find((item) => item instanceof Column && item._isPrimaryKey);
-              if (idColumn) {
-                // 从插入的数据里获取id
-                const itemId = currentValue[idColumn.fieldName];
-                if (itemId) {
-                  valueBucket[column._fieldName] = itemId;
-                  continue;
-                }
-              }
-            }
-          }
-          valueBucket[column._fieldName] = currentValue;
-        }
-      }
-      return valueBucket;
-    });
-    return valueBuckets
+  /**
+   * 转换上下文
+   * @param targetTable 要转换操作的表
+   * @returns 返回这个表的操作对象
+   */
+  to<T>(table: Table<T>): DatabaseSequenceQueues<T> {
+    return new DatabaseSequenceQueues<T>(this.rdbStore, table)
   }
 
   /**
-   * 开启事务
-   * @param scope 仅限在这个lambda中的操作
+   * 用于链式调用中想执行其他代码时使用
+   * @param scope 要执行的lambda
    * @returns this
    */
-  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void) {
+  run(scope: () => void): DatabaseSequenceQueues<T> {
+    scope()
+    return this
+  }
+
+  /**
+   * 开启一个没什么用的空间
+   * @param scope 没什么用的空间
+   * @returns this
+   */
+  beginScope<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
+    scope.call(undefined, this)
+    return this
+  }
+
+  /**
+   * 开启一个事务
+   * @param scope 事务空间
+   * @returns this
+   */
+  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
     try {
       this.rdbStore.beginTransaction()
       scope.call(undefined, this)
@@ -110,36 +98,105 @@ export class DatabaseSequenceQueues<T> {
   }
 
   /**
-   * 从表中插入内容
-   * @param models 要插入的内容
-   * @returns 插入的内容行数
+   * 插入一条数据
+   * @param model 要插入的数据
+   * @returns this
    */
-  inserts(models: T[]) {
+  add(model: T): DatabaseSequenceQueues<T> {
+    return this.adds([model])
+  }
+
+  /**
+   * 插入一组数据
+   * @param models 要插入的数据
+   * @returns this
+   */
+  adds(models: T[]): DatabaseSequenceQueues<T> {
+    this.insertCount(models)
+    return this
+  }
+
+  /**
+   * 更新一条数据
+   * @param model 要更新的数据
+   * @returns this
+   */
+  update(model: T): DatabaseSequenceQueues<T> {
+    return this.updates([model])
+  }
+
+  /**
+   * 更新一组数据
+   * @param models 要更新的数据
+   * @returns this
+   */
+  updates(models: T[]): DatabaseSequenceQueues<T> {
+    this.updateCount(models)
+    return this
+  }
+
+  /**
+   * 删除一条数据
+   * @param model 要删除的数据
+   * @returns this
+   */
+  remove(model: T): DatabaseSequenceQueues<T> {
+    this.removes([model])
+    return
+  }
+
+  /**
+   * 删除一组数据
+   * @param models 要删除的数据
+   * @returns this
+   */
+  removes(models: T[]): DatabaseSequenceQueues<T> {
+    this.removeCount(models)
+    return this
+  }
+
+  /**
+   * 清空表
+   * @returns this
+   */
+  clear(): DatabaseSequenceQueues<T> {
+    this.clearCount
+    return this
+  }
+
+  /**
+   * 从表中插入数据
+   * @param models 要插入的数据
+   * @returns 插入的数据行数
+   */
+  insertCount(models: T[]): number {
     if (models.length == 0) {
       return 0
     }
     // 查询SqlSequence，用于记录自增信息
     const sqlSequenceQuery =
-      ResultSetUtils.queryToEntity(this.rdbStore, new RdbPredicatesWrapper(sqliteSequences), sqliteSequences);
+      ResultSetUtils.queryToEntity(this.rdbStore, new RdbPredicatesWrapper(sqliteSequences), sqliteSequences)
 
-    const valueBuckets = this.modelsToValueBuckets(models)
+    const valueBuckets = models.map((item => {
+      return this.targetTable.modelMapValueBucket(item)
+    }))
 
     // 创建目标表（如果不存在）
-    this.rdbStore.executeSync(SqlUtils.getTableCreateSql(this.targetTable));
+    this.rdbStore.executeSync(SqlUtils.getTableCreateSql(this.targetTable))
 
-    if (this.idColumnLazy.value) {
+    if (this.targetTable.idColumnLazy.value) {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket) => {
-        if (valueBucket[this.idColumnLazy.value._fieldName] == null) {
+        if (valueBucket[this.targetTable.idColumnLazy.value._fieldName] == null) {
           // 获取表对应的最新自增id
-          const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName);
+          const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
-            valueBucket[this.idColumnLazy.value._fieldName] = sqlSequence.seq += 1;
+            valueBucket[this.targetTable.idColumnLazy.value._fieldName] = sqlSequence.seq += 1
           } else {
             // 如果没有找到序列，则创建一个新的序列
-            const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 };
-            sqlSequenceQuery.push(newSqlSequence);
-            valueBucket[this.idColumnLazy.value._fieldName] = newSqlSequence.seq;
+            const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 }
+            sqlSequenceQuery.push(newSqlSequence)
+            valueBucket[this.targetTable.idColumnLazy.value._fieldName] = newSqlSequence.seq
           }
         }
       })
@@ -148,7 +205,7 @@ export class DatabaseSequenceQueues<T> {
     // 批量插入数据到目标表
     const insertedCount = valueBuckets
       .map(item => {
-        return this.rdbStore.insertSync(this.targetTable.tableName, item) != -1;
+        return this.rdbStore.insertSync(this.targetTable.tableName, item) != -1
       })
       .filter((item) => {
         return item
@@ -158,30 +215,32 @@ export class DatabaseSequenceQueues<T> {
     // 更新原始模型对象以包含新插入的ID
     models.forEach((model, i) => {
       Object.entries(valueBuckets[i]).forEach(([key, value]) => {
-        model[key] = value;
-      });
-    });
+        model[key] = value
+      })
+    })
 
-    return insertedCount; // 返回插入操作成功的数量
+    return insertedCount // 返回插入操作成功的数量
   }
 
   /**
-   * 从表中更新内容
-   * @param models 要更新的内容
-   * @returns 更新的内容行数
+   * 从表中更新数据
+   * @param models 要更新的数据
+   * @returns 更新的数据行数
    */
-  update(models: T[]) {
+  updateCount(models: T[]): number {
     if (models.length == 0) {
       return 0
     }
-    const valueBuckets = this.modelsToValueBuckets(models)
+    const valueBuckets = models.map((item => {
+      return this.targetTable.modelMapValueBucket(item)
+    }))
     const updatedCount = valueBuckets
       .map(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.idColumnLazy.value,
-            item[this.idColumnLazy.value._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable.idColumnLazy.value,
+            item[this.targetTable.idColumnLazy.value._fieldName] as ValueType)
         return this.rdbStore.updateSync(item, wrapper.rdbPredicates) !=
-          -1;
+          -1
       })
       .filter((item) => {
         return item
@@ -191,21 +250,23 @@ export class DatabaseSequenceQueues<T> {
   }
 
   /**
-   * 从表中移除内容
-   * @param models 要移除的内容
-   * @returns 删除的内容行数
+   * 从表中移除数据
+   * @param models 要移除的数据
+   * @returns 删除的数据行数
    */
-  remove(models: T[]) {
+  removeCount(models: T[]): number {
     if (models.length == 0) {
       return 0
     }
-    const valueBuckets = this.modelsToValueBuckets(models)
+    const valueBuckets = models.map((item => {
+      return this.targetTable.modelMapValueBucket(item)
+    }))
     const updatedCount = valueBuckets
       .map(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.idColumnLazy.value,
-            item[this.idColumnLazy.value._fieldName] as ValueType)
-        return this.rdbStore.deleteSync(wrapper.rdbPredicates) != -1;
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable.idColumnLazy.value,
+            item[this.targetTable.idColumnLazy.value._fieldName] as ValueType)
+        return this.rdbStore.deleteSync(wrapper.rdbPredicates) != -1
       })
       .filter((item) => {
         return item
@@ -215,27 +276,31 @@ export class DatabaseSequenceQueues<T> {
   }
 
   /**
-   * 根据条件删除表中的内容
+   * 根据条件删除表中的数据
    * @param wrapperFunction
    * @returns
    */
-  removeIf(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>) {
+  removeIf(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): number {
     const wrapper = wrapperFunction(new RdbPredicatesWrapper(this.targetTable))
     return this.rdbStore.deleteSync(wrapper.rdbPredicates)
   }
 
   /**
    * 清空表
-   * @returns 返回受影响的内容行数
+   * @returns 返回受影响的数据行数
    */
-  clear() {
-    return this.removeIf((it) => {
-      return it
-    })
+  clearCount(): number {
+    try {
+      return this.removeIf((it) => {
+        return it
+      })
+    } catch (e) {
+      return 0
+    }
   }
 
   /**
-   * 根据条件查询表中的内容
+   * 根据条件查询表中的数据
    * @param wrapperFunction 查询条件表达式
    * @returns 查询到的数据集合
    */
@@ -256,7 +321,7 @@ export namespace database {
     })
   }
 
-  export function sequenceOf<T>(targetTable: Table<T>) {
-    return globalDatabase!!.sequenceOf(targetTable)
+  export function of<T>(targetTable: Table<T>) {
+    return globalDatabase!!.of(targetTable)
   }
 }

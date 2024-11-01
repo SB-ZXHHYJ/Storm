@@ -1,5 +1,6 @@
-import { database } from '@zxhhyj/storm';
-import { Bookcase, bookcases } from '../model/Bookcase';
+import { database } from '@zxhhyj/storm'
+import { Book, books } from '../model/Book'
+import { Bookcase, bookcases } from '../model/Bookcase'
 
 @Entry
 @Component
@@ -7,30 +8,46 @@ struct Index {
   @State message: Array<string> = []
 
   queryDataPrint() {
-    for (let queryElement of database.sequenceOf(bookcases).query()) {
+    for (let queryElement of database.of(bookcases).query()) {
       this.message.push(`bookcase id:${queryElement.id},name:${queryElement.name}`)
+    }
+    for (let queryElement of database.of(books).query()) {
+      this.message.push(`book id:${queryElement.id},name:${queryElement.name},bookcase id:${queryElement.bookcase.id}`)
     }
   }
 
   startSqlBenchmark() {
-    const bookcaseList: Array<Bookcase> = [
-      {
-        name: "《百年孤独》"
-      }]
+    database
+      .of(bookcases).clearCount()
+    database
+      .of(books).clearCount()
+    const bookcase: Bookcase = {
+      name: "科幻小说"
+    }
+    const book: Book = {
+      name: "三体",
+      bookcase: bookcase
+    }
     try {
-      const startTime = new Date();
+      const startTime = new Date()
       database
-        .sequenceOf(bookcases)
-        .beginTransaction((it) => {
-          it.inserts(bookcaseList)
-          bookcaseList[0].name = "三体"
-          it.update(bookcaseList)
+        .of(bookcases)
+        .add(bookcase)
+        .to(books)
+        .add(book)
+        .run(() => {
+          book.name = "死在火星上"
         })
-      const endTime = new Date();
+        .update(book)
+      // database
+      //   .of(books)
+      //   .beginTransaction((it) => {
+      //     it.to(bookcases).add(bookcase)
+      //     it.add(book)
+      //   })
+      const endTime = new Date()
       this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
       this.queryDataPrint()
-      database
-        .sequenceOf(bookcases).clear()
     } catch (e) {
       this.message.push(`${e}`)
     }

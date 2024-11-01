@@ -7,7 +7,7 @@ import { Bookcase, bookcases } from '../model/Bookcase'
 export struct BookPage {
   @Prop item: Bookcase
   @Link bookcasesList: Bookcase[]
-  @State booksList: Book[] = database.sequenceOf(books).query((wrapper => {
+  @State booksList: Book[] = database.of(books).query((wrapper => {
     return wrapper.equalTo(books.bookcase, this.item.id)
   }))
   @State bookName: string = ''
@@ -22,8 +22,8 @@ export struct BookPage {
           value: '创建',
           buttonStyle: ButtonStyleMode.TEXTUAL,
           action: () => {
-            database.sequenceOf(books).inserts([{ bookcase: this.item, name: this.bookName }])
-            this.booksList = database.sequenceOf(books).query((wrapper => {
+            database.of(books).insertCount([{ bookcase: this.item, name: this.bookName }])
+            this.booksList = database.of(books).query((wrapper => {
               return wrapper.equalTo(books.bookcase, this.item.id)
             }))
             this.bookCreateDialogController.close()
@@ -62,10 +62,10 @@ export struct BookPage {
           icon: {
             value: $r('sys.media.ohos_ic_public_remove'),
             action: () => {
-              database.sequenceOf(bookcases).removeIf((wrapper) => {
+              database.of(bookcases).removeIf((wrapper) => {
                 return wrapper.equalTo(bookcases.id, this.item.id)
               })
-              this.bookcasesList = database.sequenceOf(bookcases).query()
+              this.bookcasesList = database.of(bookcases).query()
             }
           }
         })
@@ -86,7 +86,7 @@ export struct BookPage {
                   icon: {
                     value: $r('sys.media.ohos_ic_public_remove'),
                     action: () => {
-                      database.sequenceOf(books).removeIf((wrapper) => {
+                      database.of(books).removeIf((wrapper) => {
                         return wrapper.equalTo(books.id, item.id)
                       })
                     }

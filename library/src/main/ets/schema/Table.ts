@@ -1,4 +1,7 @@
-import { ValueType } from '@kit.ArkData';
+import { relationalStore, ValueType } from '@kit.ArkData';
+import { getSqlColumn } from '../annotation/SqlColumn';
+import { getSqlTable } from '../annotation/SqlTable';
+import { LazyInitValue } from '../utils/ILazyInit';
 
 export interface ICommon {
   _entityPrototype?: any
@@ -19,6 +22,43 @@ export abstract class Table<T> implements ICommon, Object {
    * 这个表所绑定的实体的构造函数
    */
   readonly _entityPrototype?: ObjectConstructor
+
+  readonly columnsLazy = new LazyInitValue<Column<any>[]>(() => {
+    return Object.keys(this).map((item) => {
+      return this[item]
+    }).filter((item) => {
+      return item instanceof Column
+    })
+  })
+
+  readonly idColumnLazy = new LazyInitValue<Column<any>>(() => {
+    return this.columnsLazy.value.find((item) => {
+      return item._isPrimaryKey
+    })
+  })
+
+  readonly modelMapValueBucket = (value: T) => {
+    const valueBucket: relationalStore.ValuesBucket = {}
+    for (const key of Object.keys(value)) {
+      const currentValue = value[key]
+      const column = getSqlColumn(this._entityPrototype.prototype, key)
+      if (column) {
+        if (column._entityPrototype) {
+          const subTable = getSqlTable(column._entityPrototype)
+          if (subTable) {
+            const idColumn = subTable.idColumnLazy.value
+            if (idColumn) {
+              // 从插入的数据里获取id
+              valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
+              continue
+            }
+          }
+        }
+        valueBucket[column._fieldName] = currentValue
+      }
+    }
+    return valueBucket
+  }
 }
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB';
@@ -62,6 +102,13 @@ export class Column<E extends ValueType> implements ICommon {
    * 实体构造函数
    */
   readonly _entityPrototype?: ObjectConstructor;
+
+  // getColumnBindTable():Table<any>|undefined{
+  //   if (this._entityPrototype) {
+  //     return getSqlTable(this._entityPrototype)
+  //   }
+  //   return undefined
+  // }
 
   /**
    * 绑定实体绑定函数

@@ -45,8 +45,8 @@ export default function localUnitTest() {
         {
           name: "《爱因斯坦传》"
         }]
-      database.sequenceOf(bookcases).inserts(bookcaseList)
-      console.info(`bookcase size:${database.sequenceOf(bookcases).query().length}`)
+      database.of(bookcases).insertCount(bookcaseList)
+      console.info(`bookcase size:${database.of(bookcases).query().length}`)
     })
   }
   )
