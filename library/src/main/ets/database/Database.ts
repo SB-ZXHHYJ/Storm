@@ -30,6 +30,12 @@ export class Database {
     return new DatabaseSequenceQueues<T>(this.rdbStore, table)
   }
 
+  /**
+   * 创建数据库
+   * @param context 上下文
+   * @param config 数据库的配置
+   * @returns 异步创建数据库
+   */
   static create(context: Context, config: relationalStore.StoreConfig): Promise<Database> {
     return new Promise(async (resolve, reject) => {
       try {
