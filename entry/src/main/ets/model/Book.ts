@@ -13,9 +13,9 @@ export const books = new Books()
 @SqlTable(books)
 export class Book {
   @SqlColumn(books.id)
-  declare id?: number
+  id?: number
   @SqlColumn(books.bookcase)
-  declare bookcase: Bookcase
+  bookcase: Bookcase
   @SqlColumn(books.name)
-  declare name: string
+  name: string
 }
