@@ -7,7 +7,7 @@ import { Bookcase, bookcases } from '../model/Bookcase'
 struct Index {
   @State message: Array<string> = []
 
-  queryDataPrint() {
+  private queryDataPrint() {
     for (let queryElement of database.of(bookcases).query()) {
       this.message.push(`bookcase id:${queryElement.id},name:${queryElement.name}`)
     }
@@ -16,11 +16,8 @@ struct Index {
     }
   }
 
-  startSqlBenchmark() {
-    database
-      .of(bookcases).clearCount()
-    database
-      .of(books).clearCount()
+  private startSqlBenchmark() {
+
     const bookcase: Bookcase = {
       name: "科幻小说"
     }
@@ -28,6 +25,12 @@ struct Index {
       name: "三体",
       bookcase: bookcase
     }
+    database
+      .of(bookcases)
+      .clear()
+      .add(book)
+      .to(books)
+      .clear()
     try {
       const startTime = new Date()
       database
@@ -36,18 +39,43 @@ struct Index {
         .to(books)
         .add(book)
         .run(() => {
+          const addBook = database.of(books).query().find((item => {
+            return item.id == book.id
+          }))
+          if (addBook && addBook.bookcase != undefined) {
+            this.message.push(`验证成功，book已成功添加`)
+          } else {
+            this.message.push(`验证失败，book未删除添加`)
+          }
           book.name = "死在火星上"
         })
         .update(book)
-      // database
-      //   .of(books)
-      //   .beginTransaction((it) => {
-      //     it.to(bookcases).add(bookcase)
-      //     it.add(book)
-      //   })
+        .run(() => {
+          const updateBook = database.of(books).query().find((item => {
+            return item.id == book.id
+          }))
+          if (updateBook?.name === "死在火星上") {
+            this.message.push(`验证成功，book已成功更新`)
+          } else {
+            this.message.push(`验证失败，book未成功更新`)
+          }
+        })
+        .beginTransaction(it => {
+          it.to(bookcases).remove(bookcase)
+          it.remove(book)
+        })
+        .run(() => {
+          const hasBook = database.of(books).query().find((item => {
+            return item.id == book.id
+          }))
+          if (hasBook) {
+            this.message.push(`验证失败，book未删除成功`)
+          } else {
+            this.message.push(`验证成功，book已成功删除`)
+          }
+        })
       const endTime = new Date()
       this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
-      this.queryDataPrint()
     } catch (e) {
       this.message.push(`${e}`)
     }
