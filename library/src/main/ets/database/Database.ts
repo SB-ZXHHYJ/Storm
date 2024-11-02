@@ -148,7 +148,7 @@ export class DatabaseSequenceQueues<T> {
    */
   remove(model: T): DatabaseSequenceQueues<T> {
     this.removes([model])
-    return
+    return this
   }
 
   /**
