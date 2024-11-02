@@ -10,7 +10,6 @@ class Books extends Table<Book> {
 
 export const books = new Books()
 
-@Observed
 @SqlTable(books)
 export class Book {
   @SqlColumn(books.id)

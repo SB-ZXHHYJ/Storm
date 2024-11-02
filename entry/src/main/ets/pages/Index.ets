@@ -24,13 +24,11 @@ struct Index {
       const startTime = new Date()
       database
         .of(bookcases)
-        .add(bookcase)
+        .add(book)
         .to(books)
         .add(book)
         .run(() => {
-          const addBook = database.of(books).query().find((item => {
-            return item.id == book.id
-          }))
+          const addBook = database.of(books).query()[0]
           if (addBook && addBook.bookcase != undefined) {
             this.message.push(`验证成功，book已成功添加`)
           } else {

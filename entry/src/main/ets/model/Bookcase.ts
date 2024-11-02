@@ -8,7 +8,6 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-@Observed
 @SqlTable(bookcases)
 export class Bookcase {
   @SqlColumn(bookcases.id)

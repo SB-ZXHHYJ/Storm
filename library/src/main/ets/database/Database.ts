@@ -81,7 +81,7 @@ export class DatabaseSequenceQueues<T> {
    * @param scope 没什么用的空间
    * @returns this
    */
-  beginScope<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
+  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
     scope.call(undefined, this)
     return this
   }
