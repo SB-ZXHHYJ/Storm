@@ -7,17 +7,12 @@ import { Bookcase, bookcases } from '../model/Bookcase'
 struct Index {
   @State message: Array<string> = []
 
-  private queryDataPrint() {
-    for (let queryElement of database.of(bookcases).query()) {
-      this.message.push(`bookcase id:${queryElement.id},name:${queryElement.name}`)
-    }
-    for (let queryElement of database.of(books).query()) {
-      this.message.push(`book id:${queryElement.id},name:${queryElement.name},bookcase id:${queryElement.bookcase.id}`)
-    }
-  }
-
   private startSqlBenchmark() {
-
+    database
+      .of(bookcases)
+      .clear()
+      .to(books)
+      .clear()
     const bookcase: Bookcase = {
       name: "科幻小说"
     }
@@ -25,12 +20,6 @@ struct Index {
       name: "三体",
       bookcase: bookcase
     }
-    database
-      .of(bookcases)
-      .clear()
-      .add(book)
-      .to(books)
-      .clear()
     try {
       const startTime = new Date()
       database
