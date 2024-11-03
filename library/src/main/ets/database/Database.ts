@@ -166,7 +166,7 @@ export class DatabaseSequenceQueues<T> {
    * @returns this
    */
   clear(): DatabaseSequenceQueues<T> {
-    this.clearCount
+    this.clearCount()
     return this
   }
 

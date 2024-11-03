@@ -14,8 +14,8 @@ export const books = new Books()
 export class Book {
   @SqlColumn(books.id)
   id?: number
-  @SqlColumn(books.bookcase)
-  bookcase: Bookcase
   @SqlColumn(books.name)
   name: string
+  @SqlColumn(books.bookcase)
+  bookcase: Bookcase
 }

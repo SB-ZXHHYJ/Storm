@@ -24,7 +24,7 @@ struct Index {
       const startTime = new Date()
       database
         .of(bookcases)
-        .add(bookcase)
+        .add(book)
         .to(books)
         .add(book)
         .run(() => {
