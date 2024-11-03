@@ -15,40 +15,53 @@ ohpm install @zxhhyj/storm
 
 ## 基本用法
 
-1、使用`Table`来描述表的结构，创建这个表的唯一对象并导出。重写`Table`中的`tableName`
-来确定表的名称，之后在表中定义属性（`readonly`）并使用`Column.number`、`Column.string`等Api来描述这个表的结构。
-如下示例中所创建的SQL结构为`t_book(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL UNIQUE)`。
-
+创建一个`class`继承`Table`来描述表的结构，并创建这个表的唯一对象并导出。
+重写`Table`中的`tableName`来确定表的名称，
+之后在表中定义属性并使用`Column.number()`、`Column.string()`
+等api来描述这个表的结构，同时可以链式使用`primaryKey()`、`notNull()`、`unique()`等api来设置主键、不可空、不可重复等。
+1.创建书架`Bookcases`的`Table`，并描述它的表名和结构。
 ```typescript
-class Books extends Table<Book> {
-  override tableName = 't_book'
+//step.1
+class Bookcases extends Table<Bookcase> {
+  override tableName = 't_bookcase'
   readonly id = Column.number('id').primaryKey(true)
   readonly name = Column.string('name').notNull().unique()
 }
 
-export const books = new Books()
+//step.2
+export const bookcases = new Bookcases()
+
+//step.3
+@SqlTable(bookcases)
+export class Bookcase {
+  @SqlColumn(bookcases.id)
+  id?: number
+  @SqlColumn(bookcases.name)
+  name: string
+}
 ```
-
-2、描述实体类（目前必须描述实体类）。
-注意实体类必须使用`@SqlTable()`注解来指向第一个步骤的`export const books = new Books()`
-常量，然后在类定义这个实体的属性，其格式为`declare 属性名称: 属性的类型`，如果这个属性可空则可以使用`?`
-来修饰，其格式为`declare 属性名称?: 属性的类型`，最后为这些属性添加`@SqlColumn()`注解来指向对应`Table`中的属性。
-
+2.创建书本`Book`的`Table`，并描述它的表名和结构。值得注意的是`Book`的`Table`和类中都有一个属性`bookcase`，这是`Storm`的列绑定功能，需要在`Table`中使用`Column.entity('xxxx_id', xxxx)`，`Storm`会自动将`xxxx`类型的主键存储到`xxxx_id`中，在查询数据时，`Storm`也会自动帮你查询并填充好。
 ```typescript
+//step.1
 class Books extends Table<Book> {
   override tableName = 't_book'
+  readonly bookcase = Column.entity('bookcase_id', Bookcase)
   readonly id = Column.number('id').primaryKey(true)
   readonly name = Column.string('name').notNull().unique()
 }
 
+//step.2
 export const books = new Books()
 
+//step.3
 @SqlTable(books)
 export class Book {
   @SqlColumn(books.id)
-  declare id?: number
+  id?: number
   @SqlColumn(books.name)
-  declare name: string
+  name: string
+  @SqlColumn(books.bookcase)
+  bookcase: Bookcase
 }
 ```
 
@@ -63,28 +76,49 @@ export class Book {
 })
 ```
 
-4、对`books`进行增删改查。
+4、增删改查。
 
 ```typescript
-//插入数据
+//bookcase
+const bookcase: Bookcase = {
+  name: "科幻小说"
+}
+//book
+const book: Book = {
+  name: "三体",
+  bookcase: bookcase
+}
 database
-  .sequenceOf(books)
-  .inserts([{ id: 1, name: "Hello Storm" }])
-//.inserts([{ name: "Hello Storm" }]) 也可以不指定id（id为?时可用）
+  //of函数需要一个Table参数，表示此次要操作的表
+  .of(bookcases)
+    //添加bookcase到数据库中
+  .add(bookcase)
+    //to函数需要一个Table参数，表示此次要切换操作的表
+  .to(books)
+    //添加bookcase到数据库中
+  .add(book)
+  .run(() => {
+    //run函数用于在链式调用中途想执行一些逻辑时使用
+    book.name = "死在火星上"
+    //这里我们修改了book的name
+  })
+  //更新book
+  .update(book)
 ```
 
+4.1、一些示例。
 ```typescript
 //更新数据
 database
-  .sequenceOf(books)
-  .update([{ id: 1, name: "你好Storm" }])
+  .of(books)
+  .update(xxx)
 ```
 
 ```typescript
 //删除数据
 database
-  .sequenceOf(books)
-  .remove([{ id: 1, name: "Hello Storm" }])
+  .of(books)
+  .remove(xxx)
 // .removeIf((it) => {
 //   return it.equalTo(books.id, 1)
 // })
@@ -92,23 +126,32 @@ database
 ```
 
 ```typescript
+//使用事务
+database
+  .of(books)
+  .beginTransaction(it => {
+    it.add(xxx)
+    it.update(xxx)
+    //...
+    //在这个lambda里进行操作
+  })
+```
+
+```typescript
 //查询数据
-for (let queryElement of database.sequenceOf(books).query()) {
-  this.message.push(`id:${queryElement.id},name:${queryElement.name}`)
+for (let queryElement of database.of(books).query()) {
+  //xxx
 }
 //没有条件就是遍历所有数据
-for (let queryElement of database.sequenceOf(books).query(it => {
+for (let queryElement of database.of(books).query(it => {
   return it.equalTo(books.id, 1)
 })) {
-  this.message.push(`id:${queryElement.id},name:${queryElement.name}`)
+  //xxx
 }
 //查询id为1的数据并遍历
 ```
 
-`Storm支持`[RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)
-的全部条件。
-
-4、实体的列绑定和数据监听的文档还未准备好...
+##### 更多的示例可以参考`Index.ets`里的代码。
 
 ## 交流
 
