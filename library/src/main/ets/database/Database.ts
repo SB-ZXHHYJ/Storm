@@ -49,83 +49,82 @@ export class Database {
   }
 }
 
-
 interface IDatabaseSequenceQueues<T> {
   /**
    * 转换上下文到指定的表操作对象
    * @param targetTable 要转换操作的表
    * @returns 返回这个表的操作对象
    */
-  to<T>(targetTable: Table<T>): DatabaseSequenceQueues<T>
+  to<T>(targetTable: Table<T>): IDatabaseSequenceQueues<T>
 
   /**
    * 在链式调用中执行额外的代码块
    * @param scope 要执行的lambda表达式
    * @returns this，以支持链式调用
    */
-  run(scope: () => void): DatabaseSequenceQueues<T>
+  run(scope: () => void): this
 
   /**
-   * 开启一个作用域，用于执行不相关的代码
+   * 开启一个作用域
    * @param scope 作用域内的lambda表达式
    * @returns this，以支持链式调用
    */
-  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T>
+  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个事务作用域
    * @param scope 事务作用域内的lambda表达式
    * @returns this，以支持链式调用
    */
-  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T>
+  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
 
   /**
    * 插入一条数据到数据库
    * @param model 要插入的数据模型
    * @returns this，以支持链式调用
    */
-  add(model: T): DatabaseSequenceQueues<T>
+  add(model: T): this
 
   /**
    * 插入一组数据到数据库
    * @param models 要插入的数据模型数组
    * @returns this，以支持链式调用
    */
-  adds(models: T[]): DatabaseSequenceQueues<T>
+  adds(models: T[]): this
 
   /**
    * 更新一条数据在数据库中的信息
    * @param model 要更新的数据模型
    * @returns this，以支持链式调用
    */
-  update(model: T): DatabaseSequenceQueues<T>
+  update(model: T): this
 
   /**
    * 更新一组数据在数据库中的信息
    * @param models 要更新的数据模型数组
    * @returns this，以支持链式调用
    */
-  updates(models: T[]): DatabaseSequenceQueues<T>
+  updates(models: T[]): this
 
   /**
    * 删除一条数据从数据库
    * @param model 要删除的数据模型
    * @returns this，以支持链式调用
    */
-  remove(model: T): DatabaseSequenceQueues<T>
+  remove(model: T): this
 
   /**
    * 删除一组数据从数据库
    * @param models 要删除的数据模型数组
    * @returns this，以支持链式调用
    */
-  removes(models: T[]): DatabaseSequenceQueues<T>
+  removes(models: T[]): this
 
   /**
    * 清空整个表的数据
    * @returns this，以支持链式调用
    */
-  clear(): DatabaseSequenceQueues<T>
+  clear(): this
 
   /**
    * 根据条件查询表中的数据
@@ -149,17 +148,17 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return new DatabaseSequenceQueues<T>(this.rdbStore, targetTable)
   }
 
-  run(scope: () => void): DatabaseSequenceQueues<T> {
+  run(scope: () => void): this {
     scope()
     return this
   }
 
-  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
+  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this {
     scope.call(undefined, this)
     return this
   }
 
-  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): DatabaseSequenceQueues<T> {
+  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this {
     try {
       this.rdbStore.beginTransaction()
       scope.call(undefined, this)
@@ -171,12 +170,12 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-  add(model: T): DatabaseSequenceQueues<T> {
+  add(model: T): this {
     return this.adds([model])
   }
 
 
-  adds(models: T[]): DatabaseSequenceQueues<T> {
+  adds(models: T[]): this {
     if (models.length == 0) {
       return this
     }
@@ -225,11 +224,11 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-  update(model: T): DatabaseSequenceQueues<T> {
+  update(model: T): this {
     return this.updates([model])
   }
 
-  updates(models: T[]): DatabaseSequenceQueues<T> {
+  updates(models: T[]): this {
     if (models.length == 0) {
       return this
     }
@@ -246,12 +245,12 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-  remove(model: T): DatabaseSequenceQueues<T> {
+  remove(model: T): this {
     this.removes([model])
     return this
   }
 
-  removes(models: T[]): DatabaseSequenceQueues<T> {
+  removes(models: T[]): this {
     if (models.length == 0) {
       return this
     }
@@ -268,7 +267,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-  clear(): DatabaseSequenceQueues<T> {
+  clear(): this {
     try {
       this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
     } finally {

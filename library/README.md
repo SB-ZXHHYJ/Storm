@@ -20,6 +20,7 @@ ohpm install @zxhhyj/storm
 之后在表中定义属性并使用`Column.number()`、`Column.string()`
 等api来描述这个表的结构，同时可以链式使用`primaryKey()`、`notNull()`、`unique()`等api来设置主键、不可空、不可重复等。
 1.创建书架`Bookcases`的`Table`，并描述它的表名和结构。
+
 ```typescript
 //step.1
 class Bookcases extends Table<Bookcase> {
@@ -40,7 +41,11 @@ export class Bookcase {
   name: string
 }
 ```
-2.创建书本`Book`的`Table`，并描述它的表名和结构。值得注意的是`Book`的`Table`和类中都有一个属性`bookcase`，这是`Storm`的列绑定功能，需要在`Table`中使用`Column.entity('xxxx_id', xxxx)`，`Storm`会自动将`xxxx`类型的主键存储到`xxxx_id`中，在查询数据时，`Storm`也会自动帮你查询并填充好。
+
+2.创建书本`Book`的`Table`，并描述它的表名和结构。值得注意的是`Book`的`Table`和类中都有一个属性`bookcase`，这是`Storm`
+的列绑定功能，需要在`Table`中使用`Column.entity('xxxx_id', xxxx)`，`Storm`会自动将`xxxx`类型的主键存储到`xxxx_id`
+中，在查询数据时，`Storm`也会自动帮你查询并填充好。
+
 ```typescript
 //step.1
 class Books extends Table<Book> {
@@ -78,6 +83,8 @@ export class Book {
 
 4、增删改查。
 
+4.1、增加数据和修改数据。
+
 ```typescript
 //bookcase
 const bookcase: Bookcase = {
@@ -89,41 +96,45 @@ const book: Book = {
   bookcase: bookcase
 }
 database
-  //of函数需要一个Table参数，表示此次要操作的表
-  .of(bookcases)
-    //添加bookcase到数据库中
-  .add(bookcase)
-    //to函数需要一个Table参数，表示此次要切换操作的表
-  .to(books)
-    //添加bookcase到数据库中
-  .add(book)
+  .of(bookcases)//of函数需要一个Table参数，表示此次要操作的表
+  .add(bookcase)//添加bookcase到数据库中
+  .to(books)//to函数需要一个Table参数，表示此次要切换操作的表
+  .add(book)//添加book到数据库中
   .run(() => {
     //run函数用于在链式调用中途想执行一些逻辑时使用
     book.name = "死在火星上"
     //这里我们修改了book的name
   })
-  //更新book
-  .update(book)
+  .update(book) //更新book
 ```
 
-4.1、一些示例。
-```typescript
-//更新数据
-database
-  .of(books)
-  .update(xxx)
-```
+4.2、删除数据。
 
 ```typescript
 //删除数据
 database
   .of(books)
   .remove(xxx)
-// .removeIf((it) => {
-//   return it.equalTo(books.id, 1)
-// })
-//在lambda表达式中输入删除的条件
+//xxx为要删除的数据
 ```
+
+4.3、查询数据。
+
+```typescript
+//查询数据
+for (let queryElement of database.of(books).query()) {
+  //xxx
+}
+//没有条件就是遍历所有数据
+for (let queryElement of database.of(books).query(it, table => {
+  return it.equalTo(table.id, 1)
+})) {
+  //xxx
+}
+//查询id为1的数据并遍历
+```
+
+4.4、使用事务。
 
 ```typescript
 //使用事务
@@ -137,21 +148,132 @@ database
   })
 ```
 
+##### 更多的示例可以参考`Index.ets`里的代码。
+
+## 一些API
+
+1.Table
+
 ```typescript
-//查询数据
-for (let queryElement of database.of(books).query()) {
-  //xxx
+interface ITable {
+/**
+ * @returns 表名
+ */
+get tableName(): string
 }
-//没有条件就是遍历所有数据
-for (let queryElement of database.of(books).query(it => {
-  return it.equalTo(books.id, 1)
-})) {
-  //xxx
-}
-//查询id为1的数据并遍历
 ```
 
-##### 更多的示例可以参考`Index.ets`里的代码。
+2.Column
+
+```typescript
+interface IColumn {
+/**
+ * 设置为主键
+ * @param autoincrement 是否为自增列
+ */
+primaryKey(autoincrement?: boolean): this
+
+/**
+ * 设置为不可为空
+ */
+notNull(): this
+
+/**
+ * 设置不可重复
+ */
+unique(): this
+}
+```
+
+3.DatabaseSequenceQueues
+
+```typescript
+interface IDatabaseSequenceQueues<T> {
+/**
+ * 转换上下文到指定的表操作对象
+ * @param targetTable 要转换操作的表
+ * @returns 返回这个表的操作对象
+ */
+to<T>(targetTable: Table<T>): IDatabaseSequenceQueues<T>
+
+/**
+ * 在链式调用中执行额外的代码块
+ * @param scope 要执行的lambda表达式
+ * @returns this，以支持链式调用
+ */
+run(scope: () => void): this
+
+/**
+ * 开启一个作用域
+ * @param scope 作用域内的lambda表达式
+ * @returns this，以支持链式调用
+ */
+begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
+
+/**
+ * 开启一个事务作用域
+ * @param scope 事务作用域内的lambda表达式
+ * @returns this，以支持链式调用
+ */
+beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
+
+/**
+ * 插入一条数据到数据库
+ * @param model 要插入的数据模型
+ * @returns this，以支持链式调用
+ */
+add(model: T): this
+
+/**
+ * 插入一组数据到数据库
+ * @param models 要插入的数据模型数组
+ * @returns this，以支持链式调用
+ */
+adds(models: T[]): this
+
+/**
+ * 更新一条数据在数据库中的信息
+ * @param model 要更新的数据模型
+ * @returns this，以支持链式调用
+ */
+update(model: T): this
+
+/**
+ * 更新一组数据在数据库中的信息
+ * @param models 要更新的数据模型数组
+ * @returns this，以支持链式调用
+ */
+updates(models: T[]): this
+
+/**
+ * 删除一条数据从数据库
+ * @param model 要删除的数据模型
+ * @returns this，以支持链式调用
+ */
+remove(model: T): this
+
+/**
+ * 删除一组数据从数据库
+ * @param models 要删除的数据模型数组
+ * @returns this，以支持链式调用
+ */
+removes(models: T[]): this
+
+/**
+ * 清空整个表的数据
+ * @returns this，以支持链式调用
+ */
+clear(): this
+
+/**
+ * 根据条件查询表中的数据
+ * @todo 值得注意的是，如果使用事务，在事务没有执行完毕时，你查询到的数据并不是最新的
+ * @param wrapperFunction 在这个lambda中返回查询的条件
+ * @returns 查询到的数据集合
+ */
+query(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>, targetTable: Table<T>) => RdbPredicatesWrapper<T>): T[]
+}
+```
 
 ## 交流
 

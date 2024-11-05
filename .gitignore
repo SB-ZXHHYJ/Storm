@@ -11,3 +11,4 @@
 **/.test
 /.appanalyzer
 /plugin/node_modules/
+/plugin/.hvigor/

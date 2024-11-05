@@ -9,7 +9,8 @@ export function SqlTable<A>(table: Table<A>): ClassDecorator {
     if (common._entityPrototype != null) {
       throw TypeError('Table is repeatedly bound by multiple entities')
     }
-    Reflect.defineMetadata(SqlTableMetadataKey, table, common._entityPrototype = target);
+    Reflect.defineMetadata(SqlTableMetadataKey, table,
+      common._entityPrototype = target as unknown as ObjectConstructor);
   }
 }
 
