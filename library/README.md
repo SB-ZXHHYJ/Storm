@@ -3,7 +3,7 @@
 Storm 是直接基于纯 `TypeScript` 编写的高效简洁的轻量级 `OpenHarmonyOS SQL ORM` 框架，它提供了`强类型`而且灵活的 SQL
 DSL，并且所有的 SQL 都是自动生成的。
 
-HarmonyOS上的SQL DSL库，其设计思想部分来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
+其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
 
 ## 安装
 
