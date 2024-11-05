@@ -1,7 +1,7 @@
-import { relationalStore, ValueType } from '@kit.ArkData';
-import { getSqlColumn } from '../annotation/SqlColumn';
-import { getSqlTable } from '../annotation/SqlTable';
-import { LazyInitValue } from '../utils/ILazyInit';
+import { relationalStore, ValueType } from '@kit.ArkData'
+import { getSqlColumn } from '../annotation/SqlColumn'
+import { getSqlTable } from '../annotation/SqlTable'
+import { LazyInitValue } from '../utils/ILazyInit'
 
 export interface ICommon {
   _entityPrototype?: any
@@ -61,7 +61,7 @@ export abstract class Table<T> implements ICommon, Object {
   }
 }
 
-type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB';
+type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB'
 
 export class Column<E extends ValueType> implements ICommon {
   private constructor() {
@@ -71,37 +71,37 @@ export class Column<E extends ValueType> implements ICommon {
   /**
    * 实际的sql类型
    */
-  _dataType: DataTypes;
+  _dataType: DataTypes
 
   /**
    * 列名
    */
-  _fieldName: string;
+  _fieldName: string
 
   /**
    * 是否主键
    */
-  _isPrimaryKey?: boolean;
+  _isPrimaryKey?: boolean
 
   /**
    * 是否自增
    */
-  _isAutoincrement?: boolean;
+  _isAutoincrement?: boolean
 
   /**
    * 是否不可空
    */
-  _isNotNull?: boolean;
+  _isNotNull?: boolean
 
   /**
    * 是否不可重复
    */
-  _isUnique?: boolean;
+  _isUnique?: boolean
 
   /**
    * 实体构造函数
    */
-  readonly _entityPrototype?: ObjectConstructor;
+  readonly _entityPrototype?: ObjectConstructor
 
   // getColumnBindTable():Table<any>|undefined{
   //   if (this._entityPrototype) {
@@ -118,17 +118,17 @@ export class Column<E extends ValueType> implements ICommon {
    * @param entity - 需要绑定属性的实体对象
    * @param value - 要绑定的值
    */
-  _entityBindFunction?: (entity: any, value: any) => void;
+  _entityBindFunction?: (entity: any, value: any) => void
 
   /**
    * 创建数值类型的列
    * @param fieldName 列名
    */
   static number(fieldName: string): Column<number> {
-    const column = new Column();
-    column._fieldName = fieldName;
-    column._dataType = 'INTEGER';
-    return column;
+    const column = new Column()
+    column._fieldName = fieldName
+    column._dataType = 'INTEGER'
+    return column
   }
 
   /**
@@ -136,10 +136,10 @@ export class Column<E extends ValueType> implements ICommon {
    * @param fieldName 列名
    */
   static string(fieldName: string): Column<string> {
-    const column = new Column();
-    column._fieldName = fieldName;
-    column._dataType = 'TEXT';
-    return column;
+    const column = new Column()
+    column._fieldName = fieldName
+    column._dataType = 'TEXT'
+    return column
   }
 
   /**
@@ -147,10 +147,10 @@ export class Column<E extends ValueType> implements ICommon {
    * @param fieldName 列名
    */
   static boolean(fieldName: string): Column<boolean> {
-    const column = new Column();
-    column._fieldName = fieldName;
-    column._dataType = 'TEXT';
-    return column;
+    const column = new Column()
+    column._fieldName = fieldName
+    column._dataType = 'TEXT'
+    return column
   }
 
   /**
@@ -159,12 +159,12 @@ export class Column<E extends ValueType> implements ICommon {
    * @param entityPrototype 实体的构造函数
    */
   static entity(name: string, entityPrototype: Function): Column<number> {
-    const column = new Column();
-    column._fieldName = name;
-    column._dataType = 'INTEGER';
-    const common = (column as ICommon);
-    common._entityPrototype = entityPrototype;
-    return column;
+    const column = new Column()
+    column._fieldName = name
+    column._dataType = 'INTEGER'
+    const common = (column as ICommon)
+    common._entityPrototype = entityPrototype
+    return column
   }
 
   /**
@@ -173,26 +173,26 @@ export class Column<E extends ValueType> implements ICommon {
    */
   primaryKey(autoincrement?: boolean): Column<E> {
     if (autoincrement && this._dataType != 'INTEGER') {
-      throw TypeError('autoincrement only support dataType as INTEGER');
+      throw TypeError('autoincrement only support dataType as INTEGER')
     }
-    this._isPrimaryKey = true;
-    this._isAutoincrement = autoincrement;
-    return this;
+    this._isPrimaryKey = true
+    this._isAutoincrement = autoincrement
+    return this
   }
 
   /**
    * 设置为不可为空
    */
   notNull(): Column<E> {
-    this._isNotNull = true;
-    return this;
+    this._isNotNull = true
+    return this
   }
 
   /**
    * 设置唯一约束
    */
   unique(): Column<E> {
-    this._isUnique = true;
-    return this;
+    this._isUnique = true
+    return this
   }
 }

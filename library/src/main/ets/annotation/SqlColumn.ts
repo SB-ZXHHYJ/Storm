@@ -9,7 +9,7 @@ export function SqlColumn(value: Column<ValueType>): PropertyDecorator {
     value._entityBindFunction ??= (entity, value) => {
       entity[primaryKey] = value
     }
-    Reflect.defineMetadata(ColumnMetadataKey, value, target, primaryKey);
+    Reflect.defineMetadata(ColumnMetadataKey, value, target, primaryKey)
   }
 }
 

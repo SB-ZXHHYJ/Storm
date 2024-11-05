@@ -6,7 +6,7 @@
   "author": "黄浩",
   "license": "Apache-2.0",
   "dependencies": {
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
   },
   "homepage": "https://gitee.com/ZXHHYJ/storm",
   "repository": "https://gitee.com/ZXHHYJ/storm",

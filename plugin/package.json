@@ -1,0 +1,17 @@
+{
+  "name": "@zxhhyj/storm-typesafe-plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@ohos/hvigor": "5.2.2"
+  },
+  "dependencies": {
+    "typescript": "^5.4.5"
+  }
+}

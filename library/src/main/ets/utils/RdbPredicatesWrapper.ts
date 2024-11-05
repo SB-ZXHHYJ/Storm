@@ -9,8 +9,8 @@ import { ValueType } from '@ohos.data.ValuesBucket';
 export class RdbPredicatesWrapper<T> {
   readonly rdbPredicates: relationalStore.RdbPredicates
 
-  constructor(table: Table<T>) {
-    this.rdbPredicates = new relationalStore.RdbPredicates(table.tableName)
+  constructor(targetTable: Table<T>) {
+    this.rdbPredicates = new relationalStore.RdbPredicates(targetTable.tableName)
   }
 
   equalTo(column: Column<ValueType>, value: ValueType) {

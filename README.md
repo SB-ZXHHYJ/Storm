@@ -20,6 +20,7 @@ ohpm install @zxhhyj/storm
 之后在表中定义属性并使用`Column.number()`、`Column.string()`
 等api来描述这个表的结构，同时可以链式使用`primaryKey()`、`notNull()`、`unique()`等api来设置主键、不可空、不可重复等。
 1.创建书架`Bookcases`的`Table`，并描述它的表名和结构。
+
 ```typescript
 //step.1
 class Bookcases extends Table<Bookcase> {
@@ -40,7 +41,11 @@ export class Bookcase {
   name: string
 }
 ```
-2.创建书本`Book`的`Table`，并描述它的表名和结构。值得注意的是`Book`的`Table`和类中都有一个属性`bookcase`，这是`Storm`的列绑定功能，需要在`Table`中使用`Column.entity('xxxx_id', xxxx)`，`Storm`会自动将`xxxx`类型的主键存储到`xxxx_id`中，在查询数据时，`Storm`也会自动帮你查询并填充好。
+
+2.创建书本`Book`的`Table`，并描述它的表名和结构。值得注意的是`Book`的`Table`和类中都有一个属性`bookcase`，这是`Storm`
+的列绑定功能，需要在`Table`中使用`Column.entity('xxxx_id', xxxx)`，`Storm`会自动将`xxxx`类型的主键存储到`xxxx_id`
+中，在查询数据时，`Storm`也会自动帮你查询并填充好。
+
 ```typescript
 //step.1
 class Books extends Table<Book> {
@@ -78,6 +83,8 @@ export class Book {
 
 4、增删改查。
 
+4.1、增加数据和修改数据。
+
 ```typescript
 //bookcase
 const bookcase: Bookcase = {
@@ -89,41 +96,50 @@ const book: Book = {
   bookcase: bookcase
 }
 database
-  //of函数需要一个Table参数，表示此次要操作的表
+    //of函数需要一个Table参数，表示此次要操作的表
   .of(bookcases)
     //添加bookcase到数据库中
   .add(bookcase)
     //to函数需要一个Table参数，表示此次要切换操作的表
   .to(books)
-    //添加bookcase到数据库中
+    //添加book到数据库中
   .add(book)
   .run(() => {
     //run函数用于在链式调用中途想执行一些逻辑时使用
     book.name = "死在火星上"
     //这里我们修改了book的name
   })
-  //更新book
+    //更新book
   .update(book)
 ```
 
-4.1、一些示例。
-```typescript
-//更新数据
-database
-  .of(books)
-  .update(xxx)
-```
+4.2、删除数据。
 
 ```typescript
 //删除数据
 database
   .of(books)
   .remove(xxx)
-// .removeIf((it) => {
-//   return it.equalTo(books.id, 1)
-// })
-//在lambda表达式中输入删除的条件
+//xxx为要删除的数据
 ```
+
+4.3、查询数据。
+
+```typescript
+//查询数据
+for (let queryElement of database.of(books).query()) {
+  //xxx
+}
+//没有条件就是遍历所有数据
+for (let queryElement of database.of(books).query(it,table => {
+  return it.equalTo(table.id, 1)
+})) {
+  //xxx
+}
+//查询id为1的数据并遍历
+```
+
+4.4、使用事务。
 
 ```typescript
 //使用事务
@@ -135,20 +151,6 @@ database
     //...
     //在这个lambda里进行操作
   })
-```
-
-```typescript
-//查询数据
-for (let queryElement of database.of(books).query()) {
-  //xxx
-}
-//没有条件就是遍历所有数据
-for (let queryElement of database.of(books).query(it => {
-  return it.equalTo(books.id, 1)
-})) {
-  //xxx
-}
-//查询id为1的数据并遍历
 ```
 
 ##### 更多的示例可以参考`Index.ets`里的代码。

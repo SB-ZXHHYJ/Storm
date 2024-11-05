@@ -29,7 +29,7 @@ struct Index {
         .add(book)
         .run(() => {
           const addBook = database.of(books).query()[0]
-          if (addBook && addBook.bookcase != undefined) {
+          if (addBook && addBook.id !== undefined && addBook.bookcase != undefined) {
             this.message.push(`验证成功，book已成功添加`)
           } else {
             this.message.push(`验证失败，book未删除添加`)
@@ -41,7 +41,7 @@ struct Index {
           const updateBook = database.of(books).query().find((item => {
             return item.id == book.id
           }))
-          if (updateBook?.name === "死在火星上") {
+          if (updateBook?.id !== undefined && updateBook?.name === "死在火星上") {
             this.message.push(`验证成功，book已成功更新`)
           } else {
             this.message.push(`验证失败，book未成功更新`)
