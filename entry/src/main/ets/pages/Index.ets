@@ -35,11 +35,10 @@ struct Index {
             this.message.push(`验证失败，book未删除添加`)
           }
           //book.name = "死在火星上"
-        })
-        //.update(book)
+        })//.update(book)
         .updateIf(it => {
           return it.equalTo(books.id, book.id)
-        }, { name: "死在火星上", bookcase:undefined })
+        }, [[books.name, "死在火星上"]])
         .run(() => {
           const updateBook = database.of(books).query().find((item => {
             return item.id == book.id

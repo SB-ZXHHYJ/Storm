@@ -28,10 +28,10 @@ export class ResultSetUtils {
         //获取table中fieldName与columnName一致的列
         const value = resultSet.getValue(i)
         //这个column的值
-        if (column) {
-          if (column._entityPrototype) {
+        if (column && value) {
+          if (column._objectConstructor) {
             //判断是不是列绑定
-            const sEntity = Object.create(column._entityPrototype)
+            const sEntity = Object.create(column._objectConstructor)
             //创建这个列所绑定类型的对象
             const table = getSqlTable(sEntity)
             //获取这个绑定对象所对应的table

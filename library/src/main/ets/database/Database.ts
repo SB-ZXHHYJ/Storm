@@ -1,6 +1,6 @@
 import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
-import { Table } from '../schema/Table'
+import { Column, Table } from '../schema/Table'
 import { SqlUtils } from '../utils/SqlStringBuilder'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
@@ -49,6 +49,8 @@ export class Database {
     })
   }
 }
+
+type ColumnValuePairs = ReadonlyArray<[Column<ValueType>, ValueType | null]>
 
 interface IDatabaseSequenceQueues<T> {
   /**
@@ -114,7 +116,7 @@ interface IDatabaseSequenceQueues<T> {
    * @returns this，以支持链式调用
    */
   updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
-    model: T): this
+    model: T | ColumnValuePairs): this
 
   /**
    * 删除一条数据从数据库
@@ -270,10 +272,19 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
+
   updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
-    model: T): this {
-    const valueBucket = this.targetTable._modelMapValueBucket(model)
-    this.rdbStore.updateSync(valueBucket,
+    model: T | ColumnValuePairs): this {
+    if (Array.isArray(model)) {
+      const valueBucket = model.reduce((acc, [column, value]) => {
+        acc[column._fieldName] = value
+        return acc
+      }, {} as T)
+      this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(valueBucket),
+        wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
+      return this
+    }
+    this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(model as T),
       wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
     return this
   }
@@ -319,10 +330,10 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
   reset(): this {
     try {
       this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
-    } finally {
       this.to(sqliteSequences).removeIf(it => {
         return it.equalTo(sqliteSequences.name, this.targetTable.tableName)
       })
+    } finally {
       return this
     }
   }

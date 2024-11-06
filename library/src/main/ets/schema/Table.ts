@@ -1,10 +1,14 @@
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { getSqlColumn } from '../annotation/SqlColumn'
 import { getSqlTable } from '../annotation/SqlTable'
+import { ErrorUtils } from '../utils/ErrorUtils'
 import { LazyInitValue } from '../utils/ILazyInit'
 
 export interface ICommon {
-  _entityPrototype?: ObjectConstructor
+  /**
+   * 实体的构造函数
+   */
+  _objectConstructor?: ObjectConstructor
 }
 
 interface ITable {
@@ -17,10 +21,7 @@ interface ITable {
 export abstract class Table<T> implements ITable, ICommon {
   abstract get tableName(): string
 
-  /**
-   * 这个表所绑定的实体的构造函数
-   */
-  readonly _entityPrototype?: ObjectConstructor
+  readonly _objectConstructor?: ObjectConstructor
 
   readonly _columnsLazy = new LazyInitValue<Column<any>[]>(() => {
     return Object.keys(this).map((item) => {
@@ -38,24 +39,30 @@ export abstract class Table<T> implements ITable, ICommon {
 
   readonly _modelMapValueBucket = (value: T) => {
     const valueBucket: relationalStore.ValuesBucket = {}
+
     for (const key of Object.keys(value)) {
       const currentValue = value[key]
-      const column = getSqlColumn(this._entityPrototype.prototype, key)
-      if (column && currentValue) {
-        if (column._entityPrototype) {
-          const subTable = getSqlTable(column._entityPrototype)
-          if (subTable) {
-            const idColumn = subTable._idColumnLazy.value
-            if (idColumn) {
-              // 从插入的数据里获取id
-              valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
-              continue
-            }
-          }
-        }
-        valueBucket[column._fieldName] = currentValue
+      const column = getSqlColumn(this._objectConstructor.prototype, key)
+
+      if (!column) {
+        continue
       }
+
+      if (column._objectConstructor) {
+        const subSqlTable = getSqlTable(column._objectConstructor)
+        if (subSqlTable) {
+          const idColumn = subSqlTable._idColumnLazy.value
+          if (idColumn) {
+            valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
+            continue
+          }
+          ErrorUtils.IdColumnNotDefined(subSqlTable)
+        }
+      }
+
+      valueBucket[column._fieldName] = currentValue
     }
+
     return valueBucket
   }
 }
@@ -80,14 +87,14 @@ interface IColumn {
   unique(): this
 }
 
-export class Column<V extends ValueType> implements IColumn, ICommon {
+export class Column<T extends ValueType> implements IColumn, ICommon {
   /**
    * 单纯用来避免编译器提示泛型T没有被使用
    */
-  private declare readonly nothing: V
+  private declare readonly nothing: T
 
   constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
-    readonly _entityPrototype?: ObjectConstructor) {
+    readonly _objectConstructor?: ObjectConstructor) {
   }
 
   /**
@@ -166,9 +173,9 @@ export class Column<V extends ValueType> implements IColumn, ICommon {
   /**
    * 创建实体类型的列
    * @param fieldName 列名
-   * @param entityPrototype 实体的构造函数
+   * @param objectConstructor 实体的构造函数
    */
-  static entity(fieldName: string, entityPrototype: Function): Column<number> {
-    return new Column(fieldName, 'INTEGER', entityPrototype as ObjectConstructor)
+  static entity(fieldName: string, objectConstructor: Function): Column<number> {
+    return new Column(fieldName, 'INTEGER', objectConstructor as ObjectConstructor)
   }
 }

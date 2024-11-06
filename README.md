@@ -188,6 +188,8 @@ unique(): this
 3.DatabaseSequenceQueues
 
 ```typescript
+type ColumnValuePairs = ReadonlyArray<[Column<ValueType>, ValueType | null]>
+
 interface IDatabaseSequenceQueues<T> {
 /**
  * 转换上下文到指定的表操作对象
@@ -246,6 +248,15 @@ update(model: T): this
 updates(models: T[]): this
 
 /**
+ * 根据条件更新表中的数据
+ * @param wrapperLambda 在这个lambda中返回查询的条件
+ * @param model 要更新的数据
+ * @returns this，以支持链式调用
+ */
+updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
+  model: T | ColumnValuePairs): this
+
+/**
  * 删除一条数据从数据库
  * @param model 要删除的数据模型
  * @returns this，以支持链式调用
@@ -260,18 +271,31 @@ remove(model: T): this
 removes(models: T[]): this
 
 /**
+ * 根据条件删除表中的数据
+ * @param wrapperLambda 在这个lambda中返回查询的条件
+ * @returns this，以支持链式调用
+ */
+removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this
+
+/**
  * 清空整个表的数据
  * @returns this，以支持链式调用
  */
 clear(): this
 
 /**
+ * 清空整个表的数据并重置自增主键计数
+ * @returns this，以支持链式调用
+ */
+reset(): this
+
+/**
  * 根据条件查询表中的数据
  * @todo 值得注意的是，如果使用事务，在事务没有执行完毕时，你查询到的数据并不是最新的
- * @param wrapperFunction 在这个lambda中返回查询的条件
+ * @param wrapperLambda 在这个lambda中返回查询的条件
  * @returns 查询到的数据集合
  */
-query(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>, targetTable: Table<T>) => RdbPredicatesWrapper<T>): T[]
+query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
 }
 ```
 

@@ -7,11 +7,11 @@ const SqlTableMetadataKey = Symbol('SqlTable')
 export function SqlTable<A>(table: Table<A>): ClassDecorator {
   return (target) => {
     const common = (table as ICommon)
-    if (common._entityPrototype) {
+    if (common._objectConstructor) {
       ErrorUtils.TableNotUnique()
     }
     Reflect.defineMetadata(SqlTableMetadataKey, table,
-      common._entityPrototype = target as unknown as ObjectConstructor);
+      common._objectConstructor = target as unknown as ObjectConstructor);
   }
 }
 

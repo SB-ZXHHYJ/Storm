@@ -5,7 +5,7 @@ class Books extends Table<Book> {
   override tableName = 't_book'
   readonly bookcase = Column.entity('bookcase_id', Bookcase)
   readonly id = Column.number('id').primaryKey(true)
-  readonly name = Column.string('name').notNull().unique()
+  readonly name = Column.string('name').unique()
 }
 
 export const books = new Books()
@@ -15,7 +15,7 @@ export class Book {
   @SqlColumn(books.id)
   id?: number
   @SqlColumn(books.name)
-  name: string
+  name?: string
   @SqlColumn(books.bookcase)
   bookcase: Bookcase
 }
