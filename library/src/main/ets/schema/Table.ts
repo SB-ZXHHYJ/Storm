@@ -36,7 +36,7 @@ export abstract class Table<T> implements ITable, ICommon {
     })
   })
 
-  readonly modelMapValueBucket = (value: T) => {
+  readonly _modelMapValueBucket = (value: T) => {
     const valueBucket: relationalStore.ValuesBucket = {}
     for (const key of Object.keys(value)) {
       const currentValue = value[key]

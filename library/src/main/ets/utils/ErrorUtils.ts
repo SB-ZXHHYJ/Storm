@@ -5,6 +5,10 @@ export class ErrorUtils {
   }
 
   static IdColumnNotDefined(table: Table<any>) {
-    throw new Error(`TableName:"${table.tableName}"中可能没有描述primaryKey`);
+    throw new Error(`Table "${table.tableName}" 中可能没有描述primaryKey`);
+  }
+
+  static TableNotUnique() {
+    throw new Error(`Table不能被多个@SqlTable()指向`);
   }
 }

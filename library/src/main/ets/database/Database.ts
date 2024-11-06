@@ -184,7 +184,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       ResultSetUtils.queryToEntity(this.rdbStore, new RdbPredicatesWrapper(sqliteSequences), sqliteSequences)
 
     const valueBuckets = models.map((item => {
-      return this.targetTable.modelMapValueBucket(item)
+      return this.targetTable._modelMapValueBucket(item)
     }))
 
     // 创建目标表（如果不存在）
@@ -233,7 +233,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       return this
     }
     const valueBuckets = models.map((item => {
-      return this.targetTable.modelMapValueBucket(item)
+      return this.targetTable._modelMapValueBucket(item)
     }))
     valueBuckets
       .forEach(item => {
@@ -255,7 +255,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       return this
     }
     const valueBuckets = models.map((item => {
-      return this.targetTable.modelMapValueBucket(item)
+      return this.targetTable._modelMapValueBucket(item)
     }))
     valueBuckets
       .forEach(item => {

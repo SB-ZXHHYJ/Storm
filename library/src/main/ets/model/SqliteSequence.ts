@@ -4,9 +4,6 @@ class SqliteSequences extends Table<SqliteSequence> {
   override tableName = 'sqlite_sequence'
   readonly name = Column.string('name')
   readonly seq = Column.number('seq')
-
-  updateVer(_oldVer: number, _newVer: number): void {
-  }
 }
 
 export const sqliteSequences = new SqliteSequences()
