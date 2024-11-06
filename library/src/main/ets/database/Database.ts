@@ -190,19 +190,19 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     // 创建目标表（如果不存在）
     this.rdbStore.executeSync(SqlUtils.getTableCreateSql(this.targetTable))
 
-    if (this.targetTable.idColumnLazy.value) {
+    if (this.targetTable._idColumnLazy.value) {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket) => {
-        if (valueBucket[this.targetTable.idColumnLazy.value._fieldName] == null) {
+        if (valueBucket[this.targetTable._idColumnLazy.value._fieldName] == null) {
           // 获取表对应的最新自增id
           const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
-            valueBucket[this.targetTable.idColumnLazy.value._fieldName] = sqlSequence.seq += 1
+            valueBucket[this.targetTable._idColumnLazy.value._fieldName] = sqlSequence.seq += 1
           } else {
             // 如果没有找到序列，则创建一个新的序列
             const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 }
             sqlSequenceQuery.push(newSqlSequence)
-            valueBucket[this.targetTable.idColumnLazy.value._fieldName] = newSqlSequence.seq
+            valueBucket[this.targetTable._idColumnLazy.value._fieldName] = newSqlSequence.seq
           }
         }
       })
@@ -238,8 +238,8 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable.idColumnLazy.value,
-            item[this.targetTable.idColumnLazy.value._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
+            item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
         this.rdbStore.updateSync(item, wrapper.rdbPredicates)
       })
     return this
@@ -260,8 +260,8 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable.idColumnLazy.value,
-            item[this.targetTable.idColumnLazy.value._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
+            item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
         this.rdbStore.deleteSync(wrapper.rdbPredicates)
       })
     return this

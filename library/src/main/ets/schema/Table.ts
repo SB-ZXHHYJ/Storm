@@ -15,11 +15,6 @@ interface ITable {
 }
 
 export abstract class Table<T> implements ITable, ICommon {
-  /**
-   * 单纯用来避免编译器提示泛型T没有被使用
-   */
-  private declare readonly nothing: T
-
   abstract get tableName(): string
 
   /**
@@ -27,7 +22,7 @@ export abstract class Table<T> implements ITable, ICommon {
    */
   readonly _entityPrototype?: ObjectConstructor
 
-  readonly columnsLazy = new LazyInitValue<Column<any>[]>(() => {
+  readonly _columnsLazy = new LazyInitValue<Column<any>[]>(() => {
     return Object.keys(this).map((item) => {
       return this[item]
     }).filter((item) => {
@@ -35,8 +30,8 @@ export abstract class Table<T> implements ITable, ICommon {
     })
   })
 
-  readonly idColumnLazy = new LazyInitValue<Column<any>>(() => {
-    return this.columnsLazy.value.find((item) => {
+  readonly _idColumnLazy = new LazyInitValue<Column<any>>(() => {
+    return this._columnsLazy.value.find((item) => {
       return item._isPrimaryKey
     })
   })
@@ -46,11 +41,11 @@ export abstract class Table<T> implements ITable, ICommon {
     for (const key of Object.keys(value)) {
       const currentValue = value[key]
       const column = getSqlColumn(this._entityPrototype.prototype, key)
-      if (column) {
+      if (column && currentValue) {
         if (column._entityPrototype) {
           const subTable = getSqlTable(column._entityPrototype)
           if (subTable) {
-            const idColumn = subTable.idColumnLazy.value
+            const idColumn = subTable._idColumnLazy.value
             if (idColumn) {
               // 从插入的数据里获取id
               valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
@@ -93,7 +88,6 @@ export class Column<V extends ValueType> implements IColumn, ICommon {
 
   constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
     readonly _entityPrototype?: ObjectConstructor) {
-
   }
 
   /**

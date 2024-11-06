@@ -7,7 +7,7 @@ export function SqlTable<A>(table: Table<A>): ClassDecorator {
   return (target) => {
     const common = (table as ICommon)
     if (common._entityPrototype != null) {
-      throw TypeError('Table is repeatedly bound by multiple entities')
+      throw TypeError('不可以对一个表重复使用@SqlTable()注解')
     }
     Reflect.defineMetadata(SqlTableMetadataKey, table,
       common._entityPrototype = target as unknown as ObjectConstructor);
