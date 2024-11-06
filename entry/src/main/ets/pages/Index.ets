@@ -10,9 +10,9 @@ struct Index {
   private startSqlBenchmark() {
     database
       .of(bookcases)
-      .clear()
+      .reset()
       .to(books)
-      .clear()
+      .reset()
     const bookcase: Bookcase = {
       name: "科幻小说"
     }
@@ -34,9 +34,12 @@ struct Index {
           } else {
             this.message.push(`验证失败，book未删除添加`)
           }
-          book.name = "死在火星上"
+          //book.name = "死在火星上"
         })
-        .update(book)
+        //.update(book)
+        .updateIf(it => {
+          return it.equalTo(books.id, book.id)
+        }, { name: "死在火星上", bookcase:undefined })
         .run(() => {
           const updateBook = database.of(books).query().find((item => {
             return item.id == book.id

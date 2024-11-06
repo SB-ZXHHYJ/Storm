@@ -6,6 +6,7 @@ import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { ResultSetUtils } from '../utils/ResultSetUtils'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
+import { ErrorUtils } from '../utils/ErrorUtils'
 
 export class Database {
   private readonly rdbStore: relationalStore.RdbStore
@@ -27,8 +28,8 @@ export class Database {
    * @param table 要操作的表
    * @returns 返回这个表的操作对象
    */
-  of<T>(table: Table<T>): DatabaseSequenceQueues<T> {
-    return new DatabaseSequenceQueues<T>(this.rdbStore, table)
+  of<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {
+    return new DatabaseSequenceQueues<T>(this.rdbStore, targetTable)
   }
 
   /**
@@ -107,6 +108,15 @@ interface IDatabaseSequenceQueues<T> {
   updates(models: T[]): this
 
   /**
+   * 根据条件更新表中的数据
+   * @param wrapperLambda 在这个lambda中返回查询的条件
+   * @param model 要更新的数据
+   * @returns this，以支持链式调用
+   */
+  updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
+    model: T): this
+
+  /**
    * 删除一条数据从数据库
    * @param model 要删除的数据模型
    * @returns this，以支持链式调用
@@ -121,18 +131,31 @@ interface IDatabaseSequenceQueues<T> {
   removes(models: T[]): this
 
   /**
+   * 根据条件删除表中的数据
+   * @param wrapperLambda 在这个lambda中返回查询的条件
+   * @returns this，以支持链式调用
+   */
+  removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this
+
+  /**
    * 清空整个表的数据
    * @returns this，以支持链式调用
    */
   clear(): this
 
   /**
+   * 清空整个表的数据并重置自增主键计数
+   * @returns this，以支持链式调用
+   */
+  reset(): this
+
+  /**
    * 根据条件查询表中的数据
    * @todo 值得注意的是，如果使用事务，在事务没有执行完毕时，你查询到的数据并不是最新的
-   * @param wrapperFunction 在这个lambda中返回查询的条件
+   * @param wrapperLambda 在这个lambda中返回查询的条件
    * @returns 查询到的数据集合
    */
-  query(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>, targetTable: Table<T>) => RdbPredicatesWrapper<T>): T[]
+  query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
 }
 
 export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
@@ -232,16 +255,26 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     if (models.length == 0) {
       return this
     }
+    if (!this.targetTable._idColumnLazy.value) {
+      ErrorUtils.IdColumnNotDefined(this.targetTable)
+    }
     const valueBuckets = models.map((item => {
       return this.targetTable._modelMapValueBucket(item)
     }))
     valueBuckets
       .forEach(item => {
-        const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
-            item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
+        const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
+          item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
         this.rdbStore.updateSync(item, wrapper.rdbPredicates)
       })
+    return this
+  }
+
+  updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
+    model: T): this {
+    const valueBucket = this.targetTable._modelMapValueBucket(model)
+    this.rdbStore.updateSync(valueBucket,
+      wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
     return this
   }
 
@@ -253,6 +286,9 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
   removes(models: T[]): this {
     if (models.length == 0) {
       return this
+    }
+    if (!this.targetTable._idColumnLazy.value) {
+      ErrorUtils.IdColumnNotDefined(this.targetTable)
     }
     const valueBuckets = models.map((item => {
       return this.targetTable._modelMapValueBucket(item)
@@ -267,6 +303,11 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
+  removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this {
+    this.rdbStore.deleteSync(wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
+    return this
+  }
+
   clear(): this {
     try {
       this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
@@ -275,12 +316,22 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     }
   }
 
-  query(wrapperFunction: (wrapper: RdbPredicatesWrapper<T>,
-    targetTable: Table<T>) => RdbPredicatesWrapper<T> = (wrapper) => {
+  reset(): this {
+    try {
+      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
+    } finally {
+      this.to(sqliteSequences).removeIf(it => {
+        return it.equalTo(sqliteSequences.name, this.targetTable.tableName)
+      })
+      return this
+    }
+  }
+
+  query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T> = (wrapper) => {
     return wrapper
   }): T[] {
-    const wrapper = wrapperFunction(new RdbPredicatesWrapper(this.targetTable), this.targetTable)
-    return ResultSetUtils.queryToEntity(this.rdbStore, wrapper, this.targetTable)
+    return ResultSetUtils.queryToEntity(this.rdbStore,
+      wrapperLambda(new RdbPredicatesWrapper(this.targetTable)), this.targetTable)
   }
 }
 
