@@ -6,7 +6,7 @@ import { ErrorUtils } from '../utils/ErrorUtils';
 const ColumnMetadataKey = Symbol('SqlColumn')
 
 export function SqlColumn<T>(value: Column<ValueType, T>): PropertyDecorator {
-  return (target, primaryKey: string) => {
+  return (target: ObjectConstructor, primaryKey: string) => {
     if (value._entityBindFunction) {
       ErrorUtils.SqlColumnNotUnique()
     }
@@ -17,6 +17,6 @@ export function SqlColumn<T>(value: Column<ValueType, T>): PropertyDecorator {
   }
 }
 
-export function getSqlColumn(target, primaryKey: string): Column<ValueType, any> | undefined {
-  return Reflect.getMetadata(ColumnMetadataKey, target, primaryKey)
+export function getSqlColumn(target: ObjectConstructor, primaryKey: string): Column<ValueType, any> | undefined {
+  return Reflect.getMetadata(ColumnMetadataKey, target.prototype, primaryKey)
 }

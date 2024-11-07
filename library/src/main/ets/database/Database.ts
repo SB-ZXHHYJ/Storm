@@ -63,49 +63,49 @@ interface IDatabaseSequenceQueues<T> {
   /**
    * 在链式调用中执行额外的代码块
    * @param scope 要执行的lambda表达式
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   run(scope: () => void): this
 
   /**
    * 开启一个作用域
    * @param scope 作用域内的lambda表达式
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个事务作用域
    * @param scope 事务作用域内的lambda表达式
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
 
   /**
    * 插入一条数据到数据库
    * @param model 要插入的数据模型
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   add(model: T): this
 
   /**
    * 插入一组数据到数据库
    * @param models 要插入的数据模型数组
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   adds(models: T[]): this
 
   /**
    * 更新一条数据在数据库中的信息
    * @param model 要更新的数据模型
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   update(model: T): this
 
   /**
    * 更新一组数据在数据库中的信息
    * @param models 要更新的数据模型数组
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   updates(models: T[]): this
 
@@ -113,7 +113,7 @@ interface IDatabaseSequenceQueues<T> {
    * 根据条件更新表中的数据
    * @param wrapperLambda 在这个lambda中返回查询的条件
    * @param model 要更新的数据
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
     model: T | ColumnValuePairs): this
@@ -121,33 +121,33 @@ interface IDatabaseSequenceQueues<T> {
   /**
    * 删除一条数据从数据库
    * @param model 要删除的数据模型
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   remove(model: T): this
 
   /**
    * 删除一组数据从数据库
    * @param models 要删除的数据模型数组
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   removes(models: T[]): this
 
   /**
    * 根据条件删除表中的数据
    * @param wrapperLambda 在这个lambda中返回查询的条件
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this
 
   /**
    * 清空整个表的数据
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   clear(): this
 
   /**
    * 清空整个表的数据并重置自增主键计数
-   * @returns this，以支持链式调用
+   * @returns 返回当前实例
    */
   reset(): this
 
@@ -199,7 +199,6 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this.adds([model])
   }
 
-
   adds(models: T[]): this {
     if (models.length == 0) {
       return this
@@ -241,10 +240,9 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
 
     // 把注解更新到原始模型对象中
     models.forEach((model, i) => {
-      Object.entries(valueBuckets[i]).forEach(([key, value]) => {
-        model[key] = value
-      })
-    })
+      // 使用 Object.assign 直接合并 valueBuckets[i] 到 model
+      Object.assign(model, valueBuckets[i]);
+    });
 
     return this
   }
@@ -257,16 +255,15 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     if (models.length == 0) {
       return this
     }
-    if (!this.targetTable._idColumnLazy.value) {
+    const idColumn = this.targetTable._idColumnLazy.value
+    if (!idColumn) {
       ErrorUtils.IdColumnNotDefined(this.targetTable)
     }
-    const valueBuckets = models.map((item => {
-      return this.targetTable._modelMapValueBucket(item)
-    }))
-    valueBuckets
+    models
+      .map(item => this.targetTable._modelMapValueBucket(item))
       .forEach(item => {
-        const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
-          item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
+        const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn,
+          item[idColumn._fieldName] as ValueType)
         this.rdbStore.updateSync(item, wrapper.rdbPredicates)
       })
     return this
@@ -298,7 +295,8 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     if (models.length == 0) {
       return this
     }
-    if (!this.targetTable._idColumnLazy.value) {
+    const idColumn = this.targetTable._idColumnLazy.value
+    if (!idColumn) {
       ErrorUtils.IdColumnNotDefined(this.targetTable)
     }
     const valueBuckets = models.map((item => {
@@ -307,8 +305,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(this.targetTable._idColumnLazy.value,
-            item[this.targetTable._idColumnLazy.value._fieldName] as ValueType)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
         this.rdbStore.deleteSync(wrapper.rdbPredicates)
       })
     return this

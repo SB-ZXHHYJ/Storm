@@ -40,9 +40,8 @@ export abstract class Table<T> implements ITable, ICommon {
 
   readonly _modelMapValueBucket = (model: T) => {
     const valueBucket: relationalStore.ValuesBucket = {}
-
     for (const key of Object.keys(model)) {
-      const column = getSqlColumn(this._objectConstructor.prototype, key)
+      const column = getSqlColumn(this._objectConstructor, key)
       if (column === undefined) {
         continue
       }
@@ -78,22 +77,30 @@ type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB'
 
 interface IColumn<T extends ValueType> {
   /**
-   * 设置为主键
-   * @param autoincrement 是否为自增列
+   * 设置当前列为主键
+   * @param autoincrement - 指定此列是否为自增列，默认为 false
+   * @returns 返回当前实例
    */
-  primaryKey(autoincrement?: boolean): this
+  primaryKey(autoincrement?: boolean): this;
 
   /**
-   * 设置为不可为空
+   * 设置当前列为不可为空
+   * @returns 返回当前实例
    */
-  notNull(): this
+  notNull(): this;
 
   /**
-   * 设置不可重复
+   * 设置当前列为唯一列，确保值不可重复
+   * @returns 返回当前实例
    */
-  unique(): this
+  unique(): this;
 
-  default(value: T): this
+  /**
+   * 设置当前列的默认值
+   * @param value - 指定列的默认值
+   * @returns 返回当前实例
+   */
+  default(value: T): this;
 }
 
 export declare class TypeConverters<F extends ValueType, E> {
@@ -108,11 +115,6 @@ export declare class TypeConverters<F extends ValueType, E> {
 }
 
 export class Column<T extends ValueType, E> implements IColumn<T>, ICommon {
-  /**
-   * 单纯用来避免编译器提示泛型T没有被使用
-   */
-  private declare readonly nothing: T
-
   private constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
     readonly _objectConstructor?: ObjectConstructor, readonly  _typeConverters?: TypeConverters<T, E>) {
   }
