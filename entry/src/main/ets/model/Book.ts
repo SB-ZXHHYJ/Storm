@@ -16,9 +16,9 @@ export class Book {
   @SqlColumn(books.id)
   id?: number
   @SqlColumn(books.name)
-  name?: string
+  name: string
   @SqlColumn(books.bookcase)
   bookcase: Bookcase
   @SqlColumn(books.createDataTime)
-  createDataTime: Date
+  createDataTime?: Date
 }

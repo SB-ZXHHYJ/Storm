@@ -86,32 +86,17 @@ export class Column<T extends ValueType, E> implements IColumn<T>, PColumn<T> {
 
   readonly _key: string
 
-  /**
-   * 是否主键
-   */
   readonly _isPrimaryKey?: boolean
 
-  /**
-   * 是否自增
-   */
   readonly _isAutoincrement?: boolean
 
-  /**
-   * 是否不可空
-   */
   readonly _isNotNull?: boolean
 
-  /**
-   * 是否不可重复
-   */
   readonly _isUnique?: boolean
 
-  /**
-   * 默认值
-   */
   readonly _defaultValue?: T
 
-  private column = this as PColumn<T>
+  private readonly column = this as PColumn<T>
 
   primaryKey(autoincrement?: boolean): this {
     if (autoincrement && this._dataType != 'INTEGER') {

@@ -1,95 +1,38 @@
 import { database } from '@zxhhyj/storm'
-import { Book, books } from '../model/Book'
-import { Bookcase, bookcases } from '../model/Bookcase'
+import { AddTest } from '../demo/AddTest'
+import { RemoveTest } from '../demo/RemoveTest'
+import { Test } from '../demo/Test'
+import { UpdateIfTest } from '../demo/UpdateIfTest'
+import { UpdateTest } from '../demo/UpdateTest'
+import { books } from '../model/Book'
+import { bookcases } from '../model/Bookcase'
+import { promptAction } from '@kit.ArkUI'
 
 @Entry
-@Component
+@ComponentV2
 struct Index {
-  @State message: Array<string> = []
-
-  private startSqlBenchmark() {
-    database
-      .of(bookcases)
-      .reset()
-      .to(books)
-      .reset()
-    const bookcase: Bookcase = {
-      name: "科幻小说"
-    }
-    const book: Book = {
-      name: "三体",
-      bookcase: bookcase,
-      createDataTime: new Date()
-    }
-    const startTime = new Date()
-    database
-      .of(bookcases)
-      .add(bookcase)
-      .to(books)
-      .add(book)
-      .run(() => {
-        const addBook = database.of(books).query()[0]
-        if (addBook && addBook.id !== undefined && addBook.bookcase != undefined &&
-          addBook.createDataTime instanceof Date) {
-          this.message.push(`验证成功，book已成功添加`)
-        } else {
-          this.message.push(`验证失败，book未删除添加`)
-        }
-        //this.message.push(AnyUtils.modelToString(addBook))
-        //book.name = "死在火星上"
-      })//.update(book)
-      .updateIf(it => {
-        return it.equalTo(books.id, book.id)
-      }, [[books.name, "死在火星上"]])
-      .run(() => {
-        const updateBook = database.of(books).query().find((item => {
-          return item.id == book.id
-        }))
-        if (updateBook?.id !== undefined && updateBook?.name === "死在火星上") {
-          this.message.push(`验证成功，book已成功更新`)
-        } else {
-          this.message.push(`验证失败，book未成功更新`)
-        }
-      })
-      .beginTransaction(it => {
-        it.to(bookcases).remove(bookcase)
-        it.remove(book)
-      })
-      .run(() => {
-        const hasBook = database.of(books).query().find((item => {
-          return item.id == book.id
-        }))
-        if (hasBook) {
-          this.message.push(`验证失败，book未删除成功`)
-        } else {
-          this.message.push(`验证成功，book已成功删除`)
-        }
-      })
-    const endTime = new Date()
-    this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
-  }
+  @Local private works: Test[] = [AddTest, RemoveTest, UpdateIfTest, UpdateTest]
 
   build() {
     Navigation() {
-      Column() {
-        List() {
-          ListItemGroup({ style: ListItemGroupStyle.CARD }) {
-            ForEach(this.message, (item: string) => {
-              ListItem() {
-                Text(item)
-              }
-            })
-          }.backgroundColor(Color.White)
-        }
-        .width('100%')
-        .height(0)
-        .layoutWeight(1)
-
+      Stack() {
         Button() {
           Text('Start').fontColor(Color.White)
         }
+        .align(Alignment.Center)
         .onClick(() => {
-          this.startSqlBenchmark()
+          for (let worksElement of this.works) {
+            database
+              .of(bookcases)
+              .reset()
+              .to(books)
+              .reset()
+            worksElement.main()
+            if (!worksElement.verify()) {
+              throw new Error(`任务${worksElement.name}测试失败`)
+            }
+          }
+          promptAction.showToast({ message: "全部任务验证通过" })
         })
         .height(42)
         .width(64)
