@@ -2,7 +2,7 @@ import { relationalStore, ValueType } from '@kit.ArkData'
 import { getSqlColumn } from '../annotation/SqlColumn'
 import { getSqlTable } from '../annotation/SqlTable'
 import { ErrorUtils } from '../utils/ErrorUtils'
-import { LazyInitValue } from '../utils/ILazyInit'
+import { LazyInitValue } from '../utils/LazyInitValue'
 
 export interface ICommon {
   /**
@@ -16,6 +16,7 @@ interface ITable {
    * @returns 表名
    */
   get tableName(): string
+
 }
 
 export abstract class Table<T> implements ITable, ICommon {
@@ -37,11 +38,11 @@ export abstract class Table<T> implements ITable, ICommon {
     })
   })
 
-  readonly _modelMapValueBucket = (value: T) => {
+  readonly _modelMapValueBucket = (model: T) => {
     const valueBucket: relationalStore.ValuesBucket = {}
 
-    for (const key of Object.keys(value)) {
-      const currentValue = value[key]
+    for (const key of Object.keys(model)) {
+      const currentValue = model[key]
       const column = getSqlColumn(this._objectConstructor.prototype, key)
 
       if (!column) {
@@ -49,14 +50,14 @@ export abstract class Table<T> implements ITable, ICommon {
       }
 
       if (column._objectConstructor) {
-        const subSqlTable = getSqlTable(column._objectConstructor)
-        if (subSqlTable) {
-          const idColumn = subSqlTable._idColumnLazy.value
+        const columnBindTable = column._getColumnBindTable()
+        if (columnBindTable) {
+          const idColumn = columnBindTable._idColumnLazy.value
           if (idColumn) {
             valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
             continue
           }
-          ErrorUtils.IdColumnNotDefined(subSqlTable)
+          ErrorUtils.IdColumnNotDefined(columnBindTable)
         }
       }
 
@@ -69,7 +70,7 @@ export abstract class Table<T> implements ITable, ICommon {
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB'
 
-interface IColumn {
+interface IColumn<T extends ValueType> {
   /**
    * 设置为主键
    * @param autoincrement 是否为自增列
@@ -85,9 +86,16 @@ interface IColumn {
    * 设置不可重复
    */
   unique(): this
+
+  default(value: T): this
 }
 
-export class Column<T extends ValueType> implements IColumn, ICommon {
+export class TypeConverters<F extends ValueType, E> {
+  save: (value: F) => F
+  restore: (value: F) => E
+}
+
+export class Column<T extends ValueType> implements IColumn<T>, ICommon {
   /**
    * 单纯用来避免编译器提示泛型T没有被使用
    */
@@ -95,6 +103,10 @@ export class Column<T extends ValueType> implements IColumn, ICommon {
 
   constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
     readonly _objectConstructor?: ObjectConstructor) {
+  }
+
+  _getColumnBindTable(): Table<any> {
+    return getSqlTable(this._objectConstructor)
   }
 
   /**
@@ -106,6 +118,8 @@ export class Column<T extends ValueType> implements IColumn, ICommon {
    * @param value - 要绑定的值
    */
   _entityBindFunction?: (entity: any, value: any) => void
+
+  _typeConverters?: TypeConverters<T, any>
 
   /**
    * 是否主键
@@ -127,6 +141,11 @@ export class Column<T extends ValueType> implements IColumn, ICommon {
    */
   _isUnique?: boolean
 
+  /**
+   * 默认值
+   */
+  _defaultValue?: T
+
   primaryKey(autoincrement?: boolean): this {
     if (autoincrement && this._dataType != 'INTEGER') {
       throw TypeError('autoincrement only support dataType as INTEGER')
@@ -143,6 +162,11 @@ export class Column<T extends ValueType> implements IColumn, ICommon {
 
   unique(): this {
     this._isUnique = true
+    return this
+  }
+
+  default(value: T): this {
+    this._defaultValue = value
     return this
   }
 

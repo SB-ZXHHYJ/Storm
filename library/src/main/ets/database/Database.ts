@@ -1,7 +1,7 @@
 import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { Column, Table } from '../schema/Table'
-import { SqlUtils } from '../utils/SqlStringBuilder'
+import { SqlUtils } from '../utils/SqlUtils'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { ResultSetUtils } from '../utils/ResultSetUtils'
@@ -25,7 +25,7 @@ export class Database {
 
   /**
    * 对指定表进行增删改查操作
-   * @param table 要操作的表
+   * @param targetTable 要操作的表
    * @returns 返回这个表的操作对象
    */
   of<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {

@@ -11,7 +11,7 @@ export const sqliteSequences = new SqliteSequences()
 @SqlTable(sqliteSequences)
 export class SqliteSequence {
   @SqlColumn(sqliteSequences.name)
-  declare name: string
+  name: string
   @SqlColumn(sqliteSequences.seq)
-  declare seq: number
+  seq: number
 }

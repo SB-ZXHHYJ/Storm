@@ -1,55 +1,58 @@
-import { Column, Table } from '../schema/Table'
-import { RdbPredicatesWrapper } from './RdbPredicatesWrapper'
-import { relationalStore, ValueType } from '@kit.ArkData'
-import { getSqlTable } from '../annotation/SqlTable'
+import { Table } from '../schema/Table';
+import { RdbPredicatesWrapper } from './RdbPredicatesWrapper';
+import { relationalStore, ValueType } from '@kit.ArkData';
+import { getSqlTable } from '../annotation/SqlTable';
+import { ErrorUtils } from './ErrorUtils';
 
 export class ResultSetUtils {
   /**
-   * 查询数据库并将每一列数据转成entity
+   * 查询数据库并将每一列数据转成 entity
    * @param rdbStore 数据源
    * @param wrapper 查询条件
-   * @param table 查询的表
-   * @returns entity数组
+   * @param targetTable 查询的表
+   * @returns entity 数组
    */
-  static queryToEntity<T>(rdbStore: relationalStore.RdbStore, wrapper: RdbPredicatesWrapper<T>, table: Table<T>): T[] {
-    const columns: Column<ValueType>[] = Object.values(table).filter((item => {
-      return item instanceof Column
-    }))
-    const entityArray = []
-    const resultSet = rdbStore.querySync(wrapper.rdbPredicates)
+  static queryToEntity<T>(rdbStore: relationalStore.RdbStore, wrapper: RdbPredicatesWrapper<T>, targetTable: Table<T>): T[] {
+    const entityArray: T[] = [];
+    const resultSet = rdbStore.querySync(wrapper.rdbPredicates);
+
     while (resultSet.goToNextRow()) {
-      const entity = {}
-      //创建一个空实体
+      const entity = {} as T; // 创建一个空实体
+
       for (let i = 0; i < resultSet.columnNames.length; i++) {
-        //处理每一个column
-        const column = columns.find(value => {
-          return value._fieldName == resultSet.columnNames[i]
-        })
-        //获取table中fieldName与columnName一致的列
-        const value = resultSet.getValue(i)
-        //这个column的值
+        const columnName = resultSet.columnNames[i]; // 获取当前列名
+        const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName); // 查找对应的列
+        const value = resultSet.getValue(i); // 获取当前列的值
+
         if (column && value) {
           if (column._objectConstructor) {
-            //判断是不是列绑定
-            const sEntity = Object.create(column._objectConstructor)
-            //创建这个列所绑定类型的对象
-            const table = getSqlTable(sEntity)
-            //获取这个绑定对象所对应的table
-            const idColumn: Column<ValueType> = Object.values(table).find((item => {
-              return (item instanceof Column) && item._isPrimaryKey
-            }))
-            const predicatesWrapper = new RdbPredicatesWrapper(table)
-            predicatesWrapper.equalTo(idColumn, value as ValueType)
-            //通过这个主键和value信息进行查询绑定
-            column._entityBindFunction(entity, ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, table)[0])
-            continue
+            // 判断是否是列绑定
+            const subEntity = Object.create(column._objectConstructor); // 创建列绑定类型的对象
+            const relatedTable = getSqlTable(subEntity); // 获取绑定对象对应的表
+
+            // 查找主键列
+            const idColumn = relatedTable?._idColumnLazy.value
+            if (idColumn === undefined) {
+              ErrorUtils.IdColumnNotDefined(relatedTable)
+            }
+            const predicatesWrapper = new RdbPredicatesWrapper(relatedTable);
+            predicatesWrapper.equalTo(idColumn, value as ValueType); // 通过主键和值信息查询
+
+            // 绑定实体
+            column._entityBindFunction(entity,
+              ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]);
+            continue; // 处理下一个列
           }
-          column._entityBindFunction(entity, value)
+
+          // 绑定常规值
+          column._entityBindFunction(entity, value);
         }
       }
-      entityArray.push(entity)
+
+      entityArray.push(entity); // 将实体添加到结果数组中
     }
-    resultSet.close()
-    return entityArray
+
+    resultSet.close(); // 关闭结果集
+    return entityArray; // 返回实体数组
   }
 }
