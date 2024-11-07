@@ -12,7 +12,8 @@ export class ResultSetUtils {
    * @param targetTable 查询的表
    * @returns entity 数组
    */
-  static queryToEntity<T>(rdbStore: relationalStore.RdbStore, wrapper: RdbPredicatesWrapper<T>, targetTable: Table<T>): T[] {
+  static queryToEntity<T>(rdbStore: relationalStore.RdbStore, wrapper: RdbPredicatesWrapper<T>,
+    targetTable: Table<T>): T[] {
     const entityArray: T[] = [];
     const resultSet = rdbStore.querySync(wrapper.rdbPredicates);
 
@@ -22,10 +23,14 @@ export class ResultSetUtils {
       for (let i = 0; i < resultSet.columnNames.length; i++) {
         const columnName = resultSet.columnNames[i]; // 获取当前列名
         const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName); // 查找对应的列
-        const value = resultSet.getValue(i); // 获取当前列的值
+        const value = resultSet.getValue(i) as ValueType // 获取当前列的值
 
-        if (column && value) {
-          if (column._objectConstructor) {
+        switch (true) {
+          case column._typeConverters !== undefined: {
+            column._entityBindFunction(entity, column?._typeConverters?.restore(value));
+            break
+          }
+          case column._objectConstructor !== undefined: {
             // 判断是否是列绑定
             const subEntity = Object.create(column._objectConstructor); // 创建列绑定类型的对象
             const relatedTable = getSqlTable(subEntity); // 获取绑定对象对应的表
@@ -41,11 +46,12 @@ export class ResultSetUtils {
             // 绑定实体
             column._entityBindFunction(entity,
               ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]);
-            continue; // 处理下一个列
+            break
           }
-
-          // 绑定常规值
-          column._entityBindFunction(entity, value);
+          default: {
+            column._entityBindFunction(entity, value);
+            break
+          }
         }
       }
 

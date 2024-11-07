@@ -24,7 +24,7 @@ export abstract class Table<T> implements ITable, ICommon {
 
   readonly _objectConstructor?: ObjectConstructor
 
-  readonly _columnsLazy = new LazyInitValue<Column<any>[]>(() => {
+  readonly _columnsLazy = new LazyInitValue<Column<ValueType, any>[]>(() => {
     return Object.keys(this).map((item) => {
       return this[item]
     }).filter((item) => {
@@ -32,7 +32,7 @@ export abstract class Table<T> implements ITable, ICommon {
     })
   })
 
-  readonly _idColumnLazy = new LazyInitValue<Column<any>>(() => {
+  readonly _idColumnLazy = new LazyInitValue<Column<ValueType, any>>(() => {
     return this._columnsLazy.value.find((item) => {
       return item._isPrimaryKey
     })
@@ -42,28 +42,34 @@ export abstract class Table<T> implements ITable, ICommon {
     const valueBucket: relationalStore.ValuesBucket = {}
 
     for (const key of Object.keys(model)) {
-      const currentValue = model[key]
       const column = getSqlColumn(this._objectConstructor.prototype, key)
-
-      if (!column) {
+      if (column === undefined) {
         continue
       }
-
-      if (column._objectConstructor) {
-        const columnBindTable = column._getColumnBindTable()
-        if (columnBindTable) {
-          const idColumn = columnBindTable._idColumnLazy.value
-          if (idColumn) {
-            valueBucket[column._fieldName] = currentValue[idColumn._fieldName]
-            continue
+      switch (true) {
+        case column._typeConverters !== undefined: {
+          const currentValue = column._typeConverters.save(model[key])
+          valueBucket[column._fieldName] = currentValue
+          break
+        }
+        case column._objectConstructor !== undefined: {
+          const columnBindTable = column._getColumnBindTable()
+          if (columnBindTable) {
+            const idColumn = columnBindTable._idColumnLazy.value
+            if (idColumn) {
+              valueBucket[column._fieldName] = model[key][idColumn._fieldName]
+              continue
+            }
+            ErrorUtils.IdColumnNotDefined(columnBindTable)
           }
-          ErrorUtils.IdColumnNotDefined(columnBindTable)
+          break
+        }
+        default: {
+          valueBucket[column._fieldName] = model[key]
+          break
         }
       }
-
-      valueBucket[column._fieldName] = currentValue
     }
-
     return valueBucket
   }
 }
@@ -90,19 +96,25 @@ interface IColumn<T extends ValueType> {
   default(value: T): this
 }
 
-export class TypeConverters<F extends ValueType, E> {
-  save: (value: F) => F
+export declare class TypeConverters<F extends ValueType, E> {
+  /**
+   * 将对象转换为数据库支持的类型保存
+   */
+  save: (value: E) => F
+  /**
+   * 将从数据库中读出的数据转换回对象
+   */
   restore: (value: F) => E
 }
 
-export class Column<T extends ValueType> implements IColumn<T>, ICommon {
+export class Column<T extends ValueType, E> implements IColumn<T>, ICommon {
   /**
    * 单纯用来避免编译器提示泛型T没有被使用
    */
   private declare readonly nothing: T
 
-  constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
-    readonly _objectConstructor?: ObjectConstructor) {
+  private constructor(readonly  _fieldName: string, readonly _dataType: DataTypes,
+    readonly _objectConstructor?: ObjectConstructor, readonly  _typeConverters?: TypeConverters<T, E>) {
   }
 
   _getColumnBindTable(): Table<any> {
@@ -118,8 +130,6 @@ export class Column<T extends ValueType> implements IColumn<T>, ICommon {
    * @param value - 要绑定的值
    */
   _entityBindFunction?: (entity: any, value: any) => void
-
-  _typeConverters?: TypeConverters<T, any>
 
   /**
    * 是否主键
@@ -174,7 +184,7 @@ export class Column<T extends ValueType> implements IColumn<T>, ICommon {
    * 创建数值类型的列
    * @param fieldName 列名
    */
-  static number(fieldName: string): Column<number> {
+  static number(fieldName: string): Column<number, number> {
     return new Column(fieldName, 'INTEGER')
   }
 
@@ -182,7 +192,7 @@ export class Column<T extends ValueType> implements IColumn<T>, ICommon {
    * 创建字符串类型的列
    * @param fieldName 列名
    */
-  static string(fieldName: string): Column<string> {
+  static string(fieldName: string): Column<string, string> {
     return new Column(fieldName, 'TEXT')
   }
 
@@ -190,8 +200,32 @@ export class Column<T extends ValueType> implements IColumn<T>, ICommon {
    * 创建布尔类型的列
    * @param fieldName 列名
    */
-  static boolean(fieldName: string): Column<boolean> {
+  static boolean(fieldName: string): Column<boolean, boolean> {
     return new Column(fieldName, 'TEXT')
+  }
+
+  /**
+   * 创建自定义类型的列
+   * @param fieldName 列名
+   * @param converters 转换器
+   */
+  static json<T>(fieldName: string, converters: TypeConverters<string, T>): Column<string, T> {
+    return new Column(fieldName, 'TEXT', undefined, converters)
+  }
+
+  /**
+   * 创建Date类型的列
+   * @param fieldName 列名
+   */
+  static date(fieldName: string): Column<string, Date> {
+    return this.json(fieldName, {
+      save: value => {
+        return value.toString()
+      },
+      restore: value => {
+        return new Date(value)
+      }
+    })
   }
 
   /**
@@ -199,7 +233,7 @@ export class Column<T extends ValueType> implements IColumn<T>, ICommon {
    * @param fieldName 列名
    * @param objectConstructor 实体的构造函数
    */
-  static entity(fieldName: string, objectConstructor: Function): Column<number> {
+  static entity<T>(fieldName: string, objectConstructor: T): Column<number, T> {
     return new Column(fieldName, 'INTEGER', objectConstructor as ObjectConstructor)
   }
 }

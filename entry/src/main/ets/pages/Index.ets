@@ -18,56 +18,55 @@ struct Index {
     }
     const book: Book = {
       name: "三体",
-      bookcase: bookcase
+      bookcase: bookcase,
+      createDataTime: new Date()
     }
-    try {
-      const startTime = new Date()
-      database
-        .of(bookcases)
-        .add(bookcase)
-        .to(books)
-        .add(book)
-        .run(() => {
-          const addBook = database.of(books).query()[0]
-          if (addBook && addBook.id !== undefined && addBook.bookcase != undefined) {
-            this.message.push(`验证成功，book已成功添加`)
-          } else {
-            this.message.push(`验证失败，book未删除添加`)
-          }
-          //book.name = "死在火星上"
-        })//.update(book)
-        .updateIf(it => {
-          return it.equalTo(books.id, book.id)
-        }, [[books.name, "死在火星上"]])
-        .run(() => {
-          const updateBook = database.of(books).query().find((item => {
-            return item.id == book.id
-          }))
-          if (updateBook?.id !== undefined && updateBook?.name === "死在火星上") {
-            this.message.push(`验证成功，book已成功更新`)
-          } else {
-            this.message.push(`验证失败，book未成功更新`)
-          }
-        })
-        .beginTransaction(it => {
-          it.to(bookcases).remove(bookcase)
-          it.remove(book)
-        })
-        .run(() => {
-          const hasBook = database.of(books).query().find((item => {
-            return item.id == book.id
-          }))
-          if (hasBook) {
-            this.message.push(`验证失败，book未删除成功`)
-          } else {
-            this.message.push(`验证成功，book已成功删除`)
-          }
-        })
-      const endTime = new Date()
-      this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
-    } catch (e) {
-      this.message.push(`${e}`)
-    }
+    const startTime = new Date()
+    database
+      .of(bookcases)
+      .add(bookcase)
+      .to(books)
+      .add(book)
+      .run(() => {
+        const addBook = database.of(books).query()[0]
+        if (addBook && addBook.id !== undefined && addBook.bookcase != undefined &&
+          addBook.createDataTime instanceof Date) {
+          this.message.push(`验证成功，book已成功添加`)
+        } else {
+          this.message.push(`验证失败，book未删除添加`)
+        }
+        //this.message.push(AnyUtils.modelToString(addBook))
+        //book.name = "死在火星上"
+      })//.update(book)
+      .updateIf(it => {
+        return it.equalTo(books.id, book.id)
+      }, [[books.name, "死在火星上"]])
+      .run(() => {
+        const updateBook = database.of(books).query().find((item => {
+          return item.id == book.id
+        }))
+        if (updateBook?.id !== undefined && updateBook?.name === "死在火星上") {
+          this.message.push(`验证成功，book已成功更新`)
+        } else {
+          this.message.push(`验证失败，book未成功更新`)
+        }
+      })
+      .beginTransaction(it => {
+        it.to(bookcases).remove(bookcase)
+        it.remove(book)
+      })
+      .run(() => {
+        const hasBook = database.of(books).query().find((item => {
+          return item.id == book.id
+        }))
+        if (hasBook) {
+          this.message.push(`验证失败，book未删除成功`)
+        } else {
+          this.message.push(`验证成功，book已成功删除`)
+        }
+      })
+    const endTime = new Date()
+    this.message.push(`运行耗时${endTime.getTime() - startTime.getTime()}`)
   }
 
   build() {

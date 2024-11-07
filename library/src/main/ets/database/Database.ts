@@ -50,7 +50,7 @@ export class Database {
   }
 }
 
-type ColumnValuePairs = ReadonlyArray<[Column<ValueType>, ValueType | null]>
+type ColumnValuePairs = ReadonlyArray<[Column<ValueType, any>, ValueType | null]>
 
 interface IDatabaseSequenceQueues<T> {
   /**

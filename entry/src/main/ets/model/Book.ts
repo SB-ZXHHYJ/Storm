@@ -6,6 +6,7 @@ class Books extends Table<Book> {
   readonly bookcase = Column.entity('bookcase_id', Bookcase)
   readonly id = Column.number('id').primaryKey(true)
   readonly name = Column.string('name').unique()
+  readonly createDataTime = Column.date("create_data_time")
 }
 
 export const books = new Books()
@@ -18,4 +19,6 @@ export class Book {
   name?: string
   @SqlColumn(books.bookcase)
   bookcase: Bookcase
+  @SqlColumn(books.createDataTime)
+  createDataTime: Date
 }
