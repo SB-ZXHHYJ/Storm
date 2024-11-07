@@ -1,4 +1,5 @@
-import { Column, Table } from '../schema/Table';
+import { Column } from '../schema/Column';
+import { Table } from '../schema/Table';
 
 export class SqlUtils {
   private constructor() {

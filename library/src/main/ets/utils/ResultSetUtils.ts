@@ -27,7 +27,7 @@ export class ResultSetUtils {
 
         switch (true) {
           case column._typeConverters !== undefined: {
-            column._entityBindFunction(entity, column?._typeConverters?.restore(value));
+            entity[column._key] = column?._typeConverters?.restore(value)
             break
           }
           case column._objectConstructor !== undefined: {
@@ -43,13 +43,11 @@ export class ResultSetUtils {
             const predicatesWrapper = new RdbPredicatesWrapper(relatedTable);
             predicatesWrapper.equalTo(idColumn, value as ValueType); // 通过主键和值信息查询
 
-            // 绑定实体
-            column._entityBindFunction(entity,
-              ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]);
+            entity[column._key] = ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]
             break
           }
           default: {
-            column._entityBindFunction(entity, value);
+            entity[column._key] = value
             break
           }
         }

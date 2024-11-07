@@ -1,12 +1,13 @@
 import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
-import { Column, Table } from '../schema/Table'
+import { Table } from '../schema/Table'
 import { SqlUtils } from '../utils/SqlUtils'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { ResultSetUtils } from '../utils/ResultSetUtils'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { ErrorUtils } from '../utils/ErrorUtils'
+import { Column } from '../schema/Column'
 
 export class Database {
   private readonly rdbStore: relationalStore.RdbStore

@@ -1,19 +1,18 @@
-import { Column } from '../schema/Table';
+import { Column, PColumn } from '../schema/Column';
 import 'reflect-metadata';
 import { ValueType } from '@kit.ArkData';
 import { ErrorUtils } from '../utils/ErrorUtils';
 
 const ColumnMetadataKey = Symbol('SqlColumn')
 
-export function SqlColumn<T>(value: Column<ValueType, T>): PropertyDecorator {
-  return (target: ObjectConstructor, primaryKey: string) => {
-    if (value._entityBindFunction) {
+export function SqlColumn<T>(column: Column<ValueType, T>): PropertyDecorator {
+  return (target: object, primaryKey: string) => {
+    const pColumn = column as PColumn<ValueType>
+    if (pColumn._entityBindFunction) {
       ErrorUtils.SqlColumnNotUnique()
     }
-    value._entityBindFunction = (entity, value) => {
-      entity[primaryKey] = value
-    }
-    Reflect.defineMetadata(ColumnMetadataKey, value, target, primaryKey)
+    pColumn._key = primaryKey
+    Reflect.defineMetadata(ColumnMetadataKey, column, target, primaryKey)
   }
 }
 
