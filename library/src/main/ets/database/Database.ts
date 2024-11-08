@@ -265,7 +265,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       .forEach(item => {
         const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn,
           item[idColumn._fieldName] as ValueType)
-        this.rdbStore.updateSync(item, wrapper.rdbPredicates)
+        this.rdbStore.updateSync(item, wrapper._rdbPredicates)
       })
     return this
   }
@@ -278,11 +278,11 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
         return acc
       }, {} as T)
       this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(valueBucket),
-        wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
+        wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
       return this
     }
     this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(model as T),
-      wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
+      wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
     return this
   }
 
@@ -306,19 +306,19 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       .forEach(item => {
         const wrapper =
           new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
-        this.rdbStore.deleteSync(wrapper.rdbPredicates)
+        this.rdbStore.deleteSync(wrapper._rdbPredicates)
       })
     return this
   }
 
   removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this {
-    this.rdbStore.deleteSync(wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).rdbPredicates)
+    this.rdbStore.deleteSync(wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
     return this
   }
 
   clear(): this {
     try {
-      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
+      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable)._rdbPredicates)
     } finally {
       return this
     }
@@ -326,7 +326,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
 
   reset(): this {
     try {
-      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).rdbPredicates)
+      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable)._rdbPredicates)
       this.to(sqliteSequences).removeIf(it => {
         return it.equalTo(sqliteSequences.name, this.targetTable.tableName)
       })

@@ -14,9 +14,9 @@ export const AddTest: Test = {
     }
     database
       .of(bookcases)
-      .add(bookcase)
+      .add(bookcase)//添加数据
       .to(books)
-      .add(book)
+      .add(book)//添加数据
   },
   verify: function (): boolean {
     const addBook = database.of(books).query()[0]

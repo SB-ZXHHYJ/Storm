@@ -11,9 +11,9 @@ export const UpdateTest: Test = {
       .of(bookcases)
       .add(bookcase)
       .run(() => {
-        bookcase.name = "女生小说"
+        bookcase.name = "女生小说"//修改name
       })
-      .update(bookcase)
+      .update(bookcase)//更新数据
   },
   verify: function (): boolean {
     return database.of(bookcases).query(it => it.equalTo(bookcases.name, "女生小说"))[0] !== undefined

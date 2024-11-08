@@ -8,11 +8,12 @@ import { books } from '../model/Book'
 import { bookcases } from '../model/Bookcase'
 import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../demo/TransactionTest'
+import { RemoveIfTest } from '../demo/RemoveIfTest'
 
 @Entry
 @ComponentV2
 struct Index {
-  @Local private works: Test[] = [AddTest, RemoveTest, UpdateIfTest, UpdateTest, TransactionTest]
+  @Local private works: Test[] = [AddTest, RemoveTest, UpdateIfTest, UpdateTest, RemoveIfTest, TransactionTest]
 
   build() {
     Navigation() {

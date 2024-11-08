@@ -2,7 +2,7 @@ import { database } from '@zxhhyj/storm'
 import { Bookcase, bookcases } from '../model/Bookcase'
 import { Test } from './Test'
 
-export const RemoveTest: Test = {
+export const RemoveIfTest: Test = {
   main: () => {
     const bookcase: Bookcase = {
       name: "科幻小说"
@@ -10,10 +10,10 @@ export const RemoveTest: Test = {
     database
       .of(bookcases)
       .add(bookcase)
-      .remove(bookcase)//移除数据
+      .removeIf(it => it.equalTo(bookcases.name, "科幻小说")) //指定条件来删除数据
   },
   verify: function (): boolean {
     return database.of(bookcases).query().length === 0
   },
-  name: "RemoveTest"
+  name: "RemoveIfTest"
 }

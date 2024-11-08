@@ -15,7 +15,7 @@ export class ResultSetUtils {
   static queryToEntity<T>(rdbStore: relationalStore.RdbStore, wrapper: RdbPredicatesWrapper<T>,
     targetTable: Table<T>): T[] {
     const entityArray: T[] = [];
-    const resultSet = rdbStore.querySync(wrapper.rdbPredicates);
+    const resultSet = rdbStore.querySync(wrapper._rdbPredicates);
 
     while (resultSet.goToNextRow()) {
       const entity = {} as T; // 创建一个空实体
