@@ -1,5 +1,6 @@
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { getSqlColumn } from '../annotation/SqlColumn'
+import { getSqlTable } from '../annotation/SqlTable'
 import { ErrorUtils } from '../utils/ErrorUtils'
 import { LazyInitValue } from '../utils/LazyInitValue'
 import { Column } from './Column'
@@ -71,7 +72,7 @@ export abstract class Table<T> implements ITable {
           break
         }
         case column._objectConstructor !== undefined: {
-          const columnBindTable = column._getColumnBindTable()
+          const columnBindTable = getSqlTable(column._objectConstructor)
           if (columnBindTable) {
             const idColumn = columnBindTable._idColumnLazy.value
             if (idColumn) {

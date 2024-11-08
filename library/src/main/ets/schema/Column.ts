@@ -57,7 +57,7 @@ export interface IColumn<T extends ValueType> {
   default(value: T): this;
 }
 
-export declare class TypeConverters<F extends ValueType, E> {
+export type TypeConverters<F extends ValueType, E> = {
   /**
    * 将对象转换为数据库支持的类型保存
    */
@@ -68,6 +68,30 @@ export declare class TypeConverters<F extends ValueType, E> {
   restore: (value: F) => E
 }
 
+/**
+ * 内置的布尔类型转换器
+ */
+const BooleanTypeConverters: TypeConverters<number, boolean> = {
+  save: value => {
+    return value ? 1 : 0
+  },
+  restore: value => {
+    return value === 0 ? false : true
+  }
+}
+
+/**
+ * 内置的Date类型转换器
+ */
+const DateTypeConverters: TypeConverters<string, Date> = {
+  save: value => {
+    return value.toString()
+  },
+  restore: value => {
+    return new Date(value)
+  }
+}
+
 export class Column<T extends ValueType, E> implements IColumn<T> {
   private constructor(
     readonly _fieldName: string,
@@ -75,10 +99,6 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
     readonly _objectConstructor?: ObjectConstructor,
     readonly _typeConverters?: TypeConverters<T, E>
   ) {
-  }
-
-  _getColumnBindTable(): Table<any> {
-    return getSqlTable(this._objectConstructor)
   }
 
   readonly _key: string
@@ -148,14 +168,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
    * @param fieldName 列名
    */
   static boolean(fieldName: string): Column<number, boolean> {
-    return new Column(fieldName, 'INTEGER', undefined, {
-      save: value => {
-        return value ? 1 : 0
-      },
-      restore: value => {
-        return value === 0 ? false : true
-      }
-    })
+    return new Column(fieldName, 'INTEGER', undefined, BooleanTypeConverters)
   }
 
   /**
@@ -172,14 +185,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
    * @param fieldName 列名
    */
   static date(fieldName: string): Column<string, Date> {
-    return this.json(fieldName, {
-      save: value => {
-        return value.toString()
-      },
-      restore: value => {
-        return new Date(value)
-      }
-    })
+    return this.json(fieldName, DateTypeConverters)
   }
 
   /**

@@ -19,6 +19,6 @@ export function SqlTable<M>(value: Table<M>): ClassDecorator {
   }
 }
 
-export function getSqlTable(target): Table<any> | undefined {
+export function getSqlTable(target: ObjectConstructor): Table<any> | undefined {
   return Reflect.getMetadata(SqlTableMetadataKey, target)
 }
