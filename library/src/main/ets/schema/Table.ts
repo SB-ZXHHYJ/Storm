@@ -5,9 +5,16 @@ import { ErrorUtils } from '../utils/ErrorUtils'
 import { LazyInitValue } from '../utils/LazyInitValue'
 import { Column } from './Column'
 
-export type TableModificationInfo = {
-  add?: Column<ValueType, any>[]
-  remove?: Column<ValueType, any>[]
+export type TableUpdateInfo = {
+  /**
+   * 新增的列数组，表示在当前版本中添加的列
+   */
+  add?: Column<ValueType, any>[];
+
+  /**
+   * 移除的列数组，表示在当前版本中移除的列
+   */
+  remove?: Column<ValueType, any>[];
 }
 
 export interface ITable {
@@ -25,16 +32,21 @@ export interface ITable {
   tableVersion: number
 
   /**
-   * 触发版本升级时将被调用
-   * 比如本地数据库的版本为1，最新数据库版本为3，这个函数将会调用2次，分别是upVersion(2)、upVersion(3)
-   * @param version 当前Table的版本
-   * @returns 返回这个版本的Table的修改信息
+   * 在版本升级时被调用
+   *
+   * 当本地数据库的版本小于最新版本时，此函数会被多次调用，
+   * 以逐步升级到最新版本。例如，如果当前版本为1，最新版本为3，
+   * 则此函数将被调用两次：第一次调用 upVersion(2)，
+   * 第二次调用 upVersion(3)
+   *
+   * @param version - 当前表的版本号，表示需要升级到的目标版本
+   * @returns 返回当前版本的表修改信息，包含新增和移除的列
    */
-  upVersion(version: number): TableModificationInfo | undefined
+  upVersion(version: number): TableUpdateInfo | undefined
 }
 
 export abstract class Table<T> implements ITable {
-  upVersion(_version: number): TableModificationInfo {
+  upVersion(_version: number): TableUpdateInfo {
     return undefined
   }
 

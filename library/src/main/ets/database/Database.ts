@@ -180,27 +180,29 @@ interface IDatabaseSession<T> {
 
 export class DatabaseSession<T> implements IDatabaseSession<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
-    if (targetTable.tableVersion > 1) {
-      this.to(stormTableVersions).beginTransaction(transaction => {
-        const oldTableVersion: StormTableVersion | undefined =
-          transaction.query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
-        Array.from({ length: targetTable.tableVersion }, (_, index) => index + 1)
-        for (let ver = oldTableVersion?.version ?? 2; ver <= targetTable.tableVersion; ver++) {
-          const upVersion = targetTable.upVersion(ver)
-          upVersion?.add?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
-          })
-          upVersion?.remove?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
-          })
-        }
-        if (oldTableVersion) {
-          transaction.updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
-            [[stormTableVersions.version, targetTable.tableVersion]])
-        } else {
-          transaction.add({ name: targetTable.tableName, version: targetTable.tableVersion })
-        }
-      })
+    if (targetTable.tableVersion > 1 && Number.isInteger(targetTable.tableVersion)) {
+      this
+        .to(stormTableVersions)
+        .beginTransaction(transaction => {
+          const oldTableVersion: StormTableVersion | undefined =
+            transaction.query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
+          //查询本地的版本号
+          for (let ver = oldTableVersion?.version ?? 1; ver < targetTable.tableVersion; ver++) {
+            const modificationInfo = targetTable.upVersion(ver)
+            modificationInfo?.add?.forEach(item => {
+              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
+            })
+            modificationInfo?.remove?.forEach(item => {
+              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
+            })
+          }
+          if (oldTableVersion) {
+            transaction.updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
+              [[stormTableVersions.version, targetTable.tableVersion]])
+          } else {
+            transaction.add({ name: targetTable.tableName, version: targetTable.tableVersion })
+          }
+        })
     }
   }
 

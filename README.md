@@ -35,8 +35,8 @@ database.globalDatabase = await Database.create(this.context, {
 
 - **表名**：`t_bookcase`
 - **字段**：
-  - `id`：整数，主键，自动递增。
-  - `name`：文本，必须唯一且不能为空。
+    - `id`：整数，主键，自动递增。
+    - `name`：文本，必须唯一且不能为空。
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -62,10 +62,10 @@ export class Bookcase {
 
 - **表名**：`t_book`
 - **字段**：
-  - `id`: 整数，主键，自动递增。
-  - `name`: 文本，必须唯一。
-  - `bookcase`:  `Bookcase` 的实体，实际是在`bookcase_id`中存储了`Bookcase`的主键，利用了`Storm`的实体绑定功能。
-  - `createDataTime`: 日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能。
+    - `id`: 整数，主键，自动递增。
+    - `name`: 文本，必须唯一。
+    - `bookcase`:  `Bookcase` 的实体，实际是在`bookcase_id`中存储了`Bookcase`的主键，利用了`Storm`的实体绑定功能。
+    - `createDataTime`: 日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能。
 
 ```typescript
 class Books extends Table<Book> {
@@ -209,10 +209,10 @@ for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcase
 
 ## 路线图
 
-|        路线         | 期望版本 | 状态  |
-|:-----------------:|:----:|:---:|
-|  实现具有强类型的数据库更新逻辑  | 1.3+ | 未完成 |
-| 对象模型与SQL模型的互转逻辑解耦 | 1.3+ | 未完成 |
+|          路线          | 期望版本 | 实际上线版本 |
+|:--------------------:|:----:|:------:|
+| 实现具有强类型且独立的数据库版本更新逻辑 | 1.3+ | 1.4.0  |
+|  对象模型与SQL模型的互转逻辑解耦   | 1.3+ |  未完成   |
 
 ## 交流
 
