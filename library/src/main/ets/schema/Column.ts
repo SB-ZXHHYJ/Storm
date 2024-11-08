@@ -4,8 +4,7 @@ import { Table } from './Table';
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
-export interface PColumn<T extends ValueType> {
-  _entityBindFunction?: (entity: any, value: any) => void
+export interface IColumn<T extends ValueType> {
   /**
    * 绑定实体中的key
    */
@@ -30,9 +29,7 @@ export interface PColumn<T extends ValueType> {
    * 默认值
    */
   _defaultValue?: T
-}
 
-interface IColumn<T extends ValueType> {
   /**
    * 设置当前列为主键
    * @param autoincrement - 指定此列是否为自增列，默认为 false
@@ -71,7 +68,7 @@ export declare class TypeConverters<F extends ValueType, E> {
   restore: (value: F) => E
 }
 
-export class Column<T extends ValueType, E> implements IColumn<T>, PColumn<T> {
+export class Column<T extends ValueType, E> implements IColumn<T> {
   private constructor(
     readonly _fieldName: string,
     readonly _dataType: DataTypes,
@@ -96,7 +93,7 @@ export class Column<T extends ValueType, E> implements IColumn<T>, PColumn<T> {
 
   readonly _defaultValue?: T
 
-  private readonly column = this as PColumn<T>
+  private readonly column = this as IColumn<T>
 
   primaryKey(autoincrement?: boolean): this {
     if (autoincrement && this._dataType != 'INTEGER') {

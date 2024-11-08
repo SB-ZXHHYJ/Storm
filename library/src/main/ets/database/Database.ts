@@ -162,12 +162,7 @@ interface IDatabaseSequenceQueues<T> {
 }
 
 export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
-  private readonly rdbStore: relationalStore.RdbStore
-  private readonly targetTable: Table<T>
-
-  constructor(rdbStore: relationalStore.RdbStore, targetTable: Table<T>) {
-    this.rdbStore = rdbStore
-    this.targetTable = targetTable
+  constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
   }
 
   to<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {
@@ -205,9 +200,7 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       return this
     }
     // 查询SqlSequence，用于记录自增信息
-    const sqlSequenceQuery =
-      ResultSetUtils.queryToEntity(this.rdbStore, new RdbPredicatesWrapper(sqliteSequences), sqliteSequences)
-
+    const sqlSequenceArray = this.to(sqliteSequences).query()
     const valueBuckets = models.map((item => {
       return this.targetTable._modelMapValueBucket(item)
     }))
@@ -220,14 +213,14 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       valueBuckets.forEach((valueBucket) => {
         if (valueBucket[this.targetTable._idColumnLazy.value._fieldName] == null) {
           // 获取表对应的最新自增id
-          const sqlSequence = sqlSequenceQuery.find((value) => value.name === this.targetTable.tableName)
+          const sqlSequence = sqlSequenceArray.find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
             valueBucket[this.targetTable._idColumnLazy.value._fieldName] = sqlSequence.seq += 1
           } else {
             // 如果没有找到序列，则创建一个新的序列
             const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 }
-            sqlSequenceQuery.push(newSqlSequence)
             valueBucket[this.targetTable._idColumnLazy.value._fieldName] = newSqlSequence.seq
+            sqlSequenceArray.push(newSqlSequence)
           }
         }
       })

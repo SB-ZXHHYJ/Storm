@@ -1,17 +1,17 @@
-import { PTable, Table } from '../schema/Table';
+import { ITable, Table } from '../schema/Table';
 import 'reflect-metadata';
 import { ErrorUtils } from '../utils/ErrorUtils';
 
 const SqlTableMetadataKey = Symbol('SqlTable')
 
-export function SqlTable<A>(table: Table<A>): ClassDecorator {
+export function SqlTable<M>(value: Table<M>): ClassDecorator {
   return (target) => {
-    const targetTable = table as PTable
-    if (targetTable._objectConstructor) {
+    const table = value as ITable
+    if (table._objectConstructor) {
       ErrorUtils.TableNotUnique()
     }
-    Reflect.defineMetadata(SqlTableMetadataKey, table,
-      targetTable._objectConstructor = target as unknown as ObjectConstructor);
+    Reflect.defineMetadata(SqlTableMetadataKey, value,
+      table._objectConstructor = target as unknown as ObjectConstructor);
   }
 }
 
