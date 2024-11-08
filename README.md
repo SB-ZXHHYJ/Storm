@@ -35,8 +35,8 @@ database.globalDatabase = await Database.create(this.context, {
 
 - **表名**：`t_bookcase`
 - **字段**：
-    - `id`：整数，主键，自动递增。
-    - `name`：文本，必须唯一且不能为空。
+  - `id`：整数，主键，自动递增。
+  - `name`：文本，必须唯一且不能为空。
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -62,10 +62,10 @@ export class Bookcase {
 
 - **表名**：`t_book`
 - **字段**：
-    - `id`: 整数，主键，自动递增。
-    - `name`: 文本，必须唯一。
-    - `bookcase`: 对 `Bookcase` 的实体引用。
-    - `createDataTime`: 日期，表示书籍的创建时间戳。
+  - `id`: 整数，主键，自动递增。
+  - `name`: 文本，必须唯一。
+  - `bookcase`:  `Bookcase` 的实体，实际是在`bookcase_id`中存储了`Bookcase`的主键，利用了`Storm`的实体绑定功能。
+  - `createDataTime`: 日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能。
 
 ```typescript
 class Books extends Table<Book> {
@@ -95,7 +95,7 @@ export class Book {
 
 #### 1.添加数据
 
-**先使用`of`和`to`来确定要操作的表**，然后使用 `add` 方法将数据添加到数据库中
+**先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用 `add` 方法将数据添加到数据库中
 
 ```typescript
 const bookcase: Bookcase = {
