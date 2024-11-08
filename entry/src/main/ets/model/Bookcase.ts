@@ -1,7 +1,7 @@
 import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
 
 class Bookcases extends Table<Bookcase> {
-  override tableName = 't_bookcase'
+  override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true)
   readonly name = Column.text('name').notNull().unique()
 }

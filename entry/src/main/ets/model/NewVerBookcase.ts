@@ -1,8 +1,8 @@
 import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
 
 class NewVerBookcase extends Table<NewBookcase> {
-  override tableVersion = 2
-  override tableName = 't_bookcase'
+  override readonly tableVersion = 2
+  override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true)
   readonly name = Column.text('name').notNull().unique()
   readonly createDataTime = Column.date("create_data_time").default(new Date().toString())
