@@ -1,11 +1,11 @@
-## 介绍：
+## 介绍
 
 Storm 是直接基于纯 `TypeScript` 编写的高效简洁的轻量级 `OpenHarmonyOS SQL ORM` 框架，它提供了`强类型`而且灵活的 SQL
 DSL，并且所有的 SQL 都是自动生成的。
 
 其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
 
-## 安装：
+## 安装
 
 安装库：
 
@@ -13,7 +13,7 @@ DSL，并且所有的 SQL 都是自动生成的。
 ohpm install @zxhhyj/storm
 ```
 
-## 基本用法：
+## 基本用法
 
 ### 初始化数据库
 
@@ -35,8 +35,8 @@ database.globalDatabase = await Database.create(this.context, {
 
 - **表名**：`t_bookcase`
 - **字段**：
-    - `id`：整数，主键，自动递增。
-    - `name`：文本，必须唯一且不能为空。
+  - `id`：整数，主键，自动递增。
+  - `name`：文本，必须唯一且不能为空。
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -62,10 +62,10 @@ export class Bookcase {
 
 - **表名**：`t_book`
 - **字段**：
-    - `id`: 整数，主键，自动递增。
-    - `name`: 文本，必须唯一。
-    - `bookcase`: 对 `Bookcase` 的实体引用。
-    - `createDataTime`: 日期，表示书籍的创建时间戳。
+  - `id`: 整数，主键，自动递增。
+  - `name`: 文本，必须唯一。
+  - `bookcase`: 对 `Bookcase` 的实体引用。
+  - `createDataTime`: 日期，表示书籍的创建时间戳。
 
 ```typescript
 class Books extends Table<Book> {
@@ -203,6 +203,6 @@ for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcase
 }
 ```
 
-### 交流
+## 交流
 
 如有疑问，请提`issues`或者致信到我的邮箱`957447668@qq.com`。
