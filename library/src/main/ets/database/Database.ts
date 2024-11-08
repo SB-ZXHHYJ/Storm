@@ -270,7 +270,6 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-
   updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
     model: T | ColumnValuePairs): this {
     if (Array.isArray(model)) {

@@ -2,7 +2,7 @@ import { ValueType } from '@kit.ArkData';
 import { getSqlTable } from '../annotation/SqlTable';
 import { Table } from './Table';
 
-type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB'
+type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
 export interface PColumn<T extends ValueType> {
   _entityBindFunction?: (entity: any, value: any) => void
@@ -123,31 +123,46 @@ export class Column<T extends ValueType, E> implements IColumn<T>, PColumn<T> {
   }
 
   /**
-   * 创建数值类型的列
+   * 创建`INTEGER`类型的列
    * @param fieldName 列名
    */
-  static number(fieldName: string): Column<number, number> {
+  static integer(fieldName: string): Column<number, number> {
     return new Column(fieldName, 'INTEGER')
   }
 
   /**
-   * 创建字符串类型的列
+   * 创建`REAL`类型的列
    * @param fieldName 列名
    */
-  static string(fieldName: string): Column<string, string> {
+  static real(fieldName: string): Column<number, number> {
+    return new Column(fieldName, 'REAL')
+  }
+
+  /**
+   * 创建`TEXT`类型的列
+   * @param fieldName 列名
+   */
+  static text(fieldName: string): Column<string, string> {
     return new Column(fieldName, 'TEXT')
   }
 
   /**
-   * 创建布尔类型的列
+   * 创建`boolean`类型的列
    * @param fieldName 列名
    */
-  static boolean(fieldName: string): Column<boolean, boolean> {
-    return new Column(fieldName, 'TEXT')
+  static boolean(fieldName: string): Column<number, boolean> {
+    return new Column(fieldName, 'INTEGER', undefined, {
+      save: value => {
+        return value ? 1 : 0
+      },
+      restore: value => {
+        return value === 0 ? false : true
+      }
+    })
   }
 
   /**
-   * 创建自定义类型的列
+   * 创建`自定义类型`的列
    * @param fieldName 列名
    * @param converters 转换器
    */
@@ -156,7 +171,7 @@ export class Column<T extends ValueType, E> implements IColumn<T>, PColumn<T> {
   }
 
   /**
-   * 创建Date类型的列
+   * 创建`Date`类型的列
    * @param fieldName 列名
    */
   static date(fieldName: string): Column<string, Date> {

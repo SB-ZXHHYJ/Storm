@@ -7,11 +7,12 @@ import { UpdateTest } from '../demo/UpdateTest'
 import { books } from '../model/Book'
 import { bookcases } from '../model/Bookcase'
 import { promptAction } from '@kit.ArkUI'
+import { TransactionTest } from '../demo/TransactionTest'
 
 @Entry
 @ComponentV2
 struct Index {
-  @Local private works: Test[] = [AddTest, RemoveTest, UpdateIfTest, UpdateTest]
+  @Local private works: Test[] = [AddTest, RemoveTest, UpdateIfTest, UpdateTest, TransactionTest]
 
   build() {
     Navigation() {
@@ -21,7 +22,7 @@ struct Index {
         }
         .align(Alignment.Center)
         .onClick(() => {
-          for (let worksElement of this.works) {
+          for (const worksElement of this.works) {
             database
               .of(bookcases)
               .reset()
