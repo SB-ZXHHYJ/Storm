@@ -11,13 +11,13 @@ export const UpdateIfTest: Test = {
     const book: Book = {
       name: "三体",
       bookcase: bookcase,
-      createDataTime: new Date()
+      createDataTime: new Date()//sqlite本身是不支持存储Date类型的
     }
     database
       .of(bookcases)
       .add(bookcase)
       .to(books)
-      .add(book)
+      .add(book) //可以正常添加
   },
   verify: function (): boolean {
     const addBook = database.of(books).query()[0]

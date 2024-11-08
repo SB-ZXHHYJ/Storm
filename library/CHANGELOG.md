@@ -8,7 +8,7 @@
 - `Column`新增`default()`API来设置默认值。
 - `Column`将`number()`API更名为`INTEGER`。
 - `Column`将`string()`API更名为`text`。
-- `Column`新增`rea()l`API来存储`REAL`类型的数据。
+- `Column`新增`real()`API来存储`REAL`类型的数据。
 - `Column`将`boolean()`API的实际类型从`TEXT`变更为`INTEGER`，这是一个**破坏性的变更**，如果此前使用过`boolean()`
   API，请使用`自定义类型进行兼容`。
 
