@@ -1,13 +1,13 @@
 import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { Table } from '../schema/Table'
-import { SqlUtils } from '../utils/SqlUtils'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { ResultSetUtils } from '../utils/ResultSetUtils'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { ErrorUtils } from '../utils/ErrorUtils'
 import { Column } from '../schema/Column'
+import { stormTableVersions } from '../model/StormTableVersion'
 
 export class Database {
   private readonly rdbStore: relationalStore.RdbStore
@@ -163,6 +163,24 @@ interface IDatabaseSequenceQueues<T> {
 
 export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
+    if (targetTable.tableVersion > 1) {
+      this.to(stormTableVersions).beginTransaction(transaction => {
+        const tableVersion =
+          transaction.query(query => query.equalTo(stormTableVersions.name, targetTable.tableName))[0]
+        if (tableVersion) {
+          for (let ver = tableVersion.version; ver < targetTable.tableVersion; ver++) {
+            const upVersion = targetTable.upVersion(ver)
+            upVersion?.add?.forEach(item => {
+              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
+            })
+
+            upVersion?.remove?.forEach(item => {
+              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
+            })
+          }
+        }
+      })
+    }
   }
 
   to<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {
@@ -205,8 +223,10 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
       return this.targetTable._modelMapValueBucket(item)
     }))
 
-    // 创建目标表（如果不存在）
-    this.rdbStore.executeSync(SqlUtils.getTableCreateSql(this.targetTable))
+    this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName} (${this.targetTable._columnsLazy.value
+      .map(column => column._columnModifier)
+      .filter(Boolean)
+      .join(', ')})`)
 
     if (this.targetTable._idColumnLazy.value) {
       // 更新每个值桶中的主键字段

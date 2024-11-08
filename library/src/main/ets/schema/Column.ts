@@ -1,6 +1,4 @@
 import { ValueType } from '@kit.ArkData';
-import { getSqlTable } from '../annotation/SqlTable';
-import { Table } from './Table';
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
@@ -10,25 +8,13 @@ export interface IColumn<T extends ValueType> {
    */
   _key: string
   /**
-   * 是否主键
+   * 是否为主键
    */
-  _isPrimaryKey?: boolean
+  _isPrimaryKey: boolean
   /**
-   * 是否自增
+   * 修饰符
    */
-  _isAutoincrement?: boolean
-  /**
-   * 是否不可空
-   */
-  _isNotNull?: boolean
-  /**
-   * 是否不可重复
-   */
-  _isUnique?: boolean
-  /**
-   * 默认值
-   */
-  _defaultValue?: T
+  _columnModifier: string
 
   /**
    * 设置当前列为主键
@@ -101,41 +87,35 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   ) {
   }
 
+  readonly _isPrimaryKey: boolean = false
+
+  readonly _columnModifier: string = `${this._fieldName} ${this._dataType}`
+
   readonly _key: string
-
-  readonly _isPrimaryKey?: boolean
-
-  readonly _isAutoincrement?: boolean
-
-  readonly _isNotNull?: boolean
-
-  readonly _isUnique?: boolean
-
-  readonly _defaultValue?: T
 
   private readonly column = this as IColumn<T>
 
   primaryKey(autoincrement?: boolean): this {
-    if (autoincrement && this._dataType != 'INTEGER') {
-      throw TypeError('autoincrement only support dataType as INTEGER')
-    }
     this.column._isPrimaryKey = true
-    this.column._isAutoincrement = autoincrement
+    this.column._columnModifier += ' PRIMARY KEY'
+    if (autoincrement) {
+      this.column._columnModifier += ' AUTOINCREMENT'
+    }
     return this
   }
 
   notNull(): this {
-    this.column._isNotNull = true
+    this.column._columnModifier += ' NOT NULL';
     return this
   }
 
   unique(): this {
-    this.column._isUnique = true
+    this.column._columnModifier += ' UNIQUE';
     return this
   }
 
   default(value: T): this {
-    this.column._defaultValue = value
+    this.column._columnModifier += ` DEFAULT '${value}'`;
     return this
   }
 

@@ -5,7 +5,7 @@ import { ErrorUtils } from '../utils/ErrorUtils'
 import { LazyInitValue } from '../utils/LazyInitValue'
 import { Column } from './Column'
 
-type TableModificationInfo = {
+export type TableModificationInfo = {
   add?: Column<ValueType, any>[]
   remove?: Column<ValueType, any>[]
 }
@@ -30,15 +30,15 @@ export interface ITable {
    * @param version 当前Table的版本
    * @returns 返回这个版本的Table的修改信息
    */
-  upVersion(version: number): TableModificationInfo[] | undefined
+  upVersion(version: number): TableModificationInfo | undefined
 }
 
 export abstract class Table<T> implements ITable {
-  upVersion(_version: number) {
+  upVersion(_version: number): TableModificationInfo | undefined {
     return undefined
   }
 
-  readonly tableVersion = 1
+  readonly tableVersion: number = 1
 
   abstract readonly tableName: string
 
