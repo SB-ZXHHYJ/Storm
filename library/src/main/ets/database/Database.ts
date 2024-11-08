@@ -9,11 +9,29 @@ import { ErrorUtils } from '../utils/ErrorUtils'
 import { Column } from '../schema/Column'
 import { stormTableVersions } from '../model/StormTableVersion'
 
-export class Database {
-  private readonly rdbStore: relationalStore.RdbStore
+class SessionQueueManager {
+  private constructor() {
+  }
 
-  private constructor(rdbStore: relationalStore.RdbStore) {
-    this.rdbStore = rdbStore
+  private static sessionQueueMap = new Map<Table<any>, DatabaseSession<any>>();
+
+  static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseSession<M> {
+    if (this.sessionQueueMap.has(targetTable)) {
+      return this.sessionQueueMap.get(targetTable)
+    }
+
+    const newSessionQueue = new DatabaseSession<M>(rdbStore, targetTable)
+    this.sessionQueueMap.set(targetTable, newSessionQueue)
+    return newSessionQueue
+  }
+
+  static clearSessionQueues(): void {
+    this.sessionQueueMap.clear()
+  }
+}
+
+export class Database {
+  private constructor(private readonly rdbStore: relationalStore.RdbStore) {
   }
 
   /**
@@ -21,6 +39,7 @@ export class Database {
    * @returns 返回一个Promise，异步关闭数据库
    */
   async close(): Promise<void> {
+    SessionQueueManager.clearSessionQueues()
     return this.rdbStore.close()
   }
 
@@ -29,8 +48,8 @@ export class Database {
    * @param targetTable 要操作的表
    * @returns 返回这个表的操作对象
    */
-  of<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {
-    return new DatabaseSequenceQueues<T>(this.rdbStore, targetTable)
+  of<T>(targetTable: Table<T>): DatabaseSession<T> {
+    return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
   /**
@@ -39,27 +58,25 @@ export class Database {
    * @param config 数据库的配置
    * @returns 返回一个Promise，异步创建数据库实例
    */
-  static create(context: Context, config: relationalStore.StoreConfig): Promise<Database> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const dbStore = await relationalStore.getRdbStore(context, config)
-        resolve(new Database(dbStore))
-      } catch (e) {
-        reject(e)
-      }
-    })
+  static async create(context: Context, config: relationalStore.StoreConfig): Promise<Database> {
+    try {
+      const dbStore = await relationalStore.getRdbStore(context, config)
+      return new Database(dbStore)
+    } catch (error) {
+      throw error
+    }
   }
 }
 
 type ColumnValuePairs = ReadonlyArray<[Column<ValueType, any>, ValueType | null]>
 
-interface IDatabaseSequenceQueues<T> {
+interface IDatabaseSession<T> {
   /**
    * 转换上下文到指定的表操作对象
    * @param targetTable 要转换操作的表
    * @returns 返回这个表的操作对象
    */
-  to<T>(targetTable: Table<T>): IDatabaseSequenceQueues<T>
+  to<T>(targetTable: Table<T>): IDatabaseSession<T>
 
   /**
    * 在链式调用中执行额外的代码块
@@ -73,14 +90,14 @@ interface IDatabaseSequenceQueues<T> {
    * @param scope 作用域内的lambda表达式
    * @returns 返回当前实例
    */
-  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
+  begin<E extends DatabaseSession<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个事务作用域
    * @param scope 事务作用域内的lambda表达式
    * @returns 返回当前实例
    */
-  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this
+  beginTransaction<E extends DatabaseSession<T>>(scope: (it: E) => void): this
 
   /**
    * 插入一条数据到数据库
@@ -161,7 +178,7 @@ interface IDatabaseSequenceQueues<T> {
   query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
 }
 
-export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
+export class DatabaseSession<T> implements IDatabaseSession<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     if (targetTable.tableVersion > 1) {
       this.to(stormTableVersions).beginTransaction(transaction => {
@@ -183,8 +200,8 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     }
   }
 
-  to<T>(targetTable: Table<T>): DatabaseSequenceQueues<T> {
-    return new DatabaseSequenceQueues<T>(this.rdbStore, targetTable)
+  to<T>(targetTable: Table<T>): DatabaseSession<T> {
+    return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
   run(scope: () => void): this {
@@ -192,12 +209,12 @@ export class DatabaseSequenceQueues<T> implements IDatabaseSequenceQueues<T> {
     return this
   }
 
-  begin<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this {
+  begin<E extends DatabaseSession<T>>(scope: (it: E) => void): this {
     scope.call(undefined, this)
     return this
   }
 
-  beginTransaction<E extends DatabaseSequenceQueues<T>>(scope: (it: E) => void): this {
+  beginTransaction<E extends DatabaseSession<T>>(scope: (it: E) => void): this {
     try {
       this.rdbStore.beginTransaction()
       scope.call(undefined, this)
