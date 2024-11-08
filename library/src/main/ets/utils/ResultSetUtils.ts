@@ -18,30 +18,32 @@ export class ResultSetUtils {
     const resultSet = rdbStore.querySync(wrapper._rdbPredicates)
     while (resultSet.goToNextRow()) {
       const entity = {} as T // 创建一个空实体
-      for (let i = 0 ;i < resultSet.columnNames.length; i++) {
+      for (let i = 0; i < resultSet.columnNames.length; i++) {
         const columnName = resultSet.columnNames[i] // 获取当前列名
         const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName) // 查找对应的列
-        const value = resultSet.getValue(i) as ValueType // 获取当前列的值
-        switch (true) {
-          case column._typeConverters !== undefined: {
-            entity[column._key] = column?._typeConverters?.restore(value)
-            break
-          }
-          case column._objectConstructor !== undefined: {
-            const relatedTable = getSqlTable(column._objectConstructor)
-            // 查找主键列
-            const idColumn = relatedTable?._idColumnLazy.value
-            if (idColumn === undefined) {
-              ErrorUtils.IdColumnNotDefined(relatedTable)
+        if (column) {
+          const value = resultSet.getValue(i) as ValueType // 获取当前列的值
+          switch (true) {
+            case column._typeConverters !== undefined: {
+              entity[column._key] = column?._typeConverters?.restore(value)
+              break
             }
-            const predicatesWrapper = new RdbPredicatesWrapper(relatedTable)
-            predicatesWrapper.equalTo(idColumn, value as ValueType) // 通过主键和值信息查询
-            entity[column._key] = ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]
-            break
-          }
-          default: {
-            entity[column._key] = value
-            break
+            case column._objectConstructor !== undefined: {
+              const relatedTable = getSqlTable(column._objectConstructor)
+              // 查找主键列
+              const idColumn = relatedTable?._idColumnLazy.value
+              if (idColumn === undefined) {
+                ErrorUtils.IdColumnNotDefined(relatedTable)
+              }
+              const predicatesWrapper = new RdbPredicatesWrapper(relatedTable)
+              predicatesWrapper.equalTo(idColumn, value as ValueType) // 通过主键和值信息查询
+              entity[column._key] = ResultSetUtils.queryToEntity(rdbStore, predicatesWrapper, relatedTable)[0]
+              break
+            }
+            default: {
+              entity[column._key] = value
+              break
+            }
           }
         }
       }

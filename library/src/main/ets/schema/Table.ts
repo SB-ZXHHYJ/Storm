@@ -34,7 +34,7 @@ export interface ITable {
 }
 
 export abstract class Table<T> implements ITable {
-  upVersion(_version: number): TableModificationInfo | undefined {
+  upVersion(_version: number): TableModificationInfo {
     return undefined
   }
 

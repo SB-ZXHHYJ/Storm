@@ -7,13 +7,13 @@ import { ResultSetUtils } from '../utils/ResultSetUtils'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { ErrorUtils } from '../utils/ErrorUtils'
 import { Column } from '../schema/Column'
-import { stormTableVersions } from '../model/StormTableVersion'
+import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
 
 class SessionQueueManager {
   private constructor() {
   }
 
-  private static sessionQueueMap = new Map<Table<any>, DatabaseSession<any>>();
+  private static readonly sessionQueueMap = new Map<Table<any>, DatabaseSession<any>>();
 
   static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseSession<M> {
     if (this.sessionQueueMap.has(targetTable)) {
@@ -182,19 +182,23 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     if (targetTable.tableVersion > 1) {
       this.to(stormTableVersions).beginTransaction(transaction => {
-        const tableVersion =
-          transaction.query(query => query.equalTo(stormTableVersions.name, targetTable.tableName))[0]
-        if (tableVersion) {
-          for (let ver = tableVersion.version; ver < targetTable.tableVersion; ver++) {
-            const upVersion = targetTable.upVersion(ver)
-            upVersion?.add?.forEach(item => {
-              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
-            })
-
-            upVersion?.remove?.forEach(item => {
-              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
-            })
-          }
+        const oldTableVersion: StormTableVersion | undefined =
+          transaction.query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
+        Array.from({ length: targetTable.tableVersion }, (_, index) => index + 1)
+        for (let ver = oldTableVersion?.version ?? 2; ver <= targetTable.tableVersion; ver++) {
+          const upVersion = targetTable.upVersion(ver)
+          upVersion?.add?.forEach(item => {
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
+          })
+          upVersion?.remove?.forEach(item => {
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
+          })
+        }
+        if (oldTableVersion) {
+          transaction.updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
+            [[stormTableVersions.version, targetTable.tableVersion]])
+        } else {
+          transaction.add({ name: targetTable.tableName, version: targetTable.tableVersion })
         }
       })
     }
@@ -303,11 +307,11 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   updateIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>,
     model: T | ColumnValuePairs): this {
     if (Array.isArray(model)) {
-      const valueBucket = model.reduce((acc, [column, value]) => {
+      const valueBucket: relationalStore.ValuesBucket = model.reduce((acc, [column, value]) => {
         acc[column._fieldName] = value
         return acc
       }, {} as T)
-      this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(valueBucket),
+      this.rdbStore.updateSync(valueBucket,
         wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
       return this
     }
@@ -357,9 +361,9 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   reset(): this {
     try {
       this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable)._rdbPredicates)
-      this.to(sqliteSequences).removeIf(it => {
-        return it.equalTo(sqliteSequences.name, this.targetTable.tableName)
-      })
+      this
+        .to(sqliteSequences)
+        .removeIf(it => it.equalTo(sqliteSequences.name, this.targetTable.tableName))
     } finally {
       return this
     }
