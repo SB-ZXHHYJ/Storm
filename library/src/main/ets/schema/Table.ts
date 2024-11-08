@@ -11,7 +11,7 @@ type TableModificationInfo = {
 
 export interface ITable {
   /**
-   * `Table`绑定类型的空构造函数
+   * Table绑定类型的空构造函数
    */
   _objectConstructor?: ObjectConstructor
   /**
@@ -19,15 +19,15 @@ export interface ITable {
    */
   tableName: string
   /**
-   * 版本号，必须为整数，且不可小于`1`,默认为`1`
+   * 版本号，必须为整数，且不可小于1,默认为1
    */
   tableVersion: number
 
   /**
    * 触发版本升级时将被调用
-   * 比如本地数据库的版本为`1`，最新数据库版本为`3`，这个函数将会调用`3`-`1`次，分别是`upVersion(2)`、`upVersion(3)`
-   * @param version 当前`Table`的版本
-   * @returns 返回这个版本的`Table`的修改信息
+   * 比如本地数据库的版本为1，最新数据库版本为3，这个函数将会调用2次，分别是upVersion(2)、upVersion(3)
+   * @param version 当前Table的版本
+   * @returns 返回这个版本的Table的修改信息
    */
   upVersion(version: number): TableModificationInfo[] | undefined
 }
@@ -37,7 +37,7 @@ export abstract class Table<T> implements ITable {
     return undefined
   }
 
-  tableVersion = 1
+  readonly tableVersion = 1
 
   abstract readonly tableName: string
 
