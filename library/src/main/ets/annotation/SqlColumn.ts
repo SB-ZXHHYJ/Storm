@@ -5,6 +5,10 @@ import { ErrorUtils } from '../utils/ErrorUtils';
 
 const ColumnMetadataKey = Symbol('SqlColumn')
 
+/**
+ * 将属性绑定到指定的 Column 上
+ * @param value 指定的 Column 实例
+ */
 export function SqlColumn<V>(value: Column<ValueType, V>): PropertyDecorator {
   return (target: object, primaryKey: string) => {
     const column = value as IColumn<ValueType>

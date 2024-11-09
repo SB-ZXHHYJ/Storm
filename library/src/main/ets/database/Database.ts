@@ -3,11 +3,12 @@ import { relationalStore, ValueType } from '@kit.ArkData'
 import { Table } from '../schema/Table'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
-import { ResultSetUtils } from '../utils/ResultSetUtils'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { ErrorUtils } from '../utils/ErrorUtils'
 import { Column } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
+import { getSqlColumn } from '../annotation/SqlColumn'
+import { getSqlTable } from '../annotation/SqlTable'
 
 class SessionQueueManager {
   private constructor() {
@@ -181,29 +182,110 @@ interface IDatabaseSession<T> {
 export class DatabaseSession<T> implements IDatabaseSession<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     if (targetTable.tableVersion > 1 && Number.isInteger(targetTable.tableVersion)) {
-      this
-        .to(stormTableVersions)
-        .beginTransaction(transaction => {
-          const oldTableVersion: StormTableVersion | undefined =
-            transaction.query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
-          //查询本地的版本号
-          for (let ver = oldTableVersion?.version ?? 1; ver < targetTable.tableVersion; ver++) {
-            const modificationInfo = targetTable.upVersion(ver)
-            modificationInfo?.add?.forEach(item => {
-              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
-            })
-            modificationInfo?.remove?.forEach(item => {
-              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
-            })
-          }
-          if (oldTableVersion) {
-            transaction.updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
-              [[stormTableVersions.version, targetTable.tableVersion]])
-          } else {
-            transaction.add({ name: targetTable.tableName, version: targetTable.tableVersion })
-          }
-        })
+      const oldTableVersion: StormTableVersion | undefined =
+        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
+      //获取本地版本号
+      if (oldTableVersion === undefined || oldTableVersion?.version !== this.targetTable.tableVersion) {
+        //不存在本地版本号或者本地版本号小于最新版本号
+        for (let ver = oldTableVersion?.version ?? 1; ver <= targetTable.tableVersion; ver++) {
+          const modificationInfo = targetTable.upVersion(ver)
+          modificationInfo?.add?.forEach(item => {
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
+          })
+          modificationInfo?.remove?.forEach(item => {
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
+          })
+        }
+        if (oldTableVersion) {
+          this.to(stormTableVersions).updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
+            [[stormTableVersions.version, targetTable.tableVersion]])
+        } else {
+          this.to(stormTableVersions).add({ name: targetTable.tableName, version: targetTable.tableVersion })
+        }
+      }
     }
+  }
+
+  private modelToValueBucket(model: T): relationalStore.ValuesBucket {
+    const valueBucket: relationalStore.ValuesBucket = {}
+    for (const key of Object.keys(model)) {
+      const column = getSqlColumn(this.targetTable._objectConstructor, key)
+      if (column === undefined) {
+        continue
+      }
+      switch (true) {
+        case column._typeConverters !== undefined: {
+          const currentValue = column._typeConverters.save(model[key])
+          valueBucket[column._fieldName] = currentValue
+          break
+        }
+        case column._objectConstructor !== undefined: {
+          const columnBindTable = getSqlTable(column._objectConstructor)
+          if (columnBindTable) {
+            const idColumn = columnBindTable._idColumnLazy.value
+            if (idColumn) {
+              valueBucket[column._fieldName] = model[key][idColumn._fieldName]
+              continue
+            }
+            ErrorUtils.IdColumnNotDefined(columnBindTable)
+          }
+          break
+        }
+        default: {
+          valueBucket[column._fieldName] = model[key]
+          break
+        }
+      }
+    }
+    return valueBucket
+  }
+
+  /**
+   * 查询数据库并将每一列数据转成 entity
+   * @param wrapper 查询条件
+   * @param targetTable 查询的表
+   * @returns entity 数组
+   */
+  private queryToEntity<T>(wrapper: RdbPredicatesWrapper<T>,
+    targetTable: Table<T>): T[] {
+    const entityArray: T[] = []
+    const resultSet = this.rdbStore.querySync(wrapper._rdbPredicates)
+    while (resultSet.goToNextRow()) {
+      const entity = {} as T // 创建一个空实体
+      for (let i = 0; i < resultSet.columnNames.length; i++) {
+        const columnName = resultSet.columnNames[i] // 获取当前列名
+        const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName) // 查找对应的列
+        if (column) {
+          const value = resultSet.getValue(i) as ValueType // 获取当前列的值
+          switch (true) {
+            case column._typeConverters !== undefined: {
+              entity[column._key] = column?._typeConverters?.restore(value)
+              break
+            }
+            case column._objectConstructor !== undefined: {
+              const relatedTable = getSqlTable(column._objectConstructor)
+              // 查找主键列
+              const idColumn = relatedTable?._idColumnLazy.value
+              if (idColumn === undefined) {
+                ErrorUtils.IdColumnNotDefined(relatedTable)
+              }
+              const predicatesWrapper = new RdbPredicatesWrapper(relatedTable)
+              predicatesWrapper.equalTo(idColumn, value as ValueType) // 通过主键和值信息查询
+              entity[column._key] = this.queryToEntity(predicatesWrapper, relatedTable)[0]
+              break
+            }
+            default: {
+              entity[column._key] = value
+              break
+            }
+          }
+        }
+      }
+      entityArray.push(entity) // 将实体添加到结果数组中
+    }
+
+    resultSet.close() // 关闭结果集
+    return entityArray // 返回实体数组
   }
 
   to<T>(targetTable: Table<T>): DatabaseSession<T> {
@@ -243,7 +325,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     // 查询SqlSequence，用于记录自增信息
     const sqlSequenceArray = this.to(sqliteSequences).query()
     const valueBuckets = models.map((item => {
-      return this.targetTable._modelMapValueBucket(item)
+      return this.modelToValueBucket(item)
     }))
 
     this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName} (${this.targetTable._columnsLazy.value
@@ -297,7 +379,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
       ErrorUtils.IdColumnNotDefined(this.targetTable)
     }
     models
-      .map(item => this.targetTable._modelMapValueBucket(item))
+      .map(item => this.modelToValueBucket(item))
       .forEach(item => {
         const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn,
           item[idColumn._fieldName] as ValueType)
@@ -317,7 +399,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
         wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
       return this
     }
-    this.rdbStore.updateSync(this.targetTable._modelMapValueBucket(model as T),
+    this.rdbStore.updateSync(this.modelToValueBucket(model as T),
       wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
     return this
   }
@@ -336,7 +418,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
       ErrorUtils.IdColumnNotDefined(this.targetTable)
     }
     const valueBuckets = models.map((item => {
-      return this.targetTable._modelMapValueBucket(item)
+      return this.modelToValueBucket(item)
     }))
     valueBuckets
       .forEach(item => {
@@ -374,8 +456,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T> = (wrapper) => {
     return wrapper
   }): T[] {
-    return ResultSetUtils.queryToEntity(this.rdbStore,
-      wrapperLambda(new RdbPredicatesWrapper(this.targetTable)), this.targetTable)
+    return this.queryToEntity(wrapperLambda(new RdbPredicatesWrapper(this.targetTable)), this.targetTable)
   }
 }
 

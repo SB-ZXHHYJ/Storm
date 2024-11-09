@@ -1,9 +1,6 @@
-import { relationalStore, ValueType } from '@kit.ArkData'
-import { getSqlColumn } from '../annotation/SqlColumn'
-import { getSqlTable } from '../annotation/SqlTable'
-import { ErrorUtils } from '../utils/ErrorUtils'
-import { LazyInitValue } from '../utils/LazyInitValue'
-import { Column } from './Column'
+import { ValueType } from '@kit.ArkData';
+import { LazyInitValue } from '../utils/LazyInitValue';
+import { Column } from './Column';
 
 export type TableUpdateInfo = {
   /**
@@ -46,6 +43,8 @@ export interface ITable {
 }
 
 export abstract class Table<T> implements ITable {
+  protected readonly nothing: T
+
   upVersion(_version: number): TableUpdateInfo {
     return undefined
   }
@@ -69,39 +68,5 @@ export abstract class Table<T> implements ITable {
       return item._isPrimaryKey
     })
   })
-
-  readonly _modelMapValueBucket = (model: T) => {
-    const valueBucket: relationalStore.ValuesBucket = {}
-    for (const key of Object.keys(model)) {
-      const column = getSqlColumn(this._objectConstructor, key)
-      if (column === undefined) {
-        continue
-      }
-      switch (true) {
-        case column._typeConverters !== undefined: {
-          const currentValue = column._typeConverters.save(model[key])
-          valueBucket[column._fieldName] = currentValue
-          break
-        }
-        case column._objectConstructor !== undefined: {
-          const columnBindTable = getSqlTable(column._objectConstructor)
-          if (columnBindTable) {
-            const idColumn = columnBindTable._idColumnLazy.value
-            if (idColumn) {
-              valueBucket[column._fieldName] = model[key][idColumn._fieldName]
-              continue
-            }
-            ErrorUtils.IdColumnNotDefined(columnBindTable)
-          }
-          break
-        }
-        default: {
-          valueBucket[column._fieldName] = model[key]
-          break
-        }
-      }
-    }
-    return valueBucket
-  }
 }
 

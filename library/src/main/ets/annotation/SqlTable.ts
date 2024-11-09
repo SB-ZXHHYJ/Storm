@@ -2,11 +2,11 @@ import { ITable, Table } from '../schema/Table';
 import 'reflect-metadata';
 import { ErrorUtils } from '../utils/ErrorUtils';
 
-const SqlTableMetadataKey = Symbol('SqlTable')
+const SqlTableMetadataKey = Symbol('SqlTable');
 
 /**
- * 将实体绑定到指定的Table上
- * @param value 指定的Table
+ * 将实体绑定到指定的 Table 上
+ * @param value 指定的 Table 实例
  */
 export function SqlTable<M>(value: Table<M>): ClassDecorator {
   return (target) => {
@@ -15,8 +15,8 @@ export function SqlTable<M>(value: Table<M>): ClassDecorator {
       ErrorUtils.AtSqlTableNotUnique()
     }
     Reflect.defineMetadata(SqlTableMetadataKey, value,
-      table._objectConstructor = target as unknown as ObjectConstructor);
-  }
+      table._objectConstructor = target as unknown as ObjectConstructor)
+  };
 }
 
 export function getSqlTable(target: ObjectConstructor): Table<any> | undefined {
