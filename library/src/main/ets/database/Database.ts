@@ -334,7 +334,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     }))
 
     const idColumn = this.targetTable._idColumnLazy.value
-    if (idColumn !== undefined) {
+    if (idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER') {
       // 查询SqlSequence，用于记录自增信息
       const sqlSequenceArray = this.to(sqliteSequences).query()
       // 更新每个值桶中的主键字段

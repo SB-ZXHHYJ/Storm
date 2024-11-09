@@ -1,13 +1,14 @@
 ## 介绍
 
-Storm 是直接基于纯 `TypeScript` 编写的高效简洁的轻量级 `OpenHarmonyOS SQL ORM` 框架，它提供了`强类型`而且灵活的 SQL
-DSL，并且所有的 SQL 都是自动生成的。
+Storm 是直接基于纯 `TypeScript` 编写的高效简洁的轻量级 `OpenHarmonyOS SQL ORM` 框架，提供了`强类型`的`SQL DSL`，直接将低级
+bug
+暴露在编译期，并且所有的 `SQL` 都是自动生成的，你不需要写任何`SQL`，`Storm`会帮你处理好一切。
 
 其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
 
 ## 安装
 
-安装库：
+在命令行中执行以下命令。
 
 ```text
 ohpm install @zxhhyj/storm
@@ -17,8 +18,8 @@ ohpm install @zxhhyj/storm
 
 ### 初始化数据库
 
-使用 `Database.create` 方法来创建数据库实例后，可以将其赋值给 `database.globalDatabase`。这是库中预留的全局唯一 `Database`
-变量。赋值后，可以更方便地使用 `database` 下的 `close` 和 `of` 函数。
+使用 `Database.create` 方法来创建数据库实例后，可以将其赋值给 `database.globalDatabase`这是库中预留的全局唯一 `Database`
+变量赋值后，可以更方便地使用 `database` 下的 `close` 和 `of` 函数。
 
 ```typescript
 database.globalDatabase = await Database.create(this.context, {
@@ -31,12 +32,12 @@ database.globalDatabase = await Database.create(this.context, {
 
 #### 1.定义 Bookcase 类
 
-`Bookcase` 类表示一个书籍集合。其定义如下：
+`Bookcase` 类表示一个书籍集合其定义如下：
 
 - **表名**：`t_bookcase`
 - **字段**：
-    - `id`：整数，主键，自动递增。
-    - `name`：文本，必须唯一且不能为空。
+  - `id`：整数，主键，自动递增
+  - `name`：文本，必须唯一且不能为空
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -58,14 +59,14 @@ export class Bookcase {
 
 #### 2.定义 Book 类
 
-`Book` 类表示存储在书架上的单个书籍。其包含以下属性：
+`Book` 类表示存储在书架上的单个书籍其包含以下属性：
 
 - **表名**：`t_book`
 - **字段**：
-    - `id`: 整数，主键，自动递增。
-    - `name`: 文本，必须唯一。
-    - `bookcase`:  `Bookcase` 的实体，实际是在`bookcase_id`中存储了`Bookcase`的主键，利用了`Storm`的实体绑定功能。
-    - `createDataTime`: 日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能。
+  - `id`: 整数，主键，自动递增
+  - `name`: 文本，必须唯一
+  - `bookcase`:  `Bookcase` 的实体，实际是在`bookcase_id`中存储了`Bookcase`的主键，利用了`Storm`的实体绑定功能
+  - `createDataTime`: 日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能
 
 ```typescript
 class Books extends Table<Book> {
@@ -114,7 +115,7 @@ database
 
 #### 2.更新数据
 
-使用`update`将数据库中的数据更新，使用`update`需要数据中存在主键，否则更新失败
+使用`update`将数据库中的数据更新，使用`update`需要数据中存在主键，否则更新失败。
 
 ```typescript
 const bookcase: Bookcase = {
@@ -129,7 +130,7 @@ database
   .update(bookcase) //更新数据
 ```
 
-如果不知道主键或想实现更精细化的操作需要使用`updateIf`
+如果不知道主键或想实现更精细化的操作需要使用`updateIf`。
 
 ```typescript
 const bookcase: Bookcase = {
@@ -143,7 +144,7 @@ database
 
 #### 3.删除数据
 
-使用`remove`将数据库中的数据更新，使用`remove`需要数据中存在主键，否则更新失败
+使用`remove`将数据库中的数据更新，使用`remove`需要数据中存在主键，否则更新失败。
 
 ```typescript
 const bookcase: Bookcase = {
@@ -155,7 +156,7 @@ database
   .remove(bookcase) //移除数据
 ```
 
-如果不知道主键或想实现更精细化的操作需要使用`removeIf`
+如果不知道主键或想实现更精细化的操作需要使用`removeIf`。
 
 ```typescript
 const bookcase: Bookcase = {
@@ -169,7 +170,7 @@ database
 
 #### 4.使用事务
 
-使用`beginTransaction`来开启一个事务
+使用`beginTransaction`来开启一个事务。
 
 ```typescript
 try {
@@ -192,27 +193,75 @@ try {
 
 ### 查询数据
 
-查询条件可以参考官方的[relationalStore.RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)
+查询条件可以参考官方的[relationalStore.RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)。
 
 ```typescript
 for (const queryElement of database.of(books).query()) {
-  ...
+  //...
 }
 for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcases.name, "科幻小说"))) {
-  ...
+  //...
 }
 ```
 
 ### 更新数据库
 
-等待补充...
+需要在`Table`下显式声明`tableVersion`属性，这个属性需要为整数且大于`1`时，将会除非数据库升级操作。
+
+触发升级操作时，`Storm`将会依次调用`upVersion`函数，需要重写这个函数然后在其中返回这个版本中表有哪些更新，目前支持新增列和移除列。
+```typescript
+class NewVerBookcases extends Table<NewBookcase> {
+  override readonly tableVersion = 2
+  /**
+   * 需要注意的是，这个NewVerBookcases实际就是Bookcases，只是方便做演示用例才创建了两个类
+   */
+  override readonly tableName = 't_bookcase'
+  readonly id = Column.integer('id').primaryKey(true)
+  readonly name = Column.text('name')
+  /**
+   * 这个是新增的列
+   */
+  readonly createDataTime = Column.date("create_data_time").default(new Date().toString())
+
+  upVersion(version: number): TableUpdateInfo {
+    /**
+     * 当不显示声明tableVersion时，默认的版本为1，NewVerBookcases的最新版本为2
+     * upVersion将被调用一次，upVersion(2)
+     */
+    if (version === 2) {
+      return {
+        add: [this.createDataTime],
+        //remove: [this.name]
+        // 不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
+      }
+      //然后在此返回这个版本中表有哪些更新
+    }
+  }
+}
+
+export const newVerBookcases = new NewVerBookcases()
+
+@SqlTable(newVerBookcases)
+export class NewBookcase {
+  @SqlColumn(newVerBookcases.id)
+  id?: number
+  @SqlColumn(newVerBookcases.name)
+  name: string
+  @SqlColumn(newVerBookcases.createDataTime)
+  createDataTime?: Date
+}
+```
 
 ## 路线图
 
-|        路线         | 期望版本 | 状态  |
-|:-----------------:|:----:|:---:|
-|  实现具有强类型的数据库更新逻辑  | 1.3+ | 未完成 |
-| 对象模型与SQL模型的互转逻辑解耦 | 1.3+ | 未完成 |
+|          路线          | 预期上线版本 | 状态  |
+|:--------------------:|:------:|:---:|
+| 实现具有强类型且独立的数据库版本更新逻辑 |  1.3+  | 已完成 |
+|  对象模型与SQL模型的互转逻辑解耦   |  1.3+  | 未完成 |
+
+## 已知问题
+
+- 数据库版本更新从表中移除列的功能无法正常使用。
 
 ## 交流
 

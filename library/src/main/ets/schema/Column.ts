@@ -12,6 +12,10 @@ export interface IColumn<T extends ValueType> {
    */
   _isPrimaryKey: boolean
   /**
+   * 是否自增
+   */
+  _isAutoincrement: boolean
+  /**
    * 修饰符
    */
   _columnModifier: string
@@ -89,6 +93,8 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
 
   readonly _isPrimaryKey: boolean = false
 
+  readonly _isAutoincrement: boolean = false
+
   readonly _columnModifier: string = `${this._fieldName} ${this._dataType}`
 
   readonly _key: string
@@ -98,8 +104,9 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   primaryKey(autoincrement?: boolean): this {
     this.column._isPrimaryKey = true
     this.column._columnModifier += ' PRIMARY KEY'
-    if (autoincrement) {
+    if (autoincrement && this._dataType === 'INTEGER') {
       this.column._columnModifier += ' AUTOINCREMENT'
+      this.column._isAutoincrement = true
     }
     return this
   }
