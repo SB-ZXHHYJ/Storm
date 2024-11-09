@@ -1,16 +1,17 @@
-import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
+import { Column, SqlColumn, SqlTable, Table, TableUpdateInfo } from '@zxhhyj/storm';
 
 class NewVerBookcase extends Table<NewBookcase> {
   override readonly tableVersion = 2
   override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true)
-  readonly name = Column.text('name').notNull().unique()
+  readonly name = Column.text('name')
   readonly createDataTime = Column.date("create_data_time").default(new Date().toString())
 
-  override upVersion(version: number) {
+  upVersion(version: number): TableUpdateInfo {
     if (version === 2) {
       return {
-        add: [this.createDataTime]
+        add: [this.createDataTime],
+        //remove: [this.name] //不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
       }
     }
   }

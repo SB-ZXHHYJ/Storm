@@ -61,8 +61,7 @@ export class Database {
    */
   static async create(context: Context, config: relationalStore.StoreConfig): Promise<Database> {
     try {
-      const dbStore = await relationalStore.getRdbStore(context, config)
-      return new Database(dbStore)
+      return new Database(await relationalStore.getRdbStore(context, config))
     } catch (error) {
       throw error
     }
@@ -73,64 +72,66 @@ type ColumnValuePairs = ReadonlyArray<[Column<ValueType, any>, ValueType | null]
 
 interface IDatabaseSession<T> {
   /**
-   * 转换上下文到指定的表操作对象
-   * @param targetTable 要转换操作的表
-   * @returns 返回这个表的操作对象
+   * 切换要操作的表
+   * @param targetTable 目标表
+   * @returns 返回这个表的DatabaseSession
    */
   to<T>(targetTable: Table<T>): IDatabaseSession<T>
 
   /**
    * 在链式调用中执行额外的代码块
-   * @param scope 要执行的lambda表达式
+   * @param scope 要执行的代码块
    * @returns 返回当前实例
    */
   run(scope: () => void): this
 
   /**
-   * 开启一个作用域
-   * @param scope 作用域内的lambda表达式
+   * 开启一个普通作用域
+   * @param scope 普通作用域
    * @returns 返回当前实例
    */
   begin<E extends DatabaseSession<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个事务作用域
-   * @param scope 事务作用域内的lambda表达式
+   * @param scope 事务作用域
    * @returns 返回当前实例
    */
   beginTransaction<E extends DatabaseSession<T>>(scope: (it: E) => void): this
 
   /**
-   * 插入一条数据到数据库
+   * 插入一条数据
    * @param model 要插入的数据模型
    * @returns 返回当前实例
    */
   add(model: T): this
 
   /**
-   * 插入一组数据到数据库
+   * 插入一组数据
+   * @todo
    * @param models 要插入的数据模型数组
    * @returns 返回当前实例
    */
   adds(models: T[]): this
 
   /**
-   * 更新一条数据在数据库中的信息
+   * 更新一条数据
    * @param model 要更新的数据模型
    * @returns 返回当前实例
    */
   update(model: T): this
 
   /**
-   * 更新一组数据在数据库中的信息
+   * 更新一组数据
    * @param models 要更新的数据模型数组
+   *
    * @returns 返回当前实例
    */
   updates(models: T[]): this
 
   /**
-   * 根据条件更新表中的数据
-   * @param wrapperLambda 在这个lambda中返回查询的条件
+   * 更新所有符合条件的数据
+   * @param wrapperLambda 查询条件
    * @param model 要更新的数据
    * @returns 返回当前实例
    */
@@ -138,14 +139,14 @@ interface IDatabaseSession<T> {
     model: T | ColumnValuePairs): this
 
   /**
-   * 删除一条数据从数据库
+   * 删除一条数据
    * @param model 要删除的数据模型
    * @returns 返回当前实例
    */
   remove(model: T): this
 
   /**
-   * 删除一组数据从数据库
+   * 删除一组数据
    * @param models 要删除的数据模型数组
    * @returns 返回当前实例
    */
@@ -153,7 +154,7 @@ interface IDatabaseSession<T> {
 
   /**
    * 根据条件删除表中的数据
-   * @param wrapperLambda 在这个lambda中返回查询的条件
+   * @param wrapperLambda 查询条件
    * @returns 返回当前实例
    */
   removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this
@@ -173,7 +174,7 @@ interface IDatabaseSession<T> {
   /**
    * 根据条件查询表中的数据
    * @todo 值得注意的是，如果使用事务，在事务没有执行完毕时，你查询到的数据并不是最新的
-   * @param wrapperLambda 在这个lambda中返回查询的条件
+   * @param wrapperLambda 查询条件
    * @returns 查询到的数据集合
    */
   query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
@@ -181,19 +182,24 @@ interface IDatabaseSession<T> {
 
 export class DatabaseSession<T> implements IDatabaseSession<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
+    if (targetTable.tableName !== sqliteSequences.tableName) {
+      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._columnsLazy.value
+        .map(column => column._columnModifier)
+        .filter(Boolean)
+        .join(',')})`)
+    }
     if (targetTable.tableVersion > 1 && Number.isInteger(targetTable.tableVersion)) {
       const oldTableVersion: StormTableVersion | undefined =
-        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
-      //获取本地版本号
-      if (oldTableVersion === undefined || oldTableVersion?.version !== this.targetTable.tableVersion) {
-        //不存在本地版本号或者本地版本号小于最新版本号
-        for (let ver = oldTableVersion?.version ?? 1; ver <= targetTable.tableVersion; ver++) {
+        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0];
+      const currentVersion = oldTableVersion?.version ?? 1;
+      if (currentVersion < targetTable.tableVersion) {
+        for (let ver = currentVersion + 1; ver <= targetTable.tableVersion; ver++) {
           const modificationInfo = targetTable.upVersion(ver)
           modificationInfo?.add?.forEach(item => {
             this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
           })
           modificationInfo?.remove?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._columnModifier}`)
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._fieldName} ${item._dataType}`)
           })
         }
         if (oldTableVersion) {
@@ -319,50 +325,40 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   }
 
   adds(models: T[]): this {
-    if (models.length == 0) {
+    if (!models.length) {
       return this
     }
-    // 查询SqlSequence，用于记录自增信息
-    const sqlSequenceArray = this.to(sqliteSequences).query()
+
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)
     }))
 
-    this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName} (${this.targetTable._columnsLazy.value
-      .map(column => column._columnModifier)
-      .filter(Boolean)
-      .join(', ')})`)
-
-    if (this.targetTable._idColumnLazy.value) {
+    const idColumn = this.targetTable._idColumnLazy.value
+    if (idColumn !== undefined) {
+      // 查询SqlSequence，用于记录自增信息
+      const sqlSequenceArray = this.to(sqliteSequences).query()
       // 更新每个值桶中的主键字段
-      valueBuckets.forEach((valueBucket) => {
-        if (valueBucket[this.targetTable._idColumnLazy.value._fieldName] == null) {
+      valueBuckets.forEach((valueBucket, index) => {
+        if (valueBucket[idColumn._fieldName] == null) {
           // 获取表对应的最新自增id
           const sqlSequence = sqlSequenceArray.find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
-            valueBucket[this.targetTable._idColumnLazy.value._fieldName] = sqlSequence.seq += 1
+            valueBucket[idColumn._fieldName] = sqlSequence.seq += 1
           } else {
             // 如果没有找到序列，则创建一个新的序列
             const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 }
-            valueBucket[this.targetTable._idColumnLazy.value._fieldName] = newSqlSequence.seq
+            valueBucket[idColumn._fieldName] = newSqlSequence.seq
             sqlSequenceArray.push(newSqlSequence)
           }
         }
+        this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
+        models[index][idColumn._key] = valueBucket[idColumn._fieldName]
       })
+      return this
     }
-
-    // 批量插入数据到目标表
-    valueBuckets
-      .forEach(item => {
-        return this.rdbStore.insertSync(this.targetTable.tableName, item) != -1
-      })
-
-    // 把注解更新到原始模型对象中
-    models.forEach((model, i) => {
-      // 使用 Object.assign 直接合并 valueBuckets[i] 到 model
-      Object.assign(model, valueBuckets[i]);
-    });
-
+    for (const valueBucket of valueBuckets) {
+      this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
+    }
     return this
   }
 
@@ -371,9 +367,10 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   }
 
   updates(models: T[]): this {
-    if (models.length == 0) {
+    if (!models.length) {
       return this
     }
+
     const idColumn = this.targetTable._idColumnLazy.value
     if (!idColumn) {
       ErrorUtils.IdColumnNotDefined(this.targetTable)
@@ -410,7 +407,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   }
 
   removes(models: T[]): this {
-    if (models.length == 0) {
+    if (!models.length) {
       return this
     }
     const idColumn = this.targetTable._idColumnLazy.value

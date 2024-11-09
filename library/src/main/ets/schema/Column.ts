@@ -4,7 +4,7 @@ type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
 export interface IColumn<T extends ValueType> {
   /**
-   * 绑定实体中的key
+   * 在实体中的属性名称
    */
   _key: string
   /**
