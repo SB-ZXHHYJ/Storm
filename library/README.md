@@ -1,8 +1,7 @@
 ## 介绍
 
-Storm 是直接基于纯`TypeScript`编写的高效简洁的轻量级`OpenHarmonyOS SQL ORM`框架，提供了`强类型`的`SQL DSL`，直接将低级
-bug
-暴露在编译期，并且所有的`SQL`都是自动生成的，你不需要写任何`SQL`，`Storm`会帮你处理好一切。
+Storm是直接基于纯`TypeScript`编写的高效简洁的轻量级`OpenHarmonyOS SQL ORM`框架，提供了`强类型`的`SQL DSL`
+，直接将低级bug暴露在编译期，并且所有的`SQL`都是自动生成的，你不需要写任何`SQL`，`Storm`会帮你处理好一切。
 
 其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
 
@@ -32,12 +31,11 @@ database.globalDatabase = await Database.create(this.context, {
 
 #### 1.定义 Bookcase 类
 
-`Bookcase`类表示一个书籍集合其定义如下：
+属性：
 
-- **表名**：`t_bookcase`
-- **字段**：
-  -`id`：整数，主键，自动递增
-  -`name`：文本，必须唯一且不能为空
+- **`tableName`**：表名
+- **`id`**：`INTEGER`类型，主键且自动递增
+- **`name`**：`TEXT`类型，并使用`NOT NULL`和`UNIQUE`修饰符
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -59,14 +57,19 @@ export class Bookcase {
 
 #### 2.定义 Book 类
 
-`Book`类表示存储在书架上的单个书籍其包含以下属性：
+属性：
 
-- **表名**：`t_book`
-- **字段**：
-  -`id`：整数，主键，自动递增
-  -`name`：文本，必须唯一
-  -`bookcase`：`Bookcase`的实体，存储时会将`Bookcase`的主键存储到`bookcase_id`中，读取时将会自动查询并填充好
-  -`createDataTime`：日期，表示创建时间戳，实际上是文本类型，利用了`Storm`支持自定义对象的序列化和反序列化的功能
+- **`tableName`**：表名
+- **`id`**：`INTEGER`类型，主键且自动递增
+- **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符
+- **`bookcase`**：
+  - 类型：`INTEGER`类型，列名为`bookcase_id`
+  - 存储：将`Bookcase`的主键存储到`bookcase_id`中
+  - 读取：根据`bookcase_id`查询实体并填充
+- **`createDataTime`**:
+  - 类型：`TEXT`类型，列名为`create_data_time`
+  - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储
+  - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`
 
 ```typescript
 class Books extends Table<Book> {
