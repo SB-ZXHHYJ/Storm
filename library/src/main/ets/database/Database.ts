@@ -5,10 +5,9 @@ import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { ErrorUtils } from '../utils/ErrorUtils'
-import { Column } from '../schema/Column'
+import { Column, ReferencesColumn } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
 import { getSqlColumn } from '../annotation/SqlColumn'
-import { getSqlTable } from '../annotation/SqlTable'
 
 class SessionQueueManager {
   private constructor() {
@@ -216,31 +215,19 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     const valueBucket: relationalStore.ValuesBucket = {}
     for (const key of Object.keys(model)) {
       const column = getSqlColumn(this.targetTable._objectConstructor, key)
-      if (column === undefined) {
+      if (column instanceof ReferencesColumn) {
+        const idColumn = column._referencesTable._idColumnLazy.value
+        valueBucket[column._fieldName] = model[key][idColumn._fieldName]
         continue
       }
-      switch (true) {
-        case column._typeConverters !== undefined: {
+      if (column instanceof Column) {
+        if (column._typeConverters) {
           const currentValue = column._typeConverters.save(model[key])
           valueBucket[column._fieldName] = currentValue
-          break
+          continue
         }
-        case column._objectConstructor !== undefined: {
-          const columnBindTable = getSqlTable(column._objectConstructor)
-          if (columnBindTable) {
-            const idColumn = columnBindTable._idColumnLazy.value
-            if (idColumn) {
-              valueBucket[column._fieldName] = model[key][idColumn._fieldName]
-              continue
-            }
-            ErrorUtils.IdColumnNotDefined(columnBindTable)
-          }
-          break
-        }
-        default: {
-          valueBucket[column._fieldName] = model[key]
-          break
-        }
+        valueBucket[column._fieldName] = model[key]
+        continue
       }
     }
     return valueBucket
@@ -257,41 +244,38 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     const entityArray: T[] = []
     const resultSet = this.rdbStore.querySync(wrapper._rdbPredicates)
     while (resultSet.goToNextRow()) {
-      const entity = {} as T // 创建一个空实体
+      const entity = {} as T
       for (let i = 0; i < resultSet.columnNames.length; i++) {
-        const columnName = resultSet.columnNames[i] // 获取当前列名
-        const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName) // 查找对应的列
+        const columnName = resultSet.columnNames[i]
+        const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName)
         if (column) {
-          const value = resultSet.getValue(i) as ValueType // 获取当前列的值
-          switch (true) {
-            case column._typeConverters !== undefined: {
+          const value = resultSet.getValue(i) as ValueType
+          if (column instanceof ReferencesColumn) {
+            const referencesTable = column._referencesTable
+            const idColumn = referencesTable?._idColumnLazy.value
+            if (idColumn === undefined) {
+              ErrorUtils.IdColumnNotDefined(referencesTable)
+            }
+            const predicates = new RdbPredicatesWrapper(referencesTable)
+            predicates.equalTo(idColumn, value as ValueType)
+            const model = this.queryToEntity(predicates, referencesTable)[0]
+            entity[column._key] = model
+            continue
+          }
+          if (column instanceof Column) {
+            if (column._typeConverters) {
               entity[column._key] = column?._typeConverters?.restore(value)
-              break
+              continue
             }
-            case column._objectConstructor !== undefined: {
-              const relatedTable = getSqlTable(column._objectConstructor)
-              // 查找主键列
-              const idColumn = relatedTable?._idColumnLazy.value
-              if (idColumn === undefined) {
-                ErrorUtils.IdColumnNotDefined(relatedTable)
-              }
-              const predicatesWrapper = new RdbPredicatesWrapper(relatedTable)
-              predicatesWrapper.equalTo(idColumn, value as ValueType) // 通过主键和值信息查询
-              entity[column._key] = this.queryToEntity(predicatesWrapper, relatedTable)[0]
-              break
-            }
-            default: {
-              entity[column._key] = value
-              break
-            }
+            entity[column._key] = value
+            continue
           }
         }
       }
-      entityArray.push(entity) // 将实体添加到结果数组中
+      entityArray.push(entity)
     }
-
-    resultSet.close() // 关闭结果集
-    return entityArray // 返回实体数组
+    resultSet.close()
+    return entityArray
   }
 
   to<T>(targetTable: Table<T>): DatabaseSession<T> {

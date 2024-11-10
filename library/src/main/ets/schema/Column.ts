@@ -47,7 +47,7 @@ export interface IColumn<T extends ValueType> {
    */
   default(value: T): this;
 
-  bindTo<M>(targetTable: Table<M>, bindScope: () => keyof M): this
+  bindTo<M>(targetTable: Table<M>, key: keyof M): this
 }
 
 export type TypeConverters<F extends ValueType, E> = {
@@ -86,10 +86,9 @@ const DateTypeConverters: TypeConverters<string, Date> = {
 }
 
 export class Column<T extends ValueType, E> implements IColumn<T> {
-  private constructor(
+  protected constructor(
     readonly _fieldName: string,
     readonly _dataType: DataTypes,
-    readonly _objectConstructor?: ObjectConstructor,
     readonly _typeConverters?: TypeConverters<T, E>
   ) {
   }
@@ -129,9 +128,9 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
     return this
   }
 
-  bindTo<M>(targetTable: Table<M>, bindScope: () => keyof M): this {
-    if (targetTable !== undefined) {
-      this.column._key = bindScope().toString()
+  bindTo<M>(targetTable: Table<M>, key: keyof M): this {
+    if (targetTable) {
+      this.column._key = key.toString()
     }
     return this
   }
@@ -165,7 +164,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
    * @param fieldName 列名
    */
   static boolean(fieldName: string): Column<number, boolean> {
-    return new Column(fieldName, 'INTEGER', undefined, BooleanTypeConverters)
+    return new Column(fieldName, 'INTEGER', BooleanTypeConverters)
   }
 
   /**
@@ -174,7 +173,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
    * @param converters 转换器
    */
   static json<T>(fieldName: string, converters: TypeConverters<string, T>): Column<string, T> {
-    return new Column(fieldName, 'TEXT', undefined, converters)
+    return new Column(fieldName, 'TEXT', converters)
   }
 
   /**
@@ -185,12 +184,16 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
     return this.json(fieldName, DateTypeConverters)
   }
 
-  /**
-   * 创建实体类型的列
-   * @param fieldName 列名
-   * @param objectConstructor 实体的构造函数
-   */
-  static entity<T>(fieldName: string, objectConstructor: T): Column<number, T> {
-    return new Column(fieldName, 'INTEGER', objectConstructor as ObjectConstructor)
+  static references<M>(fieldName: string, referencesTable: Table<M>): ReferencesColumn<number, M> {
+    return new ReferencesColumn(fieldName, referencesTable)
+  }
+}
+
+export class ReferencesColumn<T extends ValueType, E> extends Column<T, E> {
+  constructor(
+    readonly _fieldName: string,
+    readonly _referencesTable: Table<E>
+  ) {
+    super(_fieldName, 'INTEGER', undefined)
   }
 }

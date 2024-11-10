@@ -1,9 +1,9 @@
 import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
-import { Bookcase } from './Bookcase';
+import { Bookcase, bookcases } from './Bookcase';
 
 class Books extends Table<Book> {
   override readonly tableName = "t_book"
-  readonly bookcase = Column.entity("bookcase_id", Bookcase)
+  readonly bookcase = Column.references("bookcase_id", bookcases)
   readonly id = Column.integer("id").primaryKey(true)
   readonly name = Column.text("name").unique()
 }
