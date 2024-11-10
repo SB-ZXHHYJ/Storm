@@ -2,10 +2,11 @@ import { database } from '@zxhhyj/storm'
 import { NewBookcase, newVerBookcases } from '../model/NewVerBookcase'
 import { Test } from './Test'
 
-export const VersionUpTest: Test = {
+export const VerUpAndJsonTest: Test = {
   main: () => {
     const bookcase: NewBookcase = {
-      name: "科幻小说"
+      name: "科幻小说",
+      createDataTime: new Date()
     }
     database
       .of(newVerBookcases)
@@ -16,5 +17,5 @@ export const VersionUpTest: Test = {
     const bookcase = database.of(newVerBookcases).query(it => it.groupBy([newVerBookcases.name]))[0]
     return bookcase.createDataTime instanceof Date
   },
-  name: "VersionUpTest"
+  name: "VerUpAndJsonTest"
 }

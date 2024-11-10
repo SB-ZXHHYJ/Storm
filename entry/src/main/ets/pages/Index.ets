@@ -9,13 +9,13 @@ import { bookcases } from '../model/Bookcase'
 import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../demo/TransactionTest'
 import { RemoveIfTest } from '../demo/RemoveIfTest'
-import { VersionUpTest } from '../demo/VersionUpTest'
+import { VerUpAndJsonTest } from '../demo/VerUpAndJsonTest'
 
 @Entry
 @ComponentV2
 struct Index {
   @Local private works: Test[] =
-    [AddTest, RemoveTest, UpdateIfTest, UpdateTest, RemoveIfTest, TransactionTest, VersionUpTest]
+    [AddTest, RemoveTest, UpdateIfTest, UpdateTest, RemoveIfTest, TransactionTest, VerUpAndJsonTest]
 
   build() {
     Navigation() {

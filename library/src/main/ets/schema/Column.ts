@@ -1,4 +1,5 @@
 import { ValueType } from '@kit.ArkData';
+import { Table } from './Table';
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
@@ -45,6 +46,8 @@ export interface IColumn<T extends ValueType> {
    * @returns 返回当前实例
    */
   default(value: T): this;
+
+  bindTo<M>(targetTable: Table<M>, bindScope: () => keyof M): this
 }
 
 export type TypeConverters<F extends ValueType, E> = {
@@ -123,6 +126,13 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
 
   default(value: T): this {
     this.column._columnModifier += ` DEFAULT '${value}'`;
+    return this
+  }
+
+  bindTo<M>(targetTable: Table<M>, bindScope: () => keyof M): this {
+    if (targetTable !== undefined) {
+      this.column._key = bindScope().toString()
+    }
     return this
   }
 
