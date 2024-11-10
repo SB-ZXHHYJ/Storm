@@ -20,7 +20,7 @@ export const AddTest: Test = {
   },
   verify: function (): boolean {
     const addBook = database.of(books).query()[0]
-    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined)
+    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined)
   },
   name: "AddTest"
 }
