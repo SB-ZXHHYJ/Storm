@@ -43,17 +43,15 @@ database.globalDatabase = await Database.create(this.context, {
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
 
 class Bookcases extends Table<Bookcase> {
-  override tableName = 't_bookcase'
-  readonly id = Column.integer('id').primaryKey(true)
-  readonly name = Column.text('name').notNull().unique()
+  override readonly tableName = 't_bookcase'
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').notNull().unique().bindTo(this, 'name')
 }
 
 export const bookcases = new Bookcases()
 
 export class Bookcase {
-  @SqlColumn(bookcases.id)
   id?: number
-  @SqlColumn(bookcases.name)
   name: string
 }
 ```
@@ -78,46 +76,21 @@ export class Bookcase {
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
 
 class Books extends Table<Book> {
-  override tableName = 't_book'
-  readonly bookcase = Column.entity('bookcase_id', Bookcase)
-  readonly id = Column.integer('id').primaryKey(true)
-  readonly name = Column.text('name').unique()
-  readonly createDataTime = Column.date("create_data_time")
+  override readonly tableName = 't_book'
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').unique().bindTo(this, 'name')
+  readonly bookcase = Column.references('bookcase_id', bookcases).bindTo(this, 'bookcase')
+  readonly createDataTime =
+    Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
 }
 
 export const books = new Books()
 
 export class Book {
-  @SqlColumn(books.id)
   id?: number
-  @SqlColumn(books.name)
   name: string
-  @SqlColumn(books.bookcase)
   bookcase: Bookcase
-  @SqlColumn(books.createDataTime)
-  createDataTime?: Date
-}
-```
-
-#### 使用 BindTo API（可选）
-
-如果你不希望在实体属性上使用`@SqlColumn`注解修饰，可以在`Table`中的`Column`中调用`bindTo()`API，来将`Column`与实体属性进行双向绑定。
-`bindTo()`API接收两个参数，一个是当前`Table<M>`的实例，填写`this`即可，一个是`keyof M`，填写`Table<M>`泛型实体`M`的属性名即可。
-
-```typescript
-import { Column, SqlColumn, Table } from '@zxhhyj/storm'
-
-class Bookcases extends Table<Bookcase> {
-  override readonly tableName = 't_bookcase'
-  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
-  readonly name = Column.text('name').notNull().unique().bindTo(this, 'name')
-}
-
-export const bookcases = new Bookcases()
-
-export class Bookcase {
-  id?: number
-  name: string
+  createDataTime: Date
 }
 ```
 
@@ -171,10 +144,18 @@ import { database } from '@zxhhyj/storm'
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
+const book: Book = {
+  name: "三体",
+  bookcase: bookcase,
+  createDataTime: new Date()
+}
 database
   .of(bookcases)
-  .add(bookcase)
-  .updateIf(it => it.equalTo(bookcases.id, bookcase.id), [[bookcases.name, "女生小说"]]) //指定更新某一项
+  .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
+  .to(books)
+  .add(book)//添加数据，添加成功后会将自增id填充到book.id中
+  .updateIf(it => it.equalTo(books.id, book.id),
+    [[books.name, null]]) //将这一列的内容删掉，如果使用常规的update更新，你需要满足类型检查，这样的操作可以避免类型检查
 ```
 
 #### 3.删除数据
@@ -253,7 +234,9 @@ for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcase
 之后在调用`of`、`to`时将会升级操作，`Storm`将会依次调用`upVersion`函数，需要重写这个函数并在其中返回这个版本中表有哪些更新，目前支持新增列和移除列。
 
 ```typescript
-import { Column, SqlColumn, Table, TableUpdateInfo } from '@zxhhyj/storm';
+import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
+
+import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
 
 class NewVerBookcases extends Table<NewBookcase> {
   override readonly tableVersion = 2
@@ -261,12 +244,13 @@ class NewVerBookcases extends Table<NewBookcase> {
    * 需要注意的是，这个NewVerBookcases实际就是Bookcases，只是方便做演示用例才创建了两个类
    */
   override readonly tableName = 't_bookcase'
-  readonly id = Column.integer('id').primaryKey(true)
-  readonly name = Column.text('name')
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').bindTo(this, 'name')
   /**
    * 这个是新增的列
    */
-  readonly createDataTime = Column.date('create_data_time').default(new Date().toString())
+  readonly createDataTime =
+    Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
 
   upVersion(version: number): TableUpdateInfo {
     /**
@@ -287,11 +271,8 @@ class NewVerBookcases extends Table<NewBookcase> {
 export const newVerBookcases = new NewVerBookcases()
 
 export class NewBookcase {
-  @SqlColumn(newVerBookcases.id)
   id?: number
-  @SqlColumn(newVerBookcases.name)
   name: string
-  @SqlColumn(newVerBookcases.createDataTime)
   createDataTime?: Date
 }
 ```

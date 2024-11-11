@@ -179,13 +179,14 @@ interface IDatabaseCrud<T> {
 
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
+    Check.checkTableAndColumns(targetTable)
     if (targetTable.tableName !== sqliteSequences.tableName) {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
         .map(column => column._columnModifier)
         .filter(Boolean)
         .join(',')})`)
     }
-    if (targetTable.tableVersion > 1 && Number.isInteger(targetTable.tableVersion)) {
+    if (targetTable.tableVersion > 1) {
       const oldTableVersion: StormTableVersion | undefined =
         this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
       const currentVersion = oldTableVersion?.version ?? 1;
@@ -232,12 +233,6 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return valueBucket
   }
 
-  /**
-   * 查询数据库并将每一列数据转成 entity
-   * @param wrapper 查询条件
-   * @param targetTable 要查询的Table
-   * @returns entity 转换好的实体数组
-   */
   private queryToEntity<T>(wrapper: RdbPredicatesWrapper<T>,
     targetTable: Table<T>): T[] {
     const entityArray: T[] = []

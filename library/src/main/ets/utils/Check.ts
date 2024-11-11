@@ -11,8 +11,7 @@ export class Check {
    */
   static checkTableHasIdColumn(targetTable: Table<any>) {
     if (targetTable._tableIdColumns.length === 0) {
-      throw new Error(`Table "${targetTable.tableName}" does not have a primary key.`)
-    }
+      throw new Error(`In "${targetTable.tableName}", there is no primary key.`);    }
   }
 
   /**
@@ -22,7 +21,22 @@ export class Check {
   static checkTableHasAtMostOneIdColumn(targetTable: Table<any>) {
     this.checkTableHasIdColumn(targetTable)
     if (targetTable._tableIdColumns.length > 1) {
-      throw new Error(`Table "${targetTable.tableName}" has more than one primary key. Only one primary key is supported.`)
+      throw new Error(`In "${targetTable.tableName}", there is more than one primary key. Only one primary key is allowed.`)
+    }
+  }
+
+  /**
+   * 检查Table和内部的Column是否符合规范
+   * @param targetTable
+   */
+  static checkTableAndColumns(targetTable: Table<any>) {
+    if (!Number.isInteger(targetTable.tableVersion)) {
+      throw new Error(`In ${targetTable.tableName}, the version number must be an integer.`)
+    }
+
+    const keys = targetTable._tableAllColumns.map(it => it._key);
+    if (new Set(keys).size !== keys.length) {
+      throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }
   }
 
@@ -32,7 +46,7 @@ export class Check {
    */
   static checkColumnUniqueBindTo(column: Column<ValueType, any>) {
     if (column._key) {
-      throw new Error(`Each property can only be decorated with one @SqlColumn().`)
+      throw new Error(`In ${column._fieldName}, each property can only be decorated with one bindTo().`)
     }
   }
 }

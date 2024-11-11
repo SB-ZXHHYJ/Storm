@@ -3,7 +3,7 @@ import { Book, books } from '../model/Book'
 import { Bookcase, bookcases } from '../model/Bookcase'
 import { Test } from './Test'
 
-export const AddTest: Test = {
+export const UpdateIfNullTest: Test = {
   main: () => {
     const bookcase: Bookcase = {
       name: "科幻小说"
@@ -17,11 +17,12 @@ export const AddTest: Test = {
       .of(bookcases)
       .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
       .to(books)
-      .add(book) //添加数据，添加成功后会将自增id填充到book.id中
+      .add(book)//添加数据，添加成功后会将自增id填充到book.id中
+      .updateIf(it => it.equalTo(books.id, book.id),
+        [[books.name, null]]) //将这一列的内容删掉，如果使用常规的update更新，你需要满足类型检查，这样的操作可以避免类型检查
   },
   verify: function (): boolean {
-    const addBook = database.of(books).query()[0]
-    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined)
+    return database.of(books).query(it => it.isNull(books.name)).length > 0
   },
-  name: "AddTest"
+  name: "UpdateIfNullTest"
 }

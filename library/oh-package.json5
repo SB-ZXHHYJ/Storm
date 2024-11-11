@@ -1,6 +1,6 @@
 {
   "name": "@zxhhyj/storm",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Storm是直接基于纯TypeScript编写的高效简洁的轻量级OpenHarmonyOS SQL ORM框架，提供了强类型的SQL DSL ，直接将低级bug暴露在编译期，并且所有的SQL都是自动生成的，你不需要写任何SQL，Storm会帮你处理好一切。",
   "main": "Index.ts",
   "author": "黄浩",
