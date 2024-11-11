@@ -45,8 +45,7 @@ class Bookcases extends Table<Bookcase> {
 }
 
 export const bookcases = new Bookcases()
-
-@SqlTable(bookcases)
+        
 export class Bookcase {
   @SqlColumn(bookcases.id)
   id?: number
@@ -63,13 +62,13 @@ export class Bookcase {
 - **`id`**：`INTEGER`类型，主键且自动递增；
 - **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符；
 - **`bookcase`**：
-  - 类型：`INTEGER`类型，列名为`bookcase_id`；
-  - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
-  - 读取：根据`bookcase_id`查询实体并填充；
+    - 类型：`INTEGER`类型，列名为`bookcase_id`；
+    - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
+    - 读取：根据`bookcase_id`查询实体并填充；
 - **`createDataTime`**:
-  - 类型：`TEXT`类型，列名为`create_data_time`；
-  - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
-  - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
+    - 类型：`TEXT`类型，列名为`create_data_time`；
+    - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
+    - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
 
 ```typescript
 class Books extends Table<Book> {
@@ -81,8 +80,7 @@ class Books extends Table<Book> {
 }
 
 export const books = new Books()
-
-@SqlTable(books)
+        
 export class Book {
   @SqlColumn(books.id)
   id?: number
@@ -95,7 +93,7 @@ export class Book {
 }
 ```
 
-#### 使用 BindTo API
+#### 使用 BindTo API（可选）
 
 如果你不希望在实体属性上使用`@SqlColumn`注解修饰，可以在`Table`中的`Column`中调用`bindTo()`API，来将`Column`与实体属性进行双向绑定。
 `bindTo()`API接收两个参数，一个是当前`Table<M>`的实例，填写`this`即可，一个是`keyof M`，填写`Table<M>`泛型实体`M`的属性名即可。
@@ -131,9 +129,9 @@ const book: Book = {
 }
 database
   .of(bookcases)
-  .add(bookcase)//添加数据，添加成功后会自读将自增id填充到bookcase.id中
+  .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
   .to(books)
-  .add(book) //添加数据，添加成功后会自读将自增id填充到book.id中
+  .add(book) //添加数据，添加成功后会将自增id填充到book.id中
 ```
 
 #### 2.更新数据
@@ -280,9 +278,9 @@ export class NewBookcase {
 
 |                 路线                 | 预期上线版本 | 状态  |
 |:----------------------------------:|:------:|:---:|
-|        实现具有强类型且独立的数据库版本更新逻辑        |  1.3+  | 已完成 |
-|         对象模型与SQL模型的互转逻辑解耦          |  1.3+  | 未完成 |
-| 使用新的`bindTo`API来实现`Column`与实体的双向绑定 |  1.4+  | 已完成 |
+|        实现具有强类型且独立的数据库版本更新逻辑        | 1.3.0+ | 已完成 |
+|         ~~对象模型与SQL模型的互转逻辑解耦~~          | ~~1.3.0+~~ | ~~已废弃~~ |
+| 使用新的`bindTo`API来实现`Column`与实体的双向绑定 | 1.4.0+ | 已完成 |
 
 ## 已知问题
 

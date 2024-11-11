@@ -14,9 +14,9 @@ export const AddTest: Test = {
     }
     database
       .of(bookcases)
-      .add(bookcase)//添加数据，添加成功后会自读将自增id填充到bookcase.id中
+      .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
       .to(books)
-      .add(book) //添加数据，添加成功后会自读将自增id填充到book.id中
+      .add(book) //添加数据，添加成功后会将自增id填充到book.id中
   },
   verify: function (): boolean {
     const addBook = database.of(books).query()[0]
