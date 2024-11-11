@@ -16,11 +16,7 @@ export type TableUpdateInfo = {
 
 export interface ITable {
   /**
-   * Table绑定类型的空构造函数
-   */
-  _objectConstructor?: ObjectConstructor
-  /**
-   * 表名
+   * Table的名称
    */
   tableName: string
   /**
@@ -52,8 +48,6 @@ export abstract class Table<T> implements ITable {
   readonly tableVersion: number = 1
 
   abstract readonly tableName: string
-
-  readonly _objectConstructor?: ObjectConstructor
 
   readonly _columnsLazy = new LazyInitValue<Column<ValueType, any>[]>(() => {
     return Object.keys(this).map((item) => {

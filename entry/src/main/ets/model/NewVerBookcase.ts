@@ -1,4 +1,4 @@
-import { Column, SqlColumn, SqlTable, Table, TableUpdateInfo } from '@zxhhyj/storm';
+import { Column, SqlColumn, Table, TableUpdateInfo } from '@zxhhyj/storm';
 
 class NewVerBookcases extends Table<NewBookcase> {
   override readonly tableVersion = 2
@@ -11,7 +11,7 @@ class NewVerBookcases extends Table<NewBookcase> {
   /**
    * 这个是新增的列
    */
-  readonly createDataTime = Column.date("create_data_time").default(new Date().toString())
+  readonly createDataTime = Column.date('create_data_time').default(new Date().toString())
 
   upVersion(version: number): TableUpdateInfo {
     /**
@@ -31,7 +31,6 @@ class NewVerBookcases extends Table<NewBookcase> {
 
 export const newVerBookcases = new NewVerBookcases()
 
-@SqlTable(newVerBookcases)
 export class NewBookcase {
   @SqlColumn(newVerBookcases.id)
   id?: number

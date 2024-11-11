@@ -1,4 +1,4 @@
-import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
+import { Column, SqlColumn, Table } from '@zxhhyj/storm';
 
 class Bookcases extends Table<Bookcase> {
   override readonly tableName = 't_bookcase'
@@ -8,7 +8,6 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-@SqlTable(bookcases)
 export class Bookcase {
   @SqlColumn(bookcases.id)
   id?: number

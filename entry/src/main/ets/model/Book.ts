@@ -1,16 +1,15 @@
-import { Column, SqlColumn, SqlTable, Table } from '@zxhhyj/storm';
+import { Column, SqlColumn, Table } from '@zxhhyj/storm';
 import { Bookcase, bookcases } from './Bookcase';
 
 class Books extends Table<Book> {
-  override readonly tableName = "t_book"
-  readonly bookcase = Column.references("bookcase_id", bookcases)
-  readonly id = Column.integer("id").primaryKey(true)
-  readonly name = Column.text("name").unique()
+  override readonly tableName = 't_book'
+  readonly id = Column.integer('id').primaryKey(true)
+  readonly name = Column.text('name').unique()
+  readonly bookcase = Column.references('bookcase_id', bookcases)
 }
 
 export const books = new Books()
 
-@SqlTable(books)
 export class Book {
   @SqlColumn(books.id)
   id?: number

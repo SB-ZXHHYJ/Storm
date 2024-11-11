@@ -5,7 +5,7 @@ import { Column, Table } from '../../../../Index'
  */
 class StormTableVersions extends Table<StormTableVersion> {
   override readonly tableName = 't_storm_table_version'
-  readonly name = Column.text('table_name').bindTo(this, 'version')
+  readonly name = Column.text('table_name').bindTo(this, 'name')
   readonly version = Column.integer('table_version').bindTo(this, 'version')
 }
 

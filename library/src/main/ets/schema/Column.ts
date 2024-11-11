@@ -1,11 +1,21 @@
 import { ValueType } from '@kit.ArkData';
+import { Check } from '../utils/Check';
 import { Table } from './Table';
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
 export interface IColumn<T extends ValueType> {
   /**
-   * 在实体中的属性名称
+   * Column的名称
+   */
+  _fieldName: string,
+
+  /**
+   * Column的类型
+   */
+  _dataType: DataTypes
+  /**
+   * 实体中对应的属性名称
    */
   _key: string
   /**
@@ -17,46 +27,52 @@ export interface IColumn<T extends ValueType> {
    */
   _isAutoincrement: boolean
   /**
-   * 修饰符
+   * Column修饰符
    */
   _columnModifier: string
 
   /**
-   * 设置当前列为主键
-   * @param autoincrement - 指定此列是否为自增列，默认为 false
+   * 使用PRIMARY KEY修饰Column
+   * @param autoincrement - 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
    * @returns 返回当前实例
    */
   primaryKey(autoincrement?: boolean): this;
 
   /**
-   * 设置当前列为不可为空
+   * 使用NOT NULL修饰Column
    * @returns 返回当前实例
    */
   notNull(): this;
 
   /**
-   * 设置当前列为唯一列，确保值不可重复
+   * 使用UNIQUE修饰Column
    * @returns 返回当前实例
    */
   unique(): this;
 
   /**
-   * 设置当前列的默认值
-   * @param value - 指定列的默认值
+   * 设置Column的默认值
+   * @param value - 默认值
    * @returns 返回当前实例
    */
   default(value: T): this;
 
+  /**
+   * 将Column绑定到目标Table的实体模型中的指定属性
+   * @param targetTable - 目标Table
+   * @param key - 实体模型中的属性名称
+   * @returns 返回当前实例
+   */
   bindTo<M>(targetTable: Table<M>, key: keyof M): this
 }
 
 export type TypeConverters<F extends ValueType, E> = {
   /**
-   * 将对象转换为数据库支持的类型保存
+   * 将实体转换为数据库支持的类型保存
    */
   save: (value: E) => F
   /**
-   * 将从数据库中读出的数据转换回对象
+   * 将从数据库中读出的数据转换回实体
    */
   restore: (value: F) => E
 }
@@ -128,15 +144,14 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
     return this
   }
 
-  bindTo<M>(targetTable: Table<M>, key: keyof M): this {
-    if (targetTable) {
-      this.column._key = key.toString()
-    }
+  bindTo<M>(_targetTable: Table<M>, key: keyof M): this {
+    Check.checkColumnUniqueBindTo(this)
+    this.column._key = key.toString()
     return this
   }
 
   /**
-   * 创建`INTEGER`类型的列
+   * 创建INTEGER类型的列
    * @param fieldName 列名
    */
   static integer(fieldName: string): Column<number, number> {
@@ -144,7 +159,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   }
 
   /**
-   * 创建`REAL`类型的列
+   * 创建REAL类型的列
    * @param fieldName 列名
    */
   static real(fieldName: string): Column<number, number> {
@@ -152,7 +167,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   }
 
   /**
-   * 创建`TEXT`类型的列
+   * 创建TEXT类型的列
    * @param fieldName 列名
    */
   static text(fieldName: string): Column<string, string> {
@@ -160,7 +175,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   }
 
   /**
-   * 创建`boolean`类型的列
+   * 创建boolean类型的列
    * @param fieldName 列名
    */
   static boolean(fieldName: string): Column<number, boolean> {
@@ -168,7 +183,7 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   }
 
   /**
-   * 创建`自定义类型`的列
+   * 创建自定义类型的列
    * @param fieldName 列名
    * @param converters 转换器
    */
@@ -177,14 +192,22 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
   }
 
   /**
-   * 创建`Date`类型的列
+   * 创建Date类型的列
    * @param fieldName 列名
    */
   static date(fieldName: string): Column<string, Date> {
     return this.json(fieldName, DateTypeConverters)
   }
 
-  static references<M>(fieldName: string, referencesTable: Table<M>): ReferencesColumn<number, M> {
+  /**
+   * 将Column绑定到参考Table中，相当于关系数据库中的外键
+   * Storm会将参考Table中实体的主键存储到这个Column上，在查询时Storm会自动从参考Table中查询并填充到这个Column所绑定的实体属性上
+   * @todo 使用时需要确保参考Table和其实体都存在主键
+   * @param fieldName 列名
+   * @param referencesTable 参考的Table
+   * @returns
+   */
+  static references<M>(fieldName: string, referencesTable: Table<M>): Column<number, M> {
     return new ReferencesColumn(fieldName, referencesTable)
   }
 }

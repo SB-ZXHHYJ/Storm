@@ -1,25 +1,12 @@
-import { Column, IColumn } from '../schema/Column';
-import 'reflect-metadata';
+import { Column } from '../schema/Column';
 import { ValueType } from '@kit.ArkData';
-import { ErrorUtils } from '../utils/ErrorUtils';
-
-const ColumnMetadataKey = Symbol('SqlColumn')
 
 /**
- * 将属性绑定到指定的 Column 上
- * @param value 指定的 Column 实例
+ * 将被修饰的实体属性与指定的Column进行双向绑定
+ * @param column 指定的Column实例
  */
-export function SqlColumn<V>(value: Column<ValueType, V>): PropertyDecorator {
-  return (target: object, primaryKey: string) => {
-    const column = value as IColumn<ValueType>
-    if (column._key) {
-      ErrorUtils.AtSqlColumnNotUnique()
-    }
-    column._key = primaryKey
-    Reflect.defineMetadata(ColumnMetadataKey, value, target, primaryKey)
+export function SqlColumn<V>(column: Column<ValueType, V>): PropertyDecorator {
+  return (_target: object, primaryKey: string) => {
+    column.bindTo(undefined, primaryKey)
   }
-}
-
-export function getSqlColumn(target: ObjectConstructor, primaryKey: string): Column<ValueType, ValueType> | undefined {
-  return Reflect.getMetadata(ColumnMetadataKey, target.prototype, primaryKey)
 }

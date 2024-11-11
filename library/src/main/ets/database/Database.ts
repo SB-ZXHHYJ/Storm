@@ -4,23 +4,22 @@ import { Table } from '../schema/Table'
 import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
-import { ErrorUtils } from '../utils/ErrorUtils'
+import { Check } from '../utils/Check'
 import { Column, ReferencesColumn } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
-import { getSqlColumn } from '../annotation/SqlColumn'
 
 class SessionQueueManager {
   private constructor() {
   }
 
-  private static readonly sessionQueueMap = new Map<Table<any>, DatabaseSession<any>>();
+  private static readonly sessionQueueMap = new Map<Table<any>, DatabaseCrud<any>>();
 
-  static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseSession<M> {
+  static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseCrud<M> {
     if (this.sessionQueueMap.has(targetTable)) {
       return this.sessionQueueMap.get(targetTable)
     }
 
-    const newSessionQueue = new DatabaseSession<M>(rdbStore, targetTable)
+    const newSessionQueue = new DatabaseCrud<M>(rdbStore, targetTable)
     this.sessionQueueMap.set(targetTable, newSessionQueue)
     return newSessionQueue
   }
@@ -44,11 +43,11 @@ export class Database {
   }
 
   /**
-   * 对指定表进行增删改查操作
-   * @param targetTable 要操作的表
-   * @returns 返回这个表的操作对象
+   * 对指定Table进行增删改查操作
+   * @param targetTable 要操作的Table
+   * @returns 返回这个Table的操作对象
    */
-  of<T>(targetTable: Table<T>): DatabaseSession<T> {
+  of<T>(targetTable: Table<T>): DatabaseCrud<T> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
@@ -69,13 +68,13 @@ export class Database {
 
 type ColumnValuePairs = ReadonlyArray<[Column<ValueType, any>, ValueType | null]>
 
-interface IDatabaseSession<T> {
+interface IDatabaseCrud<T> {
   /**
-   * 切换要操作的表
-   * @param targetTable 目标表
-   * @returns 返回这个表的DatabaseSession
+   * 切换要操作的Table
+   * @param targetTable 目标Table
+   * @returns 返回这个Table的DatabaseSession
    */
-  to<T>(targetTable: Table<T>): IDatabaseSession<T>
+  to<T>(targetTable: Table<T>): IDatabaseCrud<T>
 
   /**
    * 在链式调用中执行额外的代码块
@@ -89,14 +88,14 @@ interface IDatabaseSession<T> {
    * @param scope 普通作用域
    * @returns 返回当前实例
    */
-  begin<E extends DatabaseSession<T>>(scope: (it: E) => void): this
+  begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个事务作用域
    * @param scope 事务作用域
    * @returns 返回当前实例
    */
-  beginTransaction<E extends DatabaseSession<T>>(scope: (it: E) => void): this
+  beginTransaction<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
 
   /**
    * 插入一条数据
@@ -152,26 +151,26 @@ interface IDatabaseSession<T> {
   removes(models: T[]): this
 
   /**
-   * 根据条件删除表中的数据
+   * 根据条件删除Table中的数据
    * @param wrapperLambda 查询条件
    * @returns 返回当前实例
    */
   removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this
 
   /**
-   * 清空整个表的数据
+   * 清空整个Table的数据
    * @returns 返回当前实例
    */
   clear(): this
 
   /**
-   * 清空整个表的数据并重置自增主键计数
+   * 清空整个Table的数据并重置自增主键计数
    * @returns 返回当前实例
    */
   reset(): this
 
   /**
-   * 根据条件查询表中的数据
+   * 根据条件查询Table中的数据
    * @todo 值得注意的是，如果使用事务，在事务没有执行完毕时，你查询到的数据并不是最新的
    * @param wrapperLambda 查询条件
    * @returns 查询到的数据集合
@@ -179,7 +178,7 @@ interface IDatabaseSession<T> {
   query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
 }
 
-export class DatabaseSession<T> implements IDatabaseSession<T> {
+export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     if (targetTable.tableName !== sqliteSequences.tableName) {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._columnsLazy.value
@@ -189,7 +188,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     }
     if (targetTable.tableVersion > 1 && Number.isInteger(targetTable.tableVersion)) {
       const oldTableVersion: StormTableVersion | undefined =
-        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0];
+        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
       const currentVersion = oldTableVersion?.version ?? 1;
       if (currentVersion < targetTable.tableVersion) {
         for (let ver = currentVersion + 1; ver <= targetTable.tableVersion; ver++) {
@@ -214,7 +213,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   private modelToValueBucket(model: T): relationalStore.ValuesBucket {
     const valueBucket: relationalStore.ValuesBucket = {}
     for (const key of Object.keys(model)) {
-      const column = getSqlColumn(this.targetTable._objectConstructor, key)
+      const column = this.targetTable._columnsLazy.value.find(it => it._key === key)
       if (column instanceof ReferencesColumn) {
         const idColumn = column._referencesTable._idColumnLazy.value
         valueBucket[column._fieldName] = model[key][idColumn._fieldName]
@@ -236,8 +235,8 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
   /**
    * 查询数据库并将每一列数据转成 entity
    * @param wrapper 查询条件
-   * @param targetTable 查询的表
-   * @returns entity 数组
+   * @param targetTable 要查询的Table
+   * @returns entity 转换好的实体数组
    */
   private queryToEntity<T>(wrapper: RdbPredicatesWrapper<T>,
     targetTable: Table<T>): T[] {
@@ -253,9 +252,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
           if (column instanceof ReferencesColumn) {
             const referencesTable = column._referencesTable
             const idColumn = referencesTable?._idColumnLazy.value
-            if (idColumn === undefined) {
-              ErrorUtils.IdColumnNotDefined(referencesTable)
-            }
+            Check.checkTableHasIdColumn(referencesTable)
             const predicates = new RdbPredicatesWrapper(referencesTable)
             predicates.equalTo(idColumn, value as ValueType)
             const model = this.queryToEntity(predicates, referencesTable)[0]
@@ -278,7 +275,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     return entityArray
   }
 
-  to<T>(targetTable: Table<T>): DatabaseSession<T> {
+  to<T>(targetTable: Table<T>): DatabaseCrud<T> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
@@ -287,12 +284,12 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     return this
   }
 
-  begin<E extends DatabaseSession<T>>(scope: (it: E) => void): this {
+  begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
     scope.call(undefined, this)
     return this
   }
 
-  beginTransaction<E extends DatabaseSession<T>>(scope: (it: E) => void): this {
+  beginTransaction<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
     try {
       this.rdbStore.beginTransaction()
       scope.call(undefined, this)
@@ -324,7 +321,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket, index) => {
         if (valueBucket[idColumn._fieldName] == null) {
-          // 获取表对应的最新自增id
+          // 获取Table对应的最新自增id
           const sqlSequence = sqlSequenceArray.find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
             valueBucket[idColumn._fieldName] = sqlSequence.seq += 1
@@ -354,11 +351,8 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
     if (!models.length) {
       return this
     }
-
     const idColumn = this.targetTable._idColumnLazy.value
-    if (!idColumn) {
-      ErrorUtils.IdColumnNotDefined(this.targetTable)
-    }
+    Check.checkTableHasIdColumn(this.targetTable)
     models
       .map(item => this.modelToValueBucket(item))
       .forEach(item => {
@@ -395,9 +389,7 @@ export class DatabaseSession<T> implements IDatabaseSession<T> {
       return this
     }
     const idColumn = this.targetTable._idColumnLazy.value
-    if (!idColumn) {
-      ErrorUtils.IdColumnNotDefined(this.targetTable)
-    }
+    Check.checkTableHasIdColumn(this.targetTable)
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)
     }))
