@@ -13,7 +13,7 @@ export const UpdateTest: Test = {
       .run(() => {
         bookcase.name = "女生小说"//修改name
       })
-      .update(bookcase)//更新数据
+      .update(bookcase)//将修改后的name更新到数据库中
   },
   verify: function (): boolean {
     return database.of(bookcases).query(it => it.equalTo(bookcases.name, "女生小说"))[0] !== undefined

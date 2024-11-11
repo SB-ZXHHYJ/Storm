@@ -33,9 +33,9 @@ database.globalDatabase = await Database.create(this.context, {
 
 属性：
 
-- **`tableName`**：表名
-- **`id`**：`INTEGER`类型，主键且自动递增
-- **`name`**：`TEXT`类型，并使用`NOT NULL`和`UNIQUE`修饰符
+- **`tableName`**：表名；
+- **`id`**：`INTEGER`类型，主键且自动递增；
+- **`name`**：`TEXT`类型，并使用`NOT NULL`和`UNIQUE`修饰符；
 
 ```typescript
 class Bookcases extends Table<Bookcase> {
@@ -59,17 +59,17 @@ export class Bookcase {
 
 属性：
 
-- **`tableName`**：表名
-- **`id`**：`INTEGER`类型，主键且自动递增
-- **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符
+- **`tableName`**：表名；
+- **`id`**：`INTEGER`类型，主键且自动递增；
+- **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符；
 - **`bookcase`**：
-  - 类型：`INTEGER`类型，列名为`bookcase_id`
-  - 存储：将`Bookcase`的主键存储到`bookcase_id`中
-  - 读取：根据`bookcase_id`查询实体并填充
+    - 类型：`INTEGER`类型，列名为`bookcase_id`；
+    - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
+    - 读取：根据`bookcase_id`查询实体并填充；
 - **`createDataTime`**:
-  - 类型：`TEXT`类型，列名为`create_data_time`
-  - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储
-  - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`
+    - 类型：`TEXT`类型，列名为`create_data_time`；
+    - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
+    - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
 
 ```typescript
 class Books extends Table<Book> {
@@ -95,11 +95,31 @@ export class Book {
 }
 ```
 
+#### 使用 BindTo API
+
+如果你不希望在实体属性上使用`@SqlColumn`注解修饰，可以在`Table`中的`Column`中调用`bindTo()`API，来将`Column`与实体属性进行双向绑定。
+`bindTo()`API接收两个参数，一个是当前`Table<M>`的实例，填写`this`即可，一个是`keyof M`，填写`Table<M>`泛型实体`M`的属性名即可。
+
+```typescript
+class Bookcases extends Table<Bookcase> {
+  override readonly tableName = 't_bookcase'
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').notNull().unique().bindTo(this, 'name')
+}
+
+export const bookcases = new Bookcases()
+
+export class Bookcase {
+  id?: number
+  name: string
+}
+```
+
 ### 增删改查
 
 #### 1.添加数据
 
-**先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中
+**先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中。
 
 ```typescript
 const bookcase: Bookcase = {
@@ -111,9 +131,9 @@ const book: Book = {
 }
 database
   .of(bookcases)
-  .add(bookcase)//添加数据
+  .add(bookcase)//添加数据，添加成功后会自读将自增id填充到bookcase.id中
   .to(books)
-  .add(book) //添加数据
+  .add(book) //添加数据，添加成功后会自读将自增id填充到book.id中
 ```
 
 #### 2.更新数据
@@ -130,7 +150,7 @@ database
   .run(() => {
     bookcase.name = "女生小说" //修改name
   })
-  .update(bookcase) //更新数据
+  .update(bookcase) //将修改后的name更新到数据库中
 ```
 
 如果不知道主键或想实现更精细化的操作需要使用`updateIf`。
@@ -213,6 +233,8 @@ for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcase
 之后在调用`of`、`to`时将会升级操作，`Storm`将会依次调用`upVersion`函数，需要重写这个函数并在其中返回这个版本中表有哪些更新，目前支持新增列和移除列。
 
 ```typescript
+import { Column, SqlColumn, Table, TableUpdateInfo } from '@zxhhyj/storm';
+
 class NewVerBookcases extends Table<NewBookcase> {
   override readonly tableVersion = 2
   /**
@@ -224,7 +246,7 @@ class NewVerBookcases extends Table<NewBookcase> {
   /**
    * 这个是新增的列
    */
-  readonly createDataTime = Column.date("create_data_time").default(new Date().toString())
+  readonly createDataTime = Column.date('create_data_time').default(new Date().toString())
 
   upVersion(version: number): TableUpdateInfo {
     /**
@@ -235,7 +257,7 @@ class NewVerBookcases extends Table<NewBookcase> {
       return {
         add: [this.createDataTime],
         //remove: [this.name]
-        // 不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
+        //不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
       }
       //然后在此返回这个版本中表有哪些更新
     }
@@ -244,7 +266,6 @@ class NewVerBookcases extends Table<NewBookcase> {
 
 export const newVerBookcases = new NewVerBookcases()
 
-@SqlTable(newVerBookcases)
 export class NewBookcase {
   @SqlColumn(newVerBookcases.id)
   id?: number

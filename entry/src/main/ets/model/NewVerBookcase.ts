@@ -22,7 +22,7 @@ class NewVerBookcases extends Table<NewBookcase> {
       return {
         add: [this.createDataTime],
         //remove: [this.name]
-        // 不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
+        //不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
       }
       //然后在此返回这个版本中表有哪些更新
     }
