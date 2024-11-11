@@ -18,9 +18,11 @@ ohpm install @zxhhyj/storm
 ### 初始化数据库
 
 使用`Database.create`方法来创建数据库实例后，可以将其赋值给`database.globalDatabase`这是库中预留的全局唯一`Database`
-变量赋值后，可以更方便地使用`database`下的`close`和`of`函数。
+变量，当然，你也可用自己手动定义一个全局`Database`。
 
 ```typescript
+import { database, Database } from '@zxhhyj/storm'
+
 database.globalDatabase = await Database.create(this.context, {
   name: "app.db",
   securityLevel: relationalStore.SecurityLevel.S1
@@ -38,6 +40,8 @@ database.globalDatabase = await Database.create(this.context, {
 - **`name`**：`TEXT`类型，并使用`NOT NULL`和`UNIQUE`修饰符；
 
 ```typescript
+import { Column, SqlColumn, Table } from '@zxhhyj/storm'
+        
 class Bookcases extends Table<Bookcase> {
   override tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true)
@@ -71,6 +75,8 @@ export class Bookcase {
     - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
 
 ```typescript
+import { Column, SqlColumn, Table } from '@zxhhyj/storm'
+
 class Books extends Table<Book> {
   override tableName = 't_book'
   readonly bookcase = Column.entity('bookcase_id', Bookcase)
@@ -80,7 +86,7 @@ class Books extends Table<Book> {
 }
 
 export const books = new Books()
-        
+
 export class Book {
   @SqlColumn(books.id)
   id?: number
@@ -99,6 +105,8 @@ export class Book {
 `bindTo()`API接收两个参数，一个是当前`Table<M>`的实例，填写`this`即可，一个是`keyof M`，填写`Table<M>`泛型实体`M`的属性名即可。
 
 ```typescript
+import { Column, SqlColumn, Table } from '@zxhhyj/storm'
+        
 class Bookcases extends Table<Bookcase> {
   override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
