@@ -41,7 +41,7 @@ database.globalDatabase = await Database.create(this.context, {
 
 ```typescript
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
-        
+
 class Bookcases extends Table<Bookcase> {
   override tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true)
@@ -49,7 +49,7 @@ class Bookcases extends Table<Bookcase> {
 }
 
 export const bookcases = new Bookcases()
-        
+
 export class Bookcase {
   @SqlColumn(bookcases.id)
   id?: number
@@ -106,7 +106,7 @@ export class Book {
 
 ```typescript
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
-        
+
 class Bookcases extends Table<Bookcase> {
   override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
@@ -128,6 +128,8 @@ export class Bookcase {
 **先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -147,6 +149,8 @@ database
 使用`update`将数据库中的数据更新，使用`update`需要数据中存在主键，否则更新失败。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -162,6 +166,8 @@ database
 如果不知道主键或想实现更精细化的操作需要使用`updateIf`。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -176,6 +182,8 @@ database
 使用`remove`将数据库中的数据更新，使用`remove`需要数据中存在主键，否则更新失败。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -188,6 +196,8 @@ database
 如果不知道主键或想实现更精细化的操作需要使用`removeIf`。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -202,6 +212,8 @@ database
 使用`beginTransaction`来开启一个事务。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 try {
   const bookcase: Bookcase = {
     name: "科幻小说"
@@ -220,11 +232,13 @@ try {
 }
 ```
 
-### 查询数据
+#### 5.查询数据
 
 查询条件可以参考官方的[relationalStore.RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 for (const queryElement of database.of(books).query()) {
   //...
 }
@@ -284,11 +298,11 @@ export class NewBookcase {
 
 ## 路线图
 
-|                 路线                 | 预期上线版本 | 状态  |
-|:----------------------------------:|:------:|:---:|
-|        实现具有强类型且独立的数据库版本更新逻辑        | 1.3.0+ | 已完成 |
-|         ~~对象模型与SQL模型的互转逻辑解耦~~          | ~~1.3.0+~~ | ~~已废弃~~ |
-| 使用新的`bindTo`API来实现`Column`与实体的双向绑定 | 1.4.0+ | 已完成 |
+|                 路线                 |   预期上线版本   |   状态    |
+|:----------------------------------:|:----------:|:-------:|
+|        实现具有强类型且独立的数据库版本更新逻辑        |   1.3.0+   |   已完成   |
+|       ~~对象模型与SQL模型的互转逻辑解耦~~        | ~~1.3.0+~~ | ~~已废弃~~ |
+| 使用新的`bindTo`API来实现`Column`与实体的双向绑定 |   1.4.0+   |   已完成   |
 
 ## 已知问题
 

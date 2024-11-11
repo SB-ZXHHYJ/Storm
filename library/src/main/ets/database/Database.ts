@@ -1,11 +1,10 @@
 import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { Table } from '../schema/Table'
-import 'reflect-metadata'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { Column, ReferencesColumn } from '../schema/Column'
+import { Column, IValueColumn, ReferencesColumn } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
 
 class SessionQueueManager {
@@ -66,7 +65,7 @@ export class Database {
   }
 }
 
-type ColumnValuePairs = ReadonlyArray<[Column<ValueType, any>, ValueType | null]>
+type ColumnValuePairs = ReadonlyArray<[IValueColumn, ValueType | null]>
 
 interface IDatabaseCrud<T> {
   /**
@@ -181,7 +180,7 @@ interface IDatabaseCrud<T> {
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     if (targetTable.tableName !== sqliteSequences.tableName) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._columnsLazy.value
+      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
         .map(column => column._columnModifier)
         .filter(Boolean)
         .join(',')})`)
@@ -213,9 +212,10 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   private modelToValueBucket(model: T): relationalStore.ValuesBucket {
     const valueBucket: relationalStore.ValuesBucket = {}
     for (const key of Object.keys(model)) {
-      const column = this.targetTable._columnsLazy.value.find(it => it._key === key)
+      const column = this.targetTable._tableAllColumns.find(it => it._key === key)
       if (column instanceof ReferencesColumn) {
-        const idColumn = column._referencesTable._idColumnLazy.value
+        Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+        const idColumn = column._referencesTable._tableIdColumns[0]
         valueBucket[column._fieldName] = model[key][idColumn._fieldName]
         continue
       }
@@ -246,13 +246,13 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       const entity = {} as T
       for (let i = 0; i < resultSet.columnNames.length; i++) {
         const columnName = resultSet.columnNames[i]
-        const column = targetTable._columnsLazy.value.find(col => col._fieldName === columnName)
+        const column = targetTable._tableAllColumns.find(col => col._fieldName === columnName)
         if (column) {
           const value = resultSet.getValue(i) as ValueType
           if (column instanceof ReferencesColumn) {
             const referencesTable = column._referencesTable
-            const idColumn = referencesTable?._idColumnLazy.value
-            Check.checkTableHasIdColumn(referencesTable)
+            Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+            const idColumn = referencesTable?._tableIdColumns[0]
             const predicates = new RdbPredicatesWrapper(referencesTable)
             predicates.equalTo(idColumn, value as ValueType)
             const model = this.queryToEntity(predicates, referencesTable)[0]
@@ -314,7 +314,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       return this.modelToValueBucket(item)
     }))
 
-    const idColumn = this.targetTable._idColumnLazy.value
+    const idColumn = this.targetTable._tableIdColumns[0]
     if (idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER') {
       // 查询SqlSequence，用于记录自增信息
       const sqlSequenceArray = this.to(sqliteSequences).query()
@@ -351,7 +351,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable._idColumnLazy.value
+    const idColumn = this.targetTable._tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     models
       .map(item => this.modelToValueBucket(item))
@@ -388,7 +388,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable._idColumnLazy.value
+    const idColumn = this.targetTable._tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)

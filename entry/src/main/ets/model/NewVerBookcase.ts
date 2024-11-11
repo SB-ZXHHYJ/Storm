@@ -1,4 +1,4 @@
-import { Column, SqlColumn, Table, TableUpdateInfo } from '@zxhhyj/storm';
+import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
 
 class NewVerBookcases extends Table<NewBookcase> {
   override readonly tableVersion = 2
@@ -6,12 +6,13 @@ class NewVerBookcases extends Table<NewBookcase> {
    * 需要注意的是，这个NewVerBookcases实际就是Bookcases，只是方便做演示用例才创建了两个类
    */
   override readonly tableName = 't_bookcase'
-  readonly id = Column.integer('id').primaryKey(true)
-  readonly name = Column.text('name')
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').bindTo(this, 'name')
   /**
    * 这个是新增的列
    */
-  readonly createDataTime = Column.date('create_data_time').default(new Date().toString())
+  readonly createDataTime =
+    Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
 
   upVersion(version: number): TableUpdateInfo {
     /**
@@ -32,10 +33,7 @@ class NewVerBookcases extends Table<NewBookcase> {
 export const newVerBookcases = new NewVerBookcases()
 
 export class NewBookcase {
-  @SqlColumn(newVerBookcases.id)
   id?: number
-  @SqlColumn(newVerBookcases.name)
   name: string
-  @SqlColumn(newVerBookcases.createDataTime)
   createDataTime?: Date
 }

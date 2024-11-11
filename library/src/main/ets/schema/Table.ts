@@ -1,20 +1,21 @@
 import { ValueType } from '@kit.ArkData';
-import { LazyInitValue } from '../utils/LazyInitValue';
-import { Column } from './Column';
+import { Column, IValueColumn } from './Column';
 
 export type TableUpdateInfo = {
   /**
    * 新增的列数组，表示在当前版本中添加的列
    */
-  add?: Column<ValueType, any>[];
+  add?: IValueColumn[]
 
   /**
    * 移除的列数组，表示在当前版本中移除的列
    */
-  remove?: Column<ValueType, any>[];
+  remove?: IValueColumn[]
 }
 
 export interface ITable {
+  _tableAllColumns: Column<ValueType, any>[]
+  _tableIdColumns: Column<ValueType, any>[]
   /**
    * Table的名称
    */
@@ -45,22 +46,12 @@ export abstract class Table<T> implements ITable {
     return undefined
   }
 
+  readonly _tableAllColumns: Column<ValueType, any>[] = []
+
+  readonly _tableIdColumns: Column<ValueType, any>[] = []
+
   readonly tableVersion: number = 1
 
   abstract readonly tableName: string
-
-  readonly _columnsLazy = new LazyInitValue<Column<ValueType, any>[]>(() => {
-    return Object.keys(this).map((item) => {
-      return this[item]
-    }).filter((item) => {
-      return item instanceof Column
-    })
-  })
-
-  readonly _idColumnLazy = new LazyInitValue<Column<ValueType, any>>(() => {
-    return this._columnsLazy.value.find((item) => {
-      return item._isPrimaryKey
-    })
-  })
 }
 

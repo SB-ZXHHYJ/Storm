@@ -128,6 +128,8 @@ export class Bookcase {
 **先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -147,6 +149,8 @@ database
 使用`update`将数据库中的数据更新，使用`update`需要数据中存在主键，否则更新失败。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -162,6 +166,8 @@ database
 如果不知道主键或想实现更精细化的操作需要使用`updateIf`。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -176,6 +182,8 @@ database
 使用`remove`将数据库中的数据更新，使用`remove`需要数据中存在主键，否则更新失败。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -188,6 +196,8 @@ database
 如果不知道主键或想实现更精细化的操作需要使用`removeIf`。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 const bookcase: Bookcase = {
   name: "科幻小说"
 }
@@ -202,6 +212,8 @@ database
 使用`beginTransaction`来开启一个事务。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 try {
   const bookcase: Bookcase = {
     name: "科幻小说"
@@ -220,11 +232,13 @@ try {
 }
 ```
 
-### 查询数据
+#### 5.查询数据
 
 查询条件可以参考官方的[relationalStore.RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)。
 
 ```typescript
+import { database } from '@zxhhyj/storm'
+        
 for (const queryElement of database.of(books).query()) {
   //...
 }

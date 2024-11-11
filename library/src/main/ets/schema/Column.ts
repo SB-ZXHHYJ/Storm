@@ -1,10 +1,10 @@
 import { ValueType } from '@kit.ArkData';
 import { Check } from '../utils/Check';
-import { Table } from './Table';
+import { ITable, Table } from './Table';
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
-export interface IColumn<T extends ValueType> {
+export interface IValueColumn {
   /**
    * Column的名称
    */
@@ -30,32 +30,34 @@ export interface IColumn<T extends ValueType> {
    * Column修饰符
    */
   _columnModifier: string
+}
 
+export interface IFunctionColumn<V extends ValueType> {
   /**
    * 使用PRIMARY KEY修饰Column
    * @param autoincrement - 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
    * @returns 返回当前实例
    */
-  primaryKey(autoincrement?: boolean): this;
+  primaryKey(autoincrement?: boolean): IFunctionColumn<V>
 
   /**
    * 使用NOT NULL修饰Column
    * @returns 返回当前实例
    */
-  notNull(): this;
+  notNull(): IFunctionColumn<V>
 
   /**
    * 使用UNIQUE修饰Column
    * @returns 返回当前实例
    */
-  unique(): this;
+  unique(): IFunctionColumn<V>
 
   /**
    * 设置Column的默认值
    * @param value - 默认值
    * @returns 返回当前实例
    */
-  default(value: T): this;
+  default(value: V): IFunctionColumn<V>
 
   /**
    * 将Column绑定到目标Table的实体模型中的指定属性
@@ -63,7 +65,7 @@ export interface IColumn<T extends ValueType> {
    * @param key - 实体模型中的属性名称
    * @returns 返回当前实例
    */
-  bindTo<M>(targetTable: Table<M>, key: keyof M): this
+  bindTo<M>(targetTable: Table<M>, key: keyof M): IValueColumn
 }
 
 export type TypeConverters<F extends ValueType, E> = {
@@ -101,11 +103,11 @@ const DateTypeConverters: TypeConverters<string, Date> = {
   }
 }
 
-export class Column<T extends ValueType, E> implements IColumn<T> {
+export class Column<V extends ValueType, M> implements IValueColumn, IFunctionColumn<V> {
   protected constructor(
     readonly _fieldName: string,
     readonly _dataType: DataTypes,
-    readonly _typeConverters?: TypeConverters<T, E>
+    readonly _typeConverters?: TypeConverters<V, M>
   ) {
   }
 
@@ -117,36 +119,41 @@ export class Column<T extends ValueType, E> implements IColumn<T> {
 
   readonly _key: string
 
-  private readonly column = this as IColumn<T>
+  private readonly valueColumn = this as IValueColumn
 
   primaryKey(autoincrement?: boolean): this {
-    this.column._isPrimaryKey = true
-    this.column._columnModifier += ' PRIMARY KEY'
+    this.valueColumn._isPrimaryKey = true
+    this.valueColumn._columnModifier += ' PRIMARY KEY'
     if (autoincrement && this._dataType === 'INTEGER') {
-      this.column._columnModifier += ' AUTOINCREMENT'
-      this.column._isAutoincrement = true
+      this.valueColumn._columnModifier += ' AUTOINCREMENT'
+      this.valueColumn._isAutoincrement = true
     }
     return this
   }
 
   notNull(): this {
-    this.column._columnModifier += ' NOT NULL';
+    this.valueColumn._columnModifier += ' NOT NULL';
     return this
   }
 
   unique(): this {
-    this.column._columnModifier += ' UNIQUE';
+    this.valueColumn._columnModifier += ' UNIQUE';
     return this
   }
 
-  default(value: T): this {
-    this.column._columnModifier += ` DEFAULT '${value}'`;
+  default(value: V): this {
+    this.valueColumn._columnModifier += ` DEFAULT '${value}'`;
     return this
   }
 
-  bindTo<M>(_targetTable: Table<M>, key: keyof M): this {
+  bindTo<M>(targetTable: Table<M>, key: keyof M): IValueColumn {
     Check.checkColumnUniqueBindTo(this)
-    this.column._key = key.toString()
+    this.valueColumn._key = key.toString()
+    const varTable = targetTable as ITable
+    varTable._tableAllColumns.push(this)
+    if (this._isPrimaryKey) {
+      varTable._tableIdColumns.push(this)
+    }
     return this
   }
 
