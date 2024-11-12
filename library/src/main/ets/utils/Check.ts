@@ -1,5 +1,6 @@
-import { Column, Table } from '../../../../Index';
 import { ValueType } from '@kit.ArkData';
+import { Column } from '../schema/Column';
+import { Table } from '../schema/Table';
 
 export class Check {
   private constructor() {
@@ -11,7 +12,8 @@ export class Check {
    */
   static checkTableHasIdColumn(targetTable: Table<any>) {
     if (targetTable._tableIdColumns.length === 0) {
-      throw new Error(`In "${targetTable.tableName}", there is no primary key.`);    }
+      throw new Error(`In "${targetTable.tableName}", there is no primary key.`);
+    }
   }
 
   /**

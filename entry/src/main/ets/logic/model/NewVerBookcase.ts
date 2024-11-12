@@ -32,7 +32,7 @@ class NewVerBookcases extends Table<NewBookcase> {
 
 export const newVerBookcases = new NewVerBookcases()
 
-export class NewBookcase {
+export declare class NewBookcase {
   id?: number
   name: string
   createDataTime?: Date

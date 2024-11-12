@@ -9,20 +9,19 @@ export const TransactionTest: Test = {
         name: "科幻小说"
       }
       database
-        .of(bookcases)
-        .add(bookcase)
-        .beginTransaction(it => {
-          //在这个lambda中对数据库的操作都属于同一个事务
-          bookcase.name = "女生小说"
-          it.update(bookcase)
-          throw new Error('强制停止') //强制停止
-        })
+        .beginTransaction(it => it
+          .to(bookcases)
+          .add(bookcase)
+          .run(() => {
+            throw new Error('强制停止，让事务回滚')
+          })
+        )
     } catch (e) {
       //在此查询数据已验证事务是否生效
     }
   },
   verify: function (): boolean {
-    return database.of(bookcases).query(it => it.equalTo(bookcases.name, "科幻小说"))[0] !== undefined
+    return database.of(bookcases).query().length === 0
   },
   name: "TransactionTest"
 }

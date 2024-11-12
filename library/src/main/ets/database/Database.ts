@@ -2,10 +2,11 @@ import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { Table } from '../schema/Table'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
-import { SqliteSequence, sqliteSequences } from '../model/SqliteSequence'
+import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
 import { Column, IValueColumn, ReferencesColumn } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
+import { Nothing, nothings } from '../model/Nothing'
 
 class SessionQueueManager {
   private constructor() {
@@ -28,6 +29,8 @@ class SessionQueueManager {
   }
 }
 
+type DatabaseCrudOnlyTo = Pick<DatabaseCrud<Nothing>, 'to'>
+
 export class Database {
   private constructor(private readonly rdbStore: relationalStore.RdbStore) {
   }
@@ -46,8 +49,26 @@ export class Database {
    * @param targetTable 要操作的Table
    * @returns 返回这个Table的操作对象
    */
-  of<T>(targetTable: Table<T>): DatabaseCrud<T> {
+  of<M>(targetTable: Table<M>): DatabaseCrud<M> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
+  }
+
+  /**
+   * 开启一个普通作用域
+   * @param scope 普通作用域
+   * @returns 返回当前实例
+   */
+  begin(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<Nothing> {
+    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).begin(scope)
+  }
+
+  /**
+   * 开启一个事务作用域
+   * @param scope 事务作用域
+   * @returns 返回当前实例
+   */
+  beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<Nothing> {
+    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).beginTransaction(scope)
   }
 
   /**
@@ -180,7 +201,7 @@ interface IDatabaseCrud<T> {
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     Check.checkTableAndColumns(targetTable)
-    if (targetTable.tableName !== sqliteSequences.tableName) {
+    if (targetTable.tableName !== sqliteSequences.tableName && targetTable.tableName !== nothings.tableName) {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
         .map(column => column._columnModifier)
         .filter(Boolean)
@@ -280,14 +301,14 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
-    scope.call(undefined, this)
+    scope.call(scope, this)
     return this
   }
 
   beginTransaction<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
     try {
       this.rdbStore.beginTransaction()
-      scope.call(undefined, this)
+      scope.call(scope, this)
       this.rdbStore.commit()
     } catch (e) {
       this.rdbStore.rollBack()
@@ -311,20 +332,15 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
     const idColumn = this.targetTable._tableIdColumns[0]
     if (idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER') {
-      // 查询SqlSequence，用于记录自增信息
-      const sqlSequenceArray = this.to(sqliteSequences).query()
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket, index) => {
         if (valueBucket[idColumn._fieldName] == null) {
-          // 获取Table对应的最新自增id
-          const sqlSequence = sqlSequenceArray.find((value) => value.name === this.targetTable.tableName)
+          const sqlSequence =
+            this.to(sqliteSequences).query().find((value) => value.name === this.targetTable.tableName)
           if (sqlSequence) {
-            valueBucket[idColumn._fieldName] = sqlSequence.seq += 1
+            valueBucket[idColumn._fieldName] = sqlSequence.seq + 1
           } else {
-            // 如果没有找到序列，则创建一个新的序列
-            const newSqlSequence: SqliteSequence = { name: this.targetTable.tableName, seq: 1 }
-            valueBucket[idColumn._fieldName] = newSqlSequence.seq
-            sqlSequenceArray.push(newSqlSequence)
+            valueBucket[idColumn._fieldName] = 1
           }
         }
         this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
@@ -431,13 +447,34 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 export namespace database {
   export declare let globalDatabase: Database
 
-  export async function close() {
+  /**
+   * @see globalDatabase
+   */
+  export async function close(): Promise<void> {
     return globalDatabase!!.close().finally(() => {
       globalDatabase = null
     })
   }
 
-  export function of<T>(targetTable: Table<T>) {
+  /**
+   * @see globalDatabase
+   */
+  export function of<M>(targetTable: Table<M>): DatabaseCrud<M> {
     return globalDatabase!!.of(targetTable)
   }
+
+  /**
+   * @see globalDatabase
+   */
+  export function begin(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
+    return globalDatabase!!.begin(scope)
+  }
+
+  /**
+   * @see globalDatabase
+   */
+  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
+    return globalDatabase!!.beginTransaction(scope)
+  }
+
 }

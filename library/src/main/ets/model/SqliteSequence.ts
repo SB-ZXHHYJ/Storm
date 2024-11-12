@@ -1,4 +1,5 @@
-import { Column, Table } from '../../../../Index'
+import { Column } from '../schema/Column'
+import { Table } from '../schema/Table'
 
 class SqliteSequences extends Table<SqliteSequence> {
   override readonly tableName = 'sqlite_sequence'
@@ -8,7 +9,7 @@ class SqliteSequences extends Table<SqliteSequence> {
 
 export const sqliteSequences = new SqliteSequences()
 
-export class SqliteSequence {
+export declare class SqliteSequence {
   readonly name: string
-  seq: number
+  readonly seq: number
 }

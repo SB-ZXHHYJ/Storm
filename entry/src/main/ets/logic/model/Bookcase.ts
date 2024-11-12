@@ -8,7 +8,7 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-export class Bookcase {
+export declare class Bookcase {
   id?: number
   name: string
 }
