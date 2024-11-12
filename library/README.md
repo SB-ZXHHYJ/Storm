@@ -50,7 +50,7 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-export class Bookcase {
+export declare class Bookcase {
   id?: number
   name: string
 }
@@ -64,13 +64,13 @@ export class Bookcase {
 - **`id`**：`INTEGER`类型，主键且自动递增；
 - **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符；
 - **`bookcase`**：
-  - 类型：`INTEGER`类型，列名为`bookcase_id`；
-  - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
-  - 读取：根据`bookcase_id`查询实体并填充；
+    - 类型：`INTEGER`类型，列名为`bookcase_id`；
+    - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
+    - 读取：根据`bookcase_id`查询实体并填充；
 - **`createDataTime`**:
-  - 类型：`TEXT`类型，列名为`create_data_time`；
-  - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
-  - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
+    - 类型：`TEXT`类型，列名为`create_data_time`；
+    - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
+    - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
 
 ```typescript
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
@@ -86,7 +86,7 @@ class Books extends Table<Book> {
 
 export const books = new Books()
 
-export class Book {
+export declare class Book {
   id?: number
   name: string
   bookcase: Bookcase
@@ -188,32 +188,7 @@ database
   .removeIf(it => it.equalTo(bookcases.name, "科幻小说")) //指定条件来删除数据
 ```
 
-#### 4.使用事务
-
-使用`beginTransaction`来开启一个事务。
-
-```typescript
-import { database } from '@zxhhyj/storm'
-
-try {
-  const bookcase: Bookcase = {
-    name: "科幻小说"
-  }
-  database
-    .of(bookcases)
-    .add(bookcase)
-    .beginTransaction(it => {
-      //在这个lambda中对数据库的操作都属于同一个事务
-      bookcase.name = "女生小说"
-      it.update(bookcase)
-      throw new Error('强制停止') //强制停止
-    })
-} catch (e) {
-  //在此查询数据已验证事务是否生效
-}
-```
-
-#### 5.查询数据
+#### 4.查询数据
 
 查询条件可以参考官方的[relationalStore.RdbPredicates](https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates)。
 
@@ -225,6 +200,30 @@ for (const queryElement of database.of(books).query()) {
 }
 for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcases.name, "科幻小说"))) {
   //...
+}
+```
+
+#### 5.使用事务
+
+使用`beginTransaction`来开启一个事务。
+
+```typescript
+import { database } from '@zxhhyj/storm'
+
+try {
+  const bookcase: Bookcase = {
+    name: "科幻小说"
+  }
+  database
+    .beginTransaction(it => it
+      .to(bookcases)
+      .add(bookcase)
+      .run(() => {
+        throw new Error('强制停止，让事务回滚')
+      })
+    )
+} catch (e) {
+  //在此查询数据已验证事务是否生效
 }
 ```
 
