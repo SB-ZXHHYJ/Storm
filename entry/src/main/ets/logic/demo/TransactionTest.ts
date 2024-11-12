@@ -17,7 +17,7 @@ export const TransactionTest: Test = {
           })
         )
     } catch (e) {
-      //在此查询数据已验证事务是否生效
+      //在此查询数据以验证事务是否生效
     }
   },
   verify: function (): boolean {

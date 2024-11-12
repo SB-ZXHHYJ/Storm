@@ -4,7 +4,7 @@
 
 #### 优化
 
-- `Database.create()`API修改为接收一个`relationalStore.RdbStore`作为参数，使`Storm`可以与其他`SQL`库同时工作。
+- `Database.create()`API修改为接收一个`relationalStore.RdbStore`作为参数，使`Storm`可以与其他`SQL`框架同时工作。
 
 #### 废弃
 
