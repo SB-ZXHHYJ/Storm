@@ -17,27 +17,33 @@ ohpm install @zxhhyj/storm
 
 ### 初始化数据库
 
-使用`Database.create`方法来创建数据库实例后，可以将其赋值给`database.globalDatabase`这是库中预留的全局唯一`Database`
-变量，当然，你也可用自己手动定义一个全局`Database`。
+使用`Database.create()`函数来创建数据库实例后，可以将其赋值给`database.globalDatabase`这是库中预留的全局唯一`Database`
+变量，当然，你也可用自己手动定义一个全局`Database`，我们建议在`AbilityStage`创建时初始化`Database`。
 
 ```typescript
-import { database, Database } from '@zxhhyj/storm'
+import { AbilityStage, Want } from '@kit.AbilityKit';
+import { database, Database } from '@zxhhyj/storm';
+import { relationalStore } from '@kit.ArkData';
 
-database.globalDatabase = await Database.create(this.context, {
-  name: "app.db",
-  securityLevel: relationalStore.SecurityLevel.S1
-});
+export default class AppAbilityStage extends AbilityStage {
+  async onCreate() {
+    database.globalDatabase = Database.create(await relationalStore.getRdbStore(this.context, {
+      name: "app.db", securityLevel: relationalStore.SecurityLevel.S1
+    }))
+  }
+
+  onAcceptWant(_want: Want): string {
+    return 'AppAbilityStage';
+  }
+}
 ```
+
+`Database.create()`函数接收一个`relationalStore.RdbStore`实例，你可以与其他`SQL`
+框架共享同一个实例，使其共同工作或者逐步替代之前的`SQL`框架。
 
 ### 定义表结构
 
 #### 1.定义 Bookcase 类
-
-属性：
-
-- **`tableName`**：表名；
-- **`id`**：`INTEGER`类型，主键且自动递增；
-- **`name`**：`TEXT`类型，并使用`NOT NULL`和`UNIQUE`修饰符；
 
 ```typescript
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
@@ -56,21 +62,13 @@ export declare class Bookcase {
 }
 ```
 
+`Storm`将会生成以下的SQL语句：
+
+```text
+CREATE TABLE IF NOT EXISTS t_bookcase(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL UNIQUE)
+```
+
 #### 2.定义 Book 类
-
-属性：
-
-- **`tableName`**：表名；
-- **`id`**：`INTEGER`类型，主键且自动递增；
-- **`name`**：`TEXT`类型，并使用`UNIQUE`修饰符；
-- **`bookcase`**：
-    - 类型：`INTEGER`类型，列名为`bookcase_id`；
-    - 存储：将`Bookcase`的主键存储到`bookcase_id`中；
-    - 读取：根据`bookcase_id`查询实体并填充；
-- **`createDataTime`**:
-    - 类型：`TEXT`类型，列名为`create_data_time`；
-    - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
-    - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
 
 ```typescript
 import { Column, SqlColumn, Table } from '@zxhhyj/storm'
@@ -94,11 +92,30 @@ export declare class Book {
 }
 ```
 
+其中`bookcase`和`createDataTime`比较特殊：
+
+- **`bookcase`**：
+  - 列名：`bookcase_id`；
+  - 实际类型：`INTEGER`类型`；
+  - 存储：将`Bookcase`的**主键**进行存储；
+  - 读取：根据存储的**主键**在`bookcases`表中查询实体并填充；
+- **`createDataTime`**:
+  - 列名：`create_data_time`；
+  - 实际类型：`TEXT`类型；
+  - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
+  - 读取：使用内置的`DateTypeConverters`将读出的`string`来恢复为`Date`；
+
+`Storm`将会生成以下的SQL语句：
+
+```text
+CREATE TABLE IF NOT EXISTS t_book(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,bookcase_id INTEGER,create_data_time TEXT DEFAULT 'Tue Nov 12 2024 19:25:15 GMT+0800')
+```
+
 ### 增删改查
 
 #### 1.添加数据
 
-**先使用`of`来确定要操作的表，后续使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中。
+**先使用`of`来确定要操作的表，后续可以使用`to`来切换要操作的表**，然后使用`add`方法将数据添加到数据库中。
 
 ```typescript
 import { database } from '@zxhhyj/storm'
@@ -235,8 +252,6 @@ try {
 ```typescript
 import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
 
-import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
-
 class NewVerBookcases extends Table<NewBookcase> {
   override readonly tableVersion = 2
   /**
@@ -244,7 +259,7 @@ class NewVerBookcases extends Table<NewBookcase> {
    */
   override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
-  readonly name = Column.text('name').bindTo(this, 'name')
+  readonly name = Column.text('name').notNull().bindTo(this, 'name')
   /**
    * 这个是新增的列
    */
@@ -257,19 +272,19 @@ class NewVerBookcases extends Table<NewBookcase> {
      * upVersion将被调用一次，upVersion(2)
      */
     if (version === 2) {
+      //在此返回这个版本中表有哪些更新
       return {
         add: [this.createDataTime],
         //remove: [this.name]
-        //不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
+        //不知道为什么同步执行删除指令时会报错？添加则没有问题，感觉是华子的问题
       }
-      //然后在此返回这个版本中表有哪些更新
     }
   }
 }
 
 export const newVerBookcases = new NewVerBookcases()
 
-export class NewBookcase {
+export declare class NewBookcase {
   id?: number
   name: string
   createDataTime?: Date

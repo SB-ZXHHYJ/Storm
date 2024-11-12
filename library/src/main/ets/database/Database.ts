@@ -1,4 +1,3 @@
-import { Context } from '@ohos.arkui.UIContext'
 import { relationalStore, ValueType } from '@kit.ArkData'
 import { Table } from '../schema/Table'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
@@ -36,8 +35,7 @@ export class Database {
   }
 
   /**
-   * 关闭数据库
-   * @returns 返回一个Promise，异步关闭数据库
+   * 异步关闭数据库
    */
   async close(): Promise<void> {
     SessionQueueManager.clearSessionQueues()
@@ -47,42 +45,38 @@ export class Database {
   /**
    * 对指定Table进行增删改查操作
    * @param targetTable 要操作的Table
-   * @returns 返回这个Table的操作对象
+   * @returns {DatabaseCrud<M>}
    */
   of<M>(targetTable: Table<M>): DatabaseCrud<M> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
   /**
-   * 开启一个普通作用域
-   * @param scope 普通作用域
-   * @returns 返回当前实例
+   * 开启一个普通lambda
+   * 主要用于链式调用时执行额外的代码逻辑
+   * @param scope 普通lambda
+   * @returns {DatabaseCrud<Nothing>}
    */
-  begin(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<Nothing> {
-    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).begin(scope)
+  run(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<Nothing> {
+    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).run(scope)
   }
 
   /**
-   * 开启一个事务作用域
-   * @param scope 事务作用域
-   * @returns 返回当前实例
+   * 开启一个事务lambda
+   * @param scope 事务lambda
+   * @returns {DatabaseCrud<Nothing>}
    */
   beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<Nothing> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).beginTransaction(scope)
   }
 
   /**
-   * 创建数据库实例
-   * @param context 上下文
-   * @param config 数据库的配置
-   * @returns 返回一个Promise，异步创建数据库实例
+   * 创建Database
+   * @param rdbStore relationalStore.RdbStore
+   * @returns {Database}
    */
-  static async create(context: Context, config: relationalStore.StoreConfig): Promise<Database> {
-    try {
-      return new Database(await relationalStore.getRdbStore(context, config))
-    } catch (error) {
-      throw error
-    }
+  static create(rdbStore: relationalStore.RdbStore): Database {
+    return new Database(rdbStore)
   }
 }
 
@@ -97,22 +91,24 @@ interface IDatabaseCrud<T> {
   to<T>(targetTable: Table<T>): IDatabaseCrud<T>
 
   /**
-   * 在链式调用中执行额外的代码块
-   * @param scope 要执行的代码块
+   * 开启一个普通lambda
+   * 主要用于链式调用时执行额外的代码逻辑
+   * @param scope 普通lambda
    * @returns 返回当前实例
    */
-  run(scope: () => void): this
+  run<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
 
   /**
    * 开启一个普通作用域
    * @param scope 普通作用域
    * @returns 返回当前实例
+   * @deprecated 已废弃
    */
   begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
 
   /**
-   * 开启一个事务作用域
-   * @param scope 事务作用域
+   * 开启一个事务lambda
+   * @param scope 事务lambda
    * @returns 返回当前实例
    */
   beginTransaction<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
@@ -201,11 +197,13 @@ interface IDatabaseCrud<T> {
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     Check.checkTableAndColumns(targetTable)
-    if (targetTable.tableName !== sqliteSequences.tableName && targetTable.tableName !== nothings.tableName) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
-        .map(column => column._columnModifier)
-        .filter(Boolean)
-        .join(',')})`)
+    if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
+      const createTableSql =
+        `CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
+          .map(column => column._columnModifier)
+          .filter(Boolean)
+          .join(',')})`
+      this.rdbStore.executeSync(createTableSql)
     }
     if (targetTable.tableVersion > 1) {
       const oldTableVersion: StormTableVersion | undefined =
@@ -218,7 +216,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
             this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
           })
           modificationInfo?.remove?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._fieldName} ${item._dataType}`)
+            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._fieldName}`)
           })
         }
         if (oldTableVersion) {
@@ -295,11 +293,15 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
   }
 
-  run(scope: () => void): this {
-    scope()
+  run<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
+    scope.call(scope, this)
     return this
   }
 
+  /**
+   * @deprecated 已废弃，请使用run替代
+   * @see run
+   */
   begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
     scope.call(scope, this)
     return this
@@ -466,8 +468,8 @@ export namespace database {
   /**
    * @see globalDatabase
    */
-  export function begin(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
-    return globalDatabase!!.begin(scope)
+  export function run(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
+    return globalDatabase!!.run(scope)
   }
 
   /**

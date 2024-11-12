@@ -1,10 +1,20 @@
 ## 版本更新记录
 
+### 2024/11/13 - 1.6.2
+
+#### 优化
+
+- `Database.create()`API修改为接收一个`relationalStore.RdbStore`作为参数，使`Storm`可以与其他`SQL`库同时工作。
+
+#### 废弃
+
+- 废弃了`begin()`API，将由`run()`API替代。
+
 ### 2024/11/12 - 1.6.1
 
 #### 新增
 
-- `Database`新增`begin()`和`beginTransaction()`API，支持直接开启事务，不用先`of()`或者`to()`后才能开启，使用起来更加优雅。
+- `Database`新增`begin()`和`beginTransaction()`API，支持直接开启事务，不用先调用`of()`或者`to()`才能开启，使用起来更加方便。
 
 ### 2024/11/12 - 1.6.0
 

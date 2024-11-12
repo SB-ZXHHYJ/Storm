@@ -7,7 +7,7 @@ class NewVerBookcases extends Table<NewBookcase> {
    */
   override readonly tableName = 't_bookcase'
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
-  readonly name = Column.text('name').bindTo(this, 'name')
+  readonly name = Column.text('name').notNull().bindTo(this, 'name')
   /**
    * 这个是新增的列
    */
@@ -20,12 +20,12 @@ class NewVerBookcases extends Table<NewBookcase> {
      * upVersion将被调用一次，upVersion(2)
      */
     if (version === 2) {
+      //在此返回这个版本中表有哪些更新
       return {
         add: [this.createDataTime],
         //remove: [this.name]
-        //不知道为什么同步执行删除指令时会报错，非同步不报错但是又会没有效果
+        //不知道为什么同步执行删除指令时会报错？添加则没有问题，感觉是华子的问题
       }
-      //然后在此返回这个版本中表有哪些更新
     }
   }
 }
