@@ -1,7 +1,6 @@
 import { Column } from '../schema/Column'
 import { Table } from '../schema/Table'
 
-
 /**
  * 用于记录每一个表的版本号信息
  */
@@ -13,7 +12,7 @@ class StormTableVersions extends Table<StormTableVersion> {
 
 export const stormTableVersions = new StormTableVersions()
 
-export declare class StormTableVersion {
+export class StormTableVersion {
   readonly name: string
   readonly version: number
 }

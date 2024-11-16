@@ -1,5 +1,4 @@
-import { ValueType } from '@kit.ArkData';
-import { Column, IValueColumn } from './Column';
+import { Column, IValueColumn, SupportValueType } from './Column';
 
 export type TableUpdateInfo = {
   /**
@@ -9,13 +8,14 @@ export type TableUpdateInfo = {
 
   /**
    * 移除的列数组，表示在当前版本中移除的列
+   * @deprecated 已废弃，sqlite不支持移除列
    */
   remove?: IValueColumn[]
 }
 
 export interface ITable {
-  _tableAllColumns: Column<ValueType, any>[]
-  _tableIdColumns: Column<ValueType, any>[]
+  _tableAllColumns: Column<SupportValueType, any>[]
+  _tableIdColumns: Column<SupportValueType, any>[]
   /**
    * Table的名称
    */
@@ -46,9 +46,9 @@ export abstract class Table<T> implements ITable {
     return undefined
   }
 
-  readonly _tableAllColumns: Column<ValueType, any>[] = []
+  readonly _tableAllColumns: Column<SupportValueType, any>[] = []
 
-  readonly _tableIdColumns: Column<ValueType, any>[] = []
+  readonly _tableIdColumns: Column<SupportValueType, any>[] = []
 
   readonly tableVersion: number = 1
 

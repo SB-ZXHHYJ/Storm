@@ -12,7 +12,7 @@ class Books extends Table<Book> {
 
 export const books = new Books()
 
-export declare class Book {
+export class Book {
   id?: number
   name: string
   bookcase: Bookcase

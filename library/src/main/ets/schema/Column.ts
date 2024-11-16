@@ -1,8 +1,9 @@
-import { ValueType } from '@kit.ArkData';
 import { Check } from '../utils/Check';
 import { ITable, Table } from './Table';
 
-type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
+export type SupportValueType = null | number | string | boolean | Uint8Array
+
+export type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
 export interface IValueColumn {
   /**
@@ -32,32 +33,32 @@ export interface IValueColumn {
   _columnModifier: string
 }
 
-export interface IFunctionColumn<V extends ValueType> {
+export interface IFunctionColumn<V, M> {
   /**
    * 使用PRIMARY KEY修饰Column
    * @param autoincrement - 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
    * @returns 返回当前实例
    */
-  primaryKey(autoincrement?: boolean): IFunctionColumn<V>
+  primaryKey(autoincrement?: boolean): IFunctionColumn<V, M>
 
   /**
    * 使用NOT NULL修饰Column
    * @returns 返回当前实例
    */
-  notNull(): IFunctionColumn<V>
+  notNull(): IFunctionColumn<V, M>
 
   /**
    * 使用UNIQUE修饰Column
    * @returns 返回当前实例
    */
-  unique(): IFunctionColumn<V>
+  unique(): IFunctionColumn<V, M>
 
   /**
    * 设置Column的默认值
    * @param value - 默认值
    * @returns 返回当前实例
    */
-  default(value: V): IFunctionColumn<V>
+  default(value: V): IFunctionColumn<V, M>
 
   /**
    * 将Column绑定到目标Table的实体模型中的指定属性
@@ -65,10 +66,10 @@ export interface IFunctionColumn<V extends ValueType> {
    * @param key - 实体模型中的属性名称
    * @returns 返回当前实例
    */
-  bindTo<M>(targetTable: Table<M>, key: keyof M): IValueColumn
+  bindTo<T>(targetTable: Table<T>, key: SafeTypes<T, M>): IValueColumn
 }
 
-export type TypeConverters<F extends ValueType, E> = {
+export type TypeConverters<F extends SupportValueType, E> = {
   /**
    * 将实体转换为数据库支持的类型保存
    */
@@ -103,7 +104,11 @@ const DateTypeConverters: TypeConverters<string, Date> = {
   }
 }
 
-export class Column<V extends ValueType, M> implements IValueColumn, IFunctionColumn<V> {
+type SafeTypes<T, M> = {
+  [K in keyof T]: NonNullable<T[K]> extends M ? K : never
+}[keyof T] & keyof T
+
+export class Column<V extends SupportValueType, M> implements IValueColumn, IFunctionColumn<V, M> {
   protected constructor(
     readonly _fieldName: string,
     readonly _dataType: DataTypes,
@@ -146,7 +151,7 @@ export class Column<V extends ValueType, M> implements IValueColumn, IFunctionCo
     return this
   }
 
-  bindTo<M>(targetTable: Table<M>, key: keyof M): IValueColumn {
+  bindTo<T>(targetTable: Table<T>, key: SafeTypes<T, M>): IValueColumn {
     Check.checkColumnUniqueBindTo(this)
     this.valueColumn._key = key.toString()
     const varTable = targetTable as ITable
@@ -158,40 +163,41 @@ export class Column<V extends ValueType, M> implements IValueColumn, IFunctionCo
   }
 
   /**
-   * 创建INTEGER类型的列
-   * @param fieldName 列名
+   * 创建INTEGER类型的Column
+   * @param fieldName  Column的名称
    */
   static integer(fieldName: string): Column<number, number> {
     return new Column(fieldName, 'INTEGER')
   }
 
   /**
-   * 创建REAL类型的列
-   * @param fieldName 列名
+   * 创建REAL类型的Column
+   * @param fieldName  Column的名称
    */
   static real(fieldName: string): Column<number, number> {
     return new Column(fieldName, 'REAL')
   }
 
   /**
-   * 创建TEXT类型的列
-   * @param fieldName 列名
+   * 创建TEXT类型的Column
+   * @param fieldName  Column的名称
    */
   static text(fieldName: string): Column<string, string> {
     return new Column(fieldName, 'TEXT')
   }
 
   /**
-   * 创建boolean类型的列
-   * @param fieldName 列名
+   * 创建INTEGER类型的Column并通过BooleanTypeConverters将类型转换为boolean
+   * @see BooleanTypeConverters
+   * @param fieldName Column的名称
    */
   static boolean(fieldName: string): Column<number, boolean> {
     return new Column(fieldName, 'INTEGER', BooleanTypeConverters)
   }
 
   /**
-   * 创建自定义类型的列
-   * @param fieldName 列名
+   * 创建TEXT类型的列并通过自定义converters来进行类型转换
+   * @param fieldName  Column的名称
    * @param converters 转换器
    */
   static json<T>(fieldName: string, converters: TypeConverters<string, T>): Column<string, T> {
@@ -199,18 +205,27 @@ export class Column<V extends ValueType, M> implements IValueColumn, IFunctionCo
   }
 
   /**
-   * 创建Date类型的列
-   * @param fieldName 列名
+   * 创建TEXT类型的Column并通过DateTypeConverters将类型转换为Date
+   * @see DateTypeConverters
+   * @param fieldName  Column的名称
    */
   static date(fieldName: string): Column<string, Date> {
     return this.json(fieldName, DateTypeConverters)
   }
 
   /**
+   * 创建Uint8Array类型的Column
+   * @param fieldName  Column的名称
+   */
+  static blob(fieldName: string): Column<Uint8Array, Uint8Array> {
+    return new Column(fieldName, 'BLOB')
+  }
+
+  /**
    * 将Column绑定到参考Table中，相当于关系数据库中的外键
    * Storm会将参考Table中实体的主键存储到这个Column上，在查询时Storm会自动从参考Table中查询并填充到这个Column所绑定的实体属性上
    * @todo 使用时需要确保参考Table和其实体都存在主键
-   * @param fieldName 列名
+   * @param fieldName  Column的名称
    * @param referencesTable 参考的Table
    * @returns
    */
@@ -219,7 +234,7 @@ export class Column<V extends ValueType, M> implements IValueColumn, IFunctionCo
   }
 }
 
-export class ReferencesColumn<T extends ValueType, E> extends Column<T, E> {
+export class ReferencesColumn<T extends SupportValueType, E> extends Column<T, E> {
   constructor(
     readonly _fieldName: string,
     readonly _referencesTable: Table<E>

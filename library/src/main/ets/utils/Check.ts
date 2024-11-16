@@ -1,5 +1,4 @@
-import { ValueType } from '@kit.ArkData';
-import { Column } from '../schema/Column';
+import { Column, SupportValueType } from '../schema/Column';
 import { Table } from '../schema/Table';
 
 export class Check {
@@ -46,7 +45,7 @@ export class Check {
    * 检查column是否重复绑定属性
    * @param column 要检查的column
    */
-  static checkColumnUniqueBindTo(column: Column<ValueType, any>) {
+  static checkColumnUniqueBindTo(column: Column<SupportValueType, any>) {
     if (column._key) {
       throw new Error(`In ${column._fieldName}, each property can only be decorated with one bindTo().`)
     }

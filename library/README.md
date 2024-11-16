@@ -94,12 +94,12 @@ export declare class Book {
 
 其中`bookcase`和`createDataTime`比较特殊：
 
-- **`bookcase`**：
+- `bookcase`：
   - 列名：`bookcase_id`；
-  - 实际类型：`INTEGER`类型`；
+  - 实际类型：`INTEGER`类型；
   - 存储：将`Bookcase`的**主键**进行存储；
   - 读取：根据存储的**主键**在`bookcases`表中查询实体并填充；
-- **`createDataTime`**:
+- `createDataTime`:
   - 列名：`create_data_time`；
   - 实际类型：`TEXT`类型；
   - 存储：使用内置的`DateTypeConverters`将`Date`转换为`string`类型存储；
@@ -274,9 +274,7 @@ class NewVerBookcases extends Table<NewBookcase> {
     if (version === 2) {
       //在此返回这个版本中表有哪些更新
       return {
-        add: [this.createDataTime],
-        //remove: [this.name]
-        //不知道为什么同步执行删除指令时会报错？添加则没有问题，感觉是华子的问题
+        add: [this.createDataTime]
       }
     }
   }
@@ -301,7 +299,7 @@ export declare class NewBookcase {
 
 ## 已知问题
 
-- 数据库版本更新从表中移除列的功能无法正常使用。
+- 数据库版本更新中的移除列功能无法正常使用。
 
 ## 交流
 

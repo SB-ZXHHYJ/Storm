@@ -1,9 +1,9 @@
-import { relationalStore, ValueType } from '@kit.ArkData'
+import { relationalStore } from '@kit.ArkData'
 import { Table } from '../schema/Table'
 import { RdbPredicatesWrapper } from '../utils/RdbPredicatesWrapper'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { Column, IValueColumn, ReferencesColumn } from '../schema/Column'
+import { Column, IValueColumn, ReferencesColumn, SupportValueType } from '../schema/Column'
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
 import { Nothing, nothings } from '../model/Nothing'
 
@@ -80,7 +80,7 @@ export class Database {
   }
 }
 
-type ColumnValuePairs = ReadonlyArray<[IValueColumn, ValueType | null]>
+type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
 
 interface IDatabaseCrud<T> {
   /**
@@ -210,21 +210,20 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
         this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
       const currentVersion = oldTableVersion?.version ?? 1;
       if (currentVersion < targetTable.tableVersion) {
-        for (let ver = currentVersion + 1; ver <= targetTable.tableVersion; ver++) {
-          const modificationInfo = targetTable.upVersion(ver)
-          modificationInfo?.add?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
-          })
-          modificationInfo?.remove?.forEach(item => {
-            this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} DROP COLUMN ${item._fieldName}`)
-          })
-        }
-        if (oldTableVersion) {
-          this.to(stormTableVersions).updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
-            [[stormTableVersions.version, targetTable.tableVersion]])
-        } else {
-          this.to(stormTableVersions).add({ name: targetTable.tableName, version: targetTable.tableVersion })
-        }
+        this.beginTransaction(() => {
+          for (let ver = currentVersion + 1; ver <= targetTable.tableVersion; ver++) {
+            const modificationInfo = targetTable.upVersion(ver)
+            modificationInfo?.add?.forEach(item => {
+              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
+            })
+          }
+          if (oldTableVersion) {
+            this.to(stormTableVersions).updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
+              [[stormTableVersions.version, targetTable.tableVersion]])
+          } else {
+            this.to(stormTableVersions).add({ name: targetTable.tableName, version: targetTable.tableVersion })
+          }
+        })
       }
     }
   }
@@ -255,20 +254,20 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   private queryToEntity<T>(wrapper: RdbPredicatesWrapper<T>,
     targetTable: Table<T>): T[] {
     const entityArray: T[] = []
-    const resultSet = this.rdbStore.querySync(wrapper._rdbPredicates)
+    const resultSet = this.rdbStore.querySync(wrapper.getRdbPredicates())
     while (resultSet.goToNextRow()) {
       const entity = {} as T
       for (let i = 0; i < resultSet.columnNames.length; i++) {
         const columnName = resultSet.columnNames[i]
         const column = targetTable._tableAllColumns.find(col => col._fieldName === columnName)
         if (column) {
-          const value = resultSet.getValue(i) as ValueType
+          const value = resultSet.getValue(i) as SupportValueType
           if (column instanceof ReferencesColumn) {
             const referencesTable = column._referencesTable
             Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
             const idColumn = referencesTable?._tableIdColumns[0]
             const predicates = new RdbPredicatesWrapper(referencesTable)
-            predicates.equalTo(idColumn, value as ValueType)
+            predicates.equalTo(idColumn, value as SupportValueType)
             const model = this.queryToEntity(predicates, referencesTable)[0]
             entity[column._key] = model
             continue
@@ -370,8 +369,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       .map(item => this.modelToValueBucket(item))
       .forEach(item => {
         const wrapper = new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn,
-          item[idColumn._fieldName] as ValueType)
-        this.rdbStore.updateSync(item, wrapper._rdbPredicates)
+          item[idColumn._fieldName] as SupportValueType)
+        this.rdbStore.updateSync(item, wrapper.getRdbPredicates())
       })
     return this
   }
@@ -384,11 +383,11 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
         return acc
       }, {} as T)
       this.rdbStore.updateSync(valueBucket,
-        wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
+        wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).getRdbPredicates())
       return this
     }
     this.rdbStore.updateSync(this.modelToValueBucket(model as T),
-      wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
+      wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).getRdbPredicates())
     return this
   }
 
@@ -409,20 +408,20 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as ValueType)
-        this.rdbStore.deleteSync(wrapper._rdbPredicates)
+          new RdbPredicatesWrapper(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as SupportValueType)
+        this.rdbStore.deleteSync(wrapper.getRdbPredicates())
       })
     return this
   }
 
   removeIf(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): this {
-    this.rdbStore.deleteSync(wrapperLambda(new RdbPredicatesWrapper(this.targetTable))._rdbPredicates)
+    this.rdbStore.deleteSync(wrapperLambda(new RdbPredicatesWrapper(this.targetTable)).getRdbPredicates())
     return this
   }
 
   clear(): this {
     try {
-      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable)._rdbPredicates)
+      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).getRdbPredicates())
     } finally {
       return this
     }
@@ -430,7 +429,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
   reset(): this {
     try {
-      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable)._rdbPredicates)
+      this.rdbStore.deleteSync(new RdbPredicatesWrapper(this.targetTable).getRdbPredicates())
       this
         .to(sqliteSequences)
         .removeIf(it => it.equalTo(sqliteSequences.name, this.targetTable.tableName))
