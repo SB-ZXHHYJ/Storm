@@ -5,7 +5,6 @@ import { Test } from './Test'
 export const VerUpAndJsonTest: Test = {
   main: () => {
     const bookcase: NewBookcase = {
-      name: "科幻小说",
       createDataTime: new Date()
     }
     database
@@ -14,7 +13,7 @@ export const VerUpAndJsonTest: Test = {
     //调用Table初次调用of或者to时都会进行版本升级
   },
   verify: function (): boolean {
-    const bookcase = database.of(newVerBookcases).query(it => it.groupBy([newVerBookcases.name]))[0]
+    const bookcase = database.of(newVerBookcases).query()[0]
     return bookcase.createDataTime instanceof Date
   },
   name: "VerUpAndJsonTest"

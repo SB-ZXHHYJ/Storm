@@ -192,6 +192,8 @@ interface IDatabaseCrud<T> {
    * @returns 查询到的数据集合
    */
   query(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T[]
+
+  //queryOne(wrapperLambda: (wrapper: RdbPredicatesWrapper<T>) => RdbPredicatesWrapper<T>): T | undefined
 }
 
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
@@ -201,7 +203,6 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       const createTableSql =
         `CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
           .map(column => column._columnModifier)
-          .filter(Boolean)
           .join(',')})`
       this.rdbStore.executeSync(createTableSql)
     }
@@ -211,12 +212,15 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       const currentVersion = oldTableVersion?.version ?? 1;
       if (currentVersion < targetTable.tableVersion) {
         this.beginTransaction(() => {
-          for (let ver = currentVersion + 1; ver <= targetTable.tableVersion; ver++) {
-            const modificationInfo = targetTable.upVersion(ver)
-            modificationInfo?.add?.forEach(item => {
-              this.rdbStore.executeSync(`ALTER TABLE ${targetTable.tableName} ADD COLUMN ${item._columnModifier}`)
-            })
-          }
+          const resultSet = this.rdbStore.querySync(new RdbPredicatesWrapper(targetTable).getRdbPredicates())
+          const backupTableName = `backup_${targetTable.tableName}`
+          const newFieldNames = targetTable._tableAllColumns.map(item => item._fieldName)
+          const copyFieldNames = resultSet.columnNames.filter(item => newFieldNames.includes(item))
+          resultSet.close()
+          rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${newFieldNames.join(',')})`)
+          rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')})SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
+          rdbStore.executeSync(`DROP TABLE ${targetTable.tableName}`)
+          rdbStore.executeSync(`ALTER TABLE ${backupTableName} RENAME TO ${targetTable.tableName}`)
           if (oldTableVersion) {
             this.to(stormTableVersions).updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
               [[stormTableVersions.version, targetTable.tableVersion]])
@@ -251,7 +255,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return valueBucket
   }
 
-  private queryToEntity<T>(wrapper: RdbPredicatesWrapper<T>,
+  private queryToEntity<T>(
+    wrapper: RdbPredicatesWrapper<T>,
     targetTable: Table<T>): T[] {
     const entityArray: T[] = []
     const resultSet = this.rdbStore.querySync(wrapper.getRdbPredicates())
