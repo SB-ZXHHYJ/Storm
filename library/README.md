@@ -56,7 +56,7 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-export declare class Bookcase {
+export class Bookcase {
   id?: number
   name: string
 }
@@ -84,7 +84,7 @@ class Books extends Table<Book> {
 
 export const books = new Books()
 
-export declare class Book {
+export class Book {
   id?: number
   name: string
   bookcase: Bookcase
@@ -213,11 +213,17 @@ database
 import { database } from '@zxhhyj/storm'
 
 for (const queryElement of database.of(books).query()) {
-  //...
+  //遍历全部
 }
-for (const queryElement of database.of(books).query(it => it.it.equalTo(bookcases.name, "科幻小说"))) {
-  //...
+for (const queryElement of database.of(books).query(it => it.equalTo(bookcases.name, "科幻小说"))) {
+  //指定查询条件并遍历
 }
+const list = database.of(books).query().toList()
+//获取全部的数据
+const firstOrNull = database.of(books).query().firstOrNull()
+//查询第一项的数据（可能不存在)
+const first = database.of(books).query().first()
+//查询第一项的数据（必定存在)
 ```
 
 #### 5.使用事务
@@ -244,50 +250,10 @@ try {
 }
 ```
 
-### 更新数据库
+### 自动更新数据库(实验性)
 
 当需要升级数据库时，需要在`Table`下显式声明`tableVersion`属性，这个属性需要为整数且大于`1`。
-之后在调用`of`、`to`时将会升级操作，`Storm`将会依次调用`upVersion`函数，需要重写这个函数并在其中返回这个版本中表有哪些更新，目前支持新增列和移除列。
-
-```typescript
-import { Column, Table, TableUpdateInfo } from '@zxhhyj/storm';
-
-class NewVerBookcases extends Table<NewBookcase> {
-  override readonly tableVersion = 2
-  /**
-   * 需要注意的是，这个NewVerBookcases实际就是Bookcases，只是方便做演示用例才创建了两个类
-   */
-  override readonly tableName = 't_bookcase'
-  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
-  readonly name = Column.text('name').notNull().bindTo(this, 'name')
-  /**
-   * 这个是新增的列
-   */
-  readonly createDataTime =
-    Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
-
-  upVersion(version: number): TableUpdateInfo {
-    /**
-     * 当不显示声明tableVersion时，默认的版本为1，NewVerBookcases的最新版本为2
-     * upVersion将被调用一次，upVersion(2)
-     */
-    if (version === 2) {
-      //在此返回这个版本中表有哪些更新
-      return {
-        add: [this.createDataTime]
-      }
-    }
-  }
-}
-
-export const newVerBookcases = new NewVerBookcases()
-
-export declare class NewBookcase {
-  id?: number
-  name: string
-  createDataTime?: Date
-}
-```
+之后调用`of`、`to`时将会执行数据库升级逻辑，`Storm`将会重建`整个表`，并自动判断哪些数据需要迁移至新的表中而哪些被移除。
 
 ## 路线图
 
@@ -296,10 +262,8 @@ export declare class NewBookcase {
 |        实现具有强类型且独立的数据库版本更新逻辑        |   1.3.0+   |   已完成   |
 |       ~~对象模型与SQL模型的互转逻辑解耦~~        | ~~1.3.0+~~ | ~~已废弃~~ |
 | 使用新的`bindTo`API来实现`Column`与实体的双向绑定 |   1.4.0+   |   已完成   |
-
-## 已知问题
-
-- 数据库版本更新中的移除列功能无法正常使用。
+|            更强大的多数据库API             |   2.0.0+   |   规划中   |
+|             支持手动升级数据库              |   2.0.0+   |   规划中   |
 
 ## 交流
 

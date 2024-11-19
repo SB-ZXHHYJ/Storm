@@ -9,6 +9,7 @@
 
 #### 优化
 
+- `bindTo()`API新增了类型检查，避免将不同类型的`Column`与`value`进行绑定。
 - 新增了`length`、`toList()`、`first()`、`firstOrNull()`API来提高查询时的性能和灵活性。
 
 #### 移除

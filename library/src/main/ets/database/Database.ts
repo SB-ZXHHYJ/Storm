@@ -251,13 +251,14 @@ export class DatabaseQuery<T> {
           }
           return { done: false, value: entity }
         }
-        return { done: true, value: undefined }
+        return { done: true, value: resultSet.close() }
       },
       return: () => {
         return { done: true, value: resultSet.close() }
       },
-      throw: () => {
-        return { done: true, value: resultSet.close() }
+      throw: (error) => {
+        resultSet.close()
+        throw error
       }
     }
   }
