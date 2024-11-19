@@ -21,7 +21,7 @@ export const TransactionTest: Test = {
     }
   },
   verify: function (): boolean {
-    return database.of(bookcases).query().length === 0
+    return database.of(bookcases).query().length <= 0
   },
   name: "TransactionTest"
 }

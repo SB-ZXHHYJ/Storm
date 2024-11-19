@@ -13,7 +13,7 @@ export const BlobTest: Test = {
       .add(blob)
   },
   verify: function (): boolean {
-    return database.of(blobs).query()[0].photo.toString() === "10,20,30,40"
+    return database.of(blobs).query().first().photo.toString() === "10,20,30,40"
   },
   name: "BlobTest"
 }

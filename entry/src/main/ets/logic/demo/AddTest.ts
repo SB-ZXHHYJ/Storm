@@ -20,7 +20,7 @@ export const AddTest: Test = {
       .add(book) //添加数据，添加成功后会将自增id填充到book.id中
   },
   verify: function (): boolean {
-    const addBook = database.of(books).query()[0]
+    const addBook = database.of(books).query().first()
     return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined)
   },
   name: "AddTest"

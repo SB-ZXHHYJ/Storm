@@ -6,7 +6,7 @@ import { IValueColumn, SupportValueType } from '../schema/Column';
  * 对relationalStore.RdbPredicates进行包装
  * @link https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V2/js-apis-data-relationalstore-0000001493744128-V2#ZH-CN_TOPIC_0000001523648806__rdbpredicates
  */
-export class RdbPredicatesWrapper<T> {
+export class QueryPredicate<T> {
   private readonly rdbPredicates: relationalStore.RdbPredicates
 
   /**

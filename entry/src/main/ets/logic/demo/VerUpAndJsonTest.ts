@@ -13,7 +13,7 @@ export const VerUpAndJsonTest: Test = {
     //调用Table初次调用of或者to时都会进行版本升级
   },
   verify: function (): boolean {
-    const bookcase = database.of(newVerBookcases).query()[0]
+    const bookcase = database.of(newVerBookcases).query().first()
     return bookcase.createDataTime instanceof Date
   },
   name: "VerUpAndJsonTest"

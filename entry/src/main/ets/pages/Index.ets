@@ -9,14 +9,15 @@ import { bookcases } from '../logic/model/Bookcase'
 import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../logic/demo/TransactionTest'
 import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
-import { VerUpAndJsonTest } from '../logic/demo/VerUpAndJsonTest'
 import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
+import { VerUpAndJsonTest } from '../logic/demo/VerUpAndJsonTest'
 
 @Entry
 @ComponentV2
 struct Index {
   @Local private works: Test[] =
-    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest, TransactionTest, VerUpAndJsonTest]
+    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest,
+      TransactionTest,VerUpAndJsonTest]
 
   build() {
     Navigation() {
@@ -29,9 +30,9 @@ struct Index {
           for (const worksElement of this.works) {
             database
               .of(bookcases)
-              .reset()
+              .delete()
               .to(books)
-              .reset()
+              .delete()
             worksElement.main()
             if (!worksElement.verify()) {
               throw new Error(`任务${worksElement.name}测试失败`)

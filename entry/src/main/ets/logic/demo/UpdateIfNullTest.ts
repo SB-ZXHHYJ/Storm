@@ -22,7 +22,7 @@ export const UpdateIfNullTest: Test = {
         [[books.name, null]]) //将这一列的内容删掉，如果使用常规的update更新，你需要满足类型检查，这样的操作可以避免类型检查
   },
   verify: function (): boolean {
-    return database.of(books).query(it => it.isNull(books.name)).length > 0
+    return database.of(books).query(it => it.isNull(books.name)).toList().length > 0
   },
   name: "UpdateIfNullTest"
 }

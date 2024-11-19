@@ -14,7 +14,7 @@ export const UpdateIfTest: Test = {
       .updateIf(it => it.equalTo(bookcases.id, bookcase.id), [[bookcases.name, "女生小说"]])//指定更新某一项
   },
   verify: function (): boolean {
-    return database.of(bookcases).query(it => it.equalTo(bookcases.name, "女生小说"))[0] !== undefined
+    return database.of(bookcases).query(it => it.equalTo(bookcases.name, "女生小说")).first() !== undefined
   },
   name:"UpdateIfTest"
 }
