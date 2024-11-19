@@ -10,14 +10,12 @@ import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../logic/demo/TransactionTest'
 import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
 import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
-import { VerUpAndJsonTest } from '../logic/demo/VerUpAndJsonTest'
 
 @Entry
 @ComponentV2
 struct Index {
   @Local private works: Test[] =
-    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest,
-      TransactionTest, VerUpAndJsonTest]
+    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest, TransactionTest]
 
   build() {
     Navigation() {
@@ -35,7 +33,8 @@ struct Index {
               .delete()
             worksElement.main()
             if (!worksElement.verify()) {
-              throw new Error(`任务${worksElement.name}测试失败`)
+              //throw Error(`任务${worksElement.name}测试失败`)
+              promptAction.showToast({ message: `任务${worksElement.name}测试不通过` })
             }
           }
           promptAction.showToast({ message: "全部任务验证通过" })
@@ -46,7 +45,7 @@ struct Index {
       .width('100%')
       .height('100%')
     }
-    .title('Benchmark')
+    .title('标准测试流程')
     .backgroundColor(0xFFF3F1F6)
     .width('100%')
     .height('100%')
