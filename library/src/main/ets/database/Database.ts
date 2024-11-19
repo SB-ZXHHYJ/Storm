@@ -103,14 +103,6 @@ interface IDatabaseCrud<T> {
   run<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
 
   /**
-   * 开启一个普通作用域
-   * @param scope 普通作用域
-   * @returns 返回当前实例
-   * @deprecated 已废弃
-   */
-  begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this
-
-  /**
    * 开启一个事务lambda
    * @param scope 事务lambda
    * @returns 返回当前实例
@@ -187,7 +179,7 @@ interface IDatabaseCrud<T> {
    * 清空整个Table的数据并重置自增主键计数
    * @returns 返回当前实例
    */
-  delete(): this
+  delete(): DatabaseCrudOnlyTo
 
   /**
    * 指定条件创建DatabaseQuery
@@ -399,15 +391,6 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return this
   }
 
-  /**
-   * @deprecated 已废弃，请使用run替代
-   * @see run
-   */
-  begin<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
-    scope.call(scope, this)
-    return this
-  }
-
   beginTransaction<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
     try {
       this.rdbStore.beginTransaction()
@@ -534,7 +517,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  delete(): this {
+  delete(): DatabaseCrudOnlyTo {
     try {
       this.rdbStore.executeSync(`DROP TABLE IF EXISTS ${this.targetTable.tableName}`)
       SessionQueueManager.delete(this.targetTable)
@@ -572,14 +555,14 @@ export namespace database {
   /**
    * @see globalDatabase
    */
-  export function run(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
+  export function run(scope: (it: DatabaseCrudOnlyTo) => void) {
     return globalDatabase!!.run(scope)
   }
 
   /**
    * @see globalDatabase
    */
-  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<unknown> {
+  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void) {
     return globalDatabase!!.beginTransaction(scope)
   }
 

@@ -17,7 +17,7 @@ import { VerUpAndJsonTest } from '../logic/demo/VerUpAndJsonTest'
 struct Index {
   @Local private works: Test[] =
     [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest,
-      TransactionTest,VerUpAndJsonTest]
+      TransactionTest, VerUpAndJsonTest]
 
   build() {
     Navigation() {
