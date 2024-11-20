@@ -7,11 +7,15 @@ import { Column, IValueColumn, ReferencesColumn, SupportValueType } from '../sch
 import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
 import { nothings } from '../model/Nothing'
 
+type DatabaseCrudOnlyTo = Pick<DatabaseCrud<never>, 'to'>
+
+type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
+
 class SessionQueueManager {
   private constructor() {
   }
 
-  private static readonly sessionQueueMap = new Map<string, DatabaseCrud<any>>();
+  private static readonly sessionQueueMap = new Map<string, DatabaseCrud<any>>()
 
   static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseCrud<M> {
     if (this.sessionQueueMap.has(targetTable.tableName)) {
@@ -31,8 +35,6 @@ class SessionQueueManager {
     this.sessionQueueMap.clear()
   }
 }
-
-type DatabaseCrudOnlyTo = Pick<DatabaseCrud<never>, 'to'>
 
 export class Database {
   private constructor(private readonly rdbStore: relationalStore.RdbStore) {
@@ -83,8 +85,6 @@ export class Database {
     return new Database(rdbStore)
   }
 }
-
-type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
 
 interface IDatabaseCrud<T> {
   /**
@@ -188,130 +188,6 @@ interface IDatabaseCrud<T> {
    * @returns DatabaseQuery
    */
   query(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>): DatabaseQuery<T>
-}
-
-export class DatabaseQuery<T> {
-  constructor(
-    private readonly rdbStore: relationalStore.RdbStore,
-    private readonly predicate: QueryPredicate<T>,
-    private readonly targetTable: Table<T>
-  ) {
-  }
-
-  private restore(column: Column<SupportValueType, any>, value: SupportValueType | undefined) {
-    if (column instanceof ReferencesColumn) {
-      const referencesTable = column._referencesTable
-      Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
-      const idColumn = referencesTable?._tableIdColumns[0]
-      const predicates = new QueryPredicate(referencesTable)
-      predicates.equalTo(idColumn, value as SupportValueType)
-      const model = this.queryOne(predicates, referencesTable)
-      return model
-    }
-    if (column instanceof Column && column._typeConverters) {
-      return column._typeConverters?.restore(value)
-    }
-    return value
-  }
-
-  private queryOne<T>(
-    wrapper: QueryPredicate<T>,
-    targetTable: Table<T>): T | undefined {
-    const resultSet = this.rdbStore.querySync(wrapper.getRdbPredicates())
-    try {
-      while (resultSet.goToNextRow()) {
-        const entity = {} as T
-        for (let i = 0; i < resultSet.columnNames.length; i++) {
-          const columnName = resultSet.columnNames[i]
-          const column = targetTable._tableAllColumns.find(col => col._fieldName === columnName)
-          if (column) {
-            entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
-          }
-        }
-        return entity
-      }
-    } finally {
-      resultSet.close()
-    }
-    return undefined
-  }
-
-  [Symbol.iterator](): Iterator<T> {
-    const resultSet = this.rdbStore.querySync(this.predicate.getRdbPredicates())
-    return {
-      next: () => {
-        if (resultSet.goToNextRow()) {
-          const entity = {} as T
-          for (let i = 0; i < resultSet.columnNames.length; i++) {
-            const columnName = resultSet.columnNames[i];
-            const column = this.targetTable._tableAllColumns.find(item => item._fieldName === columnName)
-            if (column) {
-              entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
-            }
-          }
-          return { done: false, value: entity }
-        }
-        return { done: true, value: resultSet.close() }
-      },
-      return: () => {
-        return { done: true, value: resultSet.close() }
-      },
-      throw: (error) => {
-        resultSet.close()
-        throw error
-      }
-    }
-  }
-
-  /**
-   * 获取DatabaseQuery的长度
-   * @todo 除非你只想获取长度而不执行其他操作，否则不建议你使用它
-   * @returns DatabaseQuery的行数
-   */
-  get length() {
-    const resultSet = this.rdbStore.querySync(this.predicate.getRdbPredicates())
-    try {
-      return resultSet.rowCount
-    } finally {
-      resultSet.close()
-    }
-  }
-
-  /**
-   * 返回DatabaseQuery的全部实体
-   * @returns 包含所有实体的只读数组
-   */
-  toList(): ReadonlyArray<T> {
-    const list: T[] = []
-    for (const element of this) {
-      list.push(element)
-    }
-    return list as ReadonlyArray<T>
-  }
-
-  /**
-   * 获取DatabaseQuery的第一个实体
-   * @returns 第一个实体
-   * @throws 如果DatabaseQuery为空，抛出错误
-   */
-  first(): T {
-    const first = this.firstOrNull()
-    if (first) {
-      return first
-    }
-    throw Error("DatabaseQuery is empty.")
-  }
-
-  /**
-   * 获取DatabaseQuery的第一个实体，如果不存在则返回undefined
-   * @returns 第一个实体或undefined
-   */
-  firstOrNull(): T | undefined {
-    for (const first of this) {
-      return first
-    }
-    return undefined
-  }
 }
 
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
@@ -534,6 +410,140 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 }
 
+interface IDatabaseQuery<T> {
+  /**
+   * 获取DatabaseQuery的长度
+   * @todo 除非你只想获取长度而不执行其他操作，否则不建议你使用它
+   * @returns DatabaseQuery的行数
+   */
+  get length(): number
+
+  /**
+   * 返回DatabaseQuery的全部实体
+   * @returns 包含所有实体的只读数组
+   */
+  toList(): ReadonlyArray<T>
+
+  /**
+   * 获取DatabaseQuery的第一个实体
+   * @returns 第一个实体
+   * @throws 如果DatabaseQuery为空，抛出错误
+   */
+  first(): T
+
+  /**
+   * 获取DatabaseQuery的第一个实体，如果不存在则返回undefined
+   * @returns 第一个实体或undefined
+   */
+  firstOrNull(): T | undefined
+}
+
+export class DatabaseQuery<T> implements IDatabaseQuery<T> {
+  constructor(
+    private readonly rdbStore: relationalStore.RdbStore,
+    private readonly predicate: QueryPredicate<T>,
+    private readonly targetTable: Table<T>
+  ) {
+  }
+
+  private restore(column: Column<SupportValueType, any>, value: SupportValueType | undefined) {
+    if (column instanceof ReferencesColumn) {
+      const referencesTable = column._referencesTable
+      Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+      const idColumn = referencesTable?._tableIdColumns[0]
+      const predicates = new QueryPredicate(referencesTable)
+      predicates.equalTo(idColumn, value as SupportValueType)
+      const model = this.queryOne(predicates, referencesTable)
+      return model
+    }
+    if (column instanceof Column && column._typeConverters) {
+      return column._typeConverters?.restore(value)
+    }
+    return value
+  }
+
+  private queryOne<T>(
+    wrapper: QueryPredicate<T>,
+    targetTable: Table<T>): T | undefined {
+    const resultSet = this.rdbStore.querySync(wrapper.getRdbPredicates())
+    try {
+      while (resultSet.goToNextRow()) {
+        const entity = {} as T
+        for (let i = 0; i < resultSet.columnNames.length; i++) {
+          const columnName = resultSet.columnNames[i]
+          const column = targetTable._tableAllColumns.find(col => col._fieldName === columnName)
+          if (column) {
+            entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
+          }
+        }
+        return entity
+      }
+    } finally {
+      resultSet.close()
+    }
+    return undefined
+  }
+
+  [Symbol.iterator](): Iterator<T> {
+    const resultSet = this.rdbStore.querySync(this.predicate.getRdbPredicates())
+    return {
+      next: () => {
+        if (resultSet.goToNextRow()) {
+          const entity = {} as T
+          for (let i = 0; i < resultSet.columnNames.length; i++) {
+            const columnName = resultSet.columnNames[i];
+            const column = this.targetTable._tableAllColumns.find(item => item._fieldName === columnName)
+            if (column) {
+              entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
+            }
+          }
+          return { done: false, value: entity }
+        }
+        return { done: true, value: resultSet.close() }
+      },
+      return: () => {
+        return { done: true, value: resultSet.close() }
+      },
+      throw: (error) => {
+        resultSet.close()
+        throw error
+      }
+    }
+  }
+
+  get length() {
+    const resultSet = this.rdbStore.querySync(this.predicate.getRdbPredicates())
+    try {
+      return resultSet.rowCount
+    } finally {
+      resultSet.close()
+    }
+  }
+
+  toList(): ReadonlyArray<T> {
+    const list: T[] = []
+    for (const element of this) {
+      list.push(element)
+    }
+    return list as ReadonlyArray<T>
+  }
+
+  first(): T {
+    const first = this.firstOrNull()
+    if (first) {
+      return first
+    }
+    throw Error("DatabaseQuery is empty.")
+  }
+
+  firstOrNull(): T | undefined {
+    for (const first of this) {
+      return first
+    }
+    return undefined
+  }
+}
+
 export namespace database {
   export declare let globalDatabase: Database
 
@@ -566,5 +576,4 @@ export namespace database {
   export function beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void) {
     return globalDatabase!!.beginTransaction(scope)
   }
-
 }
