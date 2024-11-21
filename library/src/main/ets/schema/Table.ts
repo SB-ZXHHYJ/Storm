@@ -1,7 +1,10 @@
 import { Column, SupportValueType } from './Column';
 
-export abstract class Table<T> {
-  protected readonly nothing: T
+export abstract class Table<M> {
+  /**
+   * 仅防止编译器认为泛型M没有被使用而将其移除
+   */
+  protected readonly nothing: M
 
   /**
    * 表中所有Column的数组

@@ -340,19 +340,17 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return this
   }
 
-  updateIf(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>,
-    model: T | ColumnValuePairs): this {
+  updateIf(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>, model: T | ColumnValuePairs): this {
+    const rdbPredicates = predicate(new QueryPredicate(this.targetTable)).getRdbPredicates()
     if (Array.isArray(model)) {
       const valueBucket: relationalStore.ValuesBucket = model.reduce((acc, [column, value]) => {
         acc[column._fieldName] = value
         return acc
       }, {} as T)
-      this.rdbStore.updateSync(valueBucket,
-        predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+      this.rdbStore.updateSync(valueBucket, rdbPredicates)
       return this
     }
-    this.rdbStore.updateSync(this.modelToValueBucket(model as T),
-      predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    this.rdbStore.updateSync(this.modelToValueBucket(model as T), rdbPredicates)
     return this
   }
 

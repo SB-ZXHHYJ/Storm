@@ -1,7 +1,7 @@
 import { Check } from '../utils/Check';
 import { Table } from './Table';
 
-export type SupportValueType = number | string | boolean | Uint8Array
+export type SupportValueType = null | number | string | boolean | Uint8Array
 
 type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
@@ -89,10 +89,10 @@ export type TypeConverters<F extends SupportValueType, E> = {
  */
 const BooleanTypeConverters: TypeConverters<number, boolean> = {
   save: value => {
-    return (value === true ? 1 : value === false ? 0 : undefined)
+    return (value === true ? 1 : value === false ? 0 : null)
   },
   restore: value => {
-    return (value === 1 ? true : value === 0 ? false : undefined)
+    return (value === 1 ? true : value === 0 ? false : null)
   }
 }
 
@@ -101,10 +101,10 @@ const BooleanTypeConverters: TypeConverters<number, boolean> = {
  */
 const DateTypeConverters: TypeConverters<string, Date> = {
   save: value => {
-    return value ? value.toString() : undefined
+    return value ? value.toString() : null
   },
   restore: value => {
-    return value ? new Date(value) : undefined
+    return value ? new Date(value) : null
   }
 }
 
