@@ -12,7 +12,7 @@ class StormTableVersions extends Table<StormTableVersion> {
 
 export const stormTableVersions = new StormTableVersions()
 
-export class StormTableVersion {
+export interface StormTableVersion {
   readonly name: string
   readonly version: number
 }

@@ -1,9 +1,13 @@
 import { Check } from '../utils/Check';
 import { ITable, Table } from './Table';
 
-export type SupportValueType = null | number | string | boolean | Uint8Array
+export type SupportValueType = number | string | boolean | Uint8Array
 
-export type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
+type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
+
+type SafeTypes<T, M> = {
+  [K in keyof T]: T[K] extends M ? K : never
+}[keyof T] & keyof T
 
 export interface IValueColumn {
   /**
@@ -85,10 +89,10 @@ export type TypeConverters<F extends SupportValueType, E> = {
  */
 const BooleanTypeConverters: TypeConverters<number, boolean> = {
   save: value => {
-    return value ? 1 : 0
+    return (value === true ? 1 : value === false ? 0 : undefined)
   },
   restore: value => {
-    return value === 0 ? false : true
+    return (value === 1 ? true : value === 0 ? false : undefined)
   }
 }
 
@@ -97,16 +101,12 @@ const BooleanTypeConverters: TypeConverters<number, boolean> = {
  */
 const DateTypeConverters: TypeConverters<string, Date> = {
   save: value => {
-    return value.toString()
+    return value ? value.toString() : undefined
   },
   restore: value => {
-    return new Date(value)
+    return value ? new Date(value) : undefined
   }
 }
-
-type SafeTypes<T, M> = {
-  [K in keyof T]: NonNullable<T[K]> extends M ? K : never
-}[keyof T] & keyof T
 
 export class Column<V extends SupportValueType, M> implements IValueColumn, IFunctionColumn<V, M> {
   protected constructor(
@@ -227,7 +227,6 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
    * @todo 使用时需要确保参考Table和其实体都存在主键
    * @param fieldName  Column的名称
    * @param referencesTable 参考的Table
-   * @returns
    */
   static references<M>(fieldName: string, referencesTable: Table<M>): Column<number, M> {
     return new ReferencesColumn(fieldName, referencesTable)

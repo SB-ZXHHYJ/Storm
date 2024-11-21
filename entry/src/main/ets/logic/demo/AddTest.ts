@@ -11,7 +11,8 @@ export const AddTest: Test = {
     const book: Book = {
       name: "三体",
       bookcase: bookcase,
-      createDataTime: new Date()
+      createDataTime: new Date(),
+      visibility: true
     }
     database
       .of(bookcases)
@@ -21,7 +22,8 @@ export const AddTest: Test = {
   },
   verify: function (): boolean {
     const addBook = database.of(books).query().first()
-    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined)
+    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined &&
+      addBook.visibility === true)
   },
   name: "AddTest"
 }

@@ -10,7 +10,7 @@ class Blobs extends Table<Blob> {
 
 export const blobs = new Blobs()
 
-export class Blob {
+export interface Blob {
   id?: number
   photo: Uint8Array
   createDataTime: Date

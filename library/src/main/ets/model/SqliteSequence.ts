@@ -12,7 +12,7 @@ class SqliteSequences extends Table<SqliteSequence> {
 
 export const sqliteSequences = new SqliteSequences()
 
-export class SqliteSequence {
+export interface SqliteSequence {
   readonly name: string
   readonly seq: number
 }

@@ -8,13 +8,15 @@ class Books extends Table<Book> {
   readonly bookcase = Column.references('bookcase_id', bookcases).bindTo(this, 'bookcase')
   readonly createDataTime =
     Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
+  readonly visibility = Column.boolean('visibility').bindTo(this, 'visibility')
 }
 
 export const books = new Books()
 
-export class Book {
+export interface Book {
   id?: number
   name: string
   bookcase: Bookcase
   createDataTime: Date
+  visibility: boolean
 }

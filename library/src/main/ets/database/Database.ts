@@ -21,8 +21,7 @@ class SessionQueueManager {
     if (this.sessionQueueMap.has(targetTable.tableName)) {
       return this.sessionQueueMap.get(targetTable.tableName)
     }
-
-    const newSessionQueue = new DatabaseCrud<M>(rdbStore, targetTable)
+    const newSessionQueue = new DatabaseCrud(rdbStore, targetTable)
     this.sessionQueueMap.set(targetTable.tableName, newSessionQueue)
     return newSessionQueue
   }
@@ -493,8 +492,9 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
           for (let i = 0; i < resultSet.columnNames.length; i++) {
             const columnName = resultSet.columnNames[i];
             const column = this.targetTable._tableAllColumns.find(item => item._fieldName === columnName)
-            if (column) {
-              entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
+            const value = resultSet.getValue(i) as SupportValueType
+            if (column && value) {
+              entity[column._key] = this.restore(column, value)
             }
           }
           return { done: false, value: entity }

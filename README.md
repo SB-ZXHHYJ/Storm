@@ -56,11 +56,13 @@ class Bookcases extends Table<Bookcase> {
 
 export const bookcases = new Bookcases()
 
-export class Bookcase {
+export declare class Bookcase {
   id?: number
   name: string
 }
 ```
+
+我们推荐使用使用`interface`或`declare class`来修饰`model`。
 
 `Storm`将会生成以下的SQL语句：
 
@@ -84,7 +86,7 @@ class Books extends Table<Book> {
 
 export const books = new Books()
 
-export class Book {
+export declare class Book {
   id?: number
   name: string
   bookcase: Bookcase

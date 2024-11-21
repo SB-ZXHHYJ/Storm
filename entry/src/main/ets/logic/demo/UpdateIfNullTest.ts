@@ -11,7 +11,8 @@ export const UpdateIfNullTest: Test = {
     const book: Book = {
       name: "三体",
       bookcase: bookcase,
-      createDataTime: new Date()
+      createDataTime: new Date(),
+      visibility: false
     }
     database
       .of(bookcases)
