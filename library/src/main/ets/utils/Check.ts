@@ -8,7 +8,7 @@ export namespace Check {
    * @param targetTable 目标Table
    */
   export function checkTableHasIdColumn(targetTable: Table<any>) {
-    if (targetTable._tableIdColumns.length === 0) {
+    if (targetTable.tableIdColumns.length === 0) {
       throw new Error(`In "${targetTable.tableName}", there is no primary key.`)
     }
   }
@@ -19,7 +19,7 @@ export namespace Check {
    */
   export function checkTableHasAtMostOneIdColumn(targetTable: Table<any>) {
     checkTableHasIdColumn(targetTable);
-    if (targetTable._tableIdColumns.length > 1) {
+    if (targetTable.tableIdColumns.length > 1) {
       throw new Error(`In "${targetTable.tableName}", there is more than one primary key. Only one primary key is allowed.`)
     }
   }
@@ -33,7 +33,7 @@ export namespace Check {
       throw new Error(`In ${targetTable.tableName}, the version number must be an integer.`)
     }
 
-    const keys = targetTable._tableAllColumns.map(it => it._key);
+    const keys = targetTable.tableAllColumns.map(it => it._key);
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }

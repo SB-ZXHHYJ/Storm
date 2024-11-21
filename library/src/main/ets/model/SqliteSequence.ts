@@ -2,7 +2,7 @@ import { Column } from '../schema/Column'
 import { Table } from '../schema/Table'
 
 /**
- * sqlite中内置的记录自增信息表
+ * sqlite中内置的表，用于记录主键自增信息
  */
 class SqliteSequences extends Table<SqliteSequence> {
   override readonly tableName = 'sqlite_sequence'

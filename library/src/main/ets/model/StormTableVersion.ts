@@ -2,7 +2,7 @@ import { Column } from '../schema/Column'
 import { Table } from '../schema/Table'
 
 /**
- * 用于记录每一个表的版本号信息
+ * Storm中用于记录每一个表的版本号信息
  */
 class StormTableVersions extends Table<StormTableVersion> {
   override readonly tableName = 't_storm_table_version'

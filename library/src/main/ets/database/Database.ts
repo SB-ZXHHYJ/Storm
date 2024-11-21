@@ -193,7 +193,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
     Check.checkTableAndColumns(targetTable)
     if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable._tableAllColumns
+      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableAllColumns
         .map(column => column._columnModifier)
         .join(',')})`)
     }
@@ -206,13 +206,13 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
           const resultSet = this.rdbStore.querySync(new QueryPredicate(targetTable).getRdbPredicates())
           const backupTableName = `backup_${targetTable.tableName}`
           // 备份表的名称
-          const newFieldNames = targetTable._tableAllColumns.map(item => item._fieldName)
+          const newFieldNames = targetTable.tableAllColumns.map(item => item._fieldName)
           // 获取目标表的所有字段名称
           const copyFieldNames = resultSet.columnNames.filter(item => newFieldNames.includes(item))
           // 从结果集中筛选出需要复制的字段名称
           resultSet.close()
           // 关闭结果集，释放资源
-          rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable._tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
+          rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
             .join(',')})`)
           rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
           // 将目标表中需要的字段数据插入到备份表
@@ -235,24 +235,26 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
+  private save(column: Column<SupportValueType, any>, value: any) {
+    if (column instanceof ReferencesColumn) {
+      Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+      const idColumn = column._referencesTable.tableIdColumns[0]
+      return value[idColumn._fieldName]
+    }
+    if (column instanceof Column) {
+      if (column._typeConverters) {
+        return column._typeConverters.save(value)
+      }
+    }
+    return value
+  }
+
   private modelToValueBucket(model: T): relationalStore.ValuesBucket {
     const valueBucket: relationalStore.ValuesBucket = {}
     for (const key of Object.keys(model)) {
-      const column = this.targetTable._tableAllColumns.find(it => it._key === key)
-      if (column instanceof ReferencesColumn) {
-        Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
-        const idColumn = column._referencesTable._tableIdColumns[0]
-        valueBucket[column._fieldName] = model[key][idColumn._fieldName]
-        continue
-      }
-      if (column instanceof Column) {
-        if (column._typeConverters) {
-          const currentValue = column._typeConverters.save(model[key])
-          valueBucket[column._fieldName] = currentValue
-          continue
-        }
-        valueBucket[column._fieldName] = model[key]
-        continue
+      const column = this.targetTable.tableAllColumns.find(it => it._key === key)
+      if (column) {
+        valueBucket[column._fieldName] = this.save(column, model[key])
       }
     }
     return valueBucket
@@ -292,7 +294,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       return this.modelToValueBucket(item)
     }))
 
-    const idColumn = this.targetTable._tableIdColumns[0]
+    const idColumn = this.targetTable.tableIdColumns[0]
     if (idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER') {
       // 更新每个值桶中的主键字段
       valueBuckets.forEach((valueBucket, index) => {
@@ -326,7 +328,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable._tableIdColumns[0]
+    const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     models
       .map(item => this.modelToValueBucket(item))
@@ -363,7 +365,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable._tableIdColumns[0]
+    const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)
@@ -445,15 +447,14 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
   ) {
   }
 
-  private restore(column: Column<SupportValueType, any>, value: SupportValueType | undefined) {
+  private restore(column: Column<SupportValueType, any>, value: SupportValueType) {
     if (column instanceof ReferencesColumn) {
       const referencesTable = column._referencesTable
       Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
-      const idColumn = referencesTable?._tableIdColumns[0]
+      const idColumn = referencesTable?.tableIdColumns[0]
       const predicates = new QueryPredicate(referencesTable)
       predicates.equalTo(idColumn, value as SupportValueType)
-      const model = this.queryOne(predicates, referencesTable)
-      return model
+      return this.queryOne(predicates, referencesTable)
     }
     if (column instanceof Column && column._typeConverters) {
       return column._typeConverters?.restore(value)
@@ -461,16 +462,22 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
     return value
   }
 
+  /**
+   * 查询单个实体
+   * @param predicate 查询条件
+   * @param targetTable 目标Table
+   * @returns 实体或undefined
+   */
   private queryOne<T>(
-    wrapper: QueryPredicate<T>,
+    predicate: QueryPredicate<T>,
     targetTable: Table<T>): T | undefined {
-    const resultSet = this.rdbStore.querySync(wrapper.getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate.getRdbPredicates())
     try {
       while (resultSet.goToNextRow()) {
         const entity = {} as T
         for (let i = 0; i < resultSet.columnNames.length; i++) {
           const columnName = resultSet.columnNames[i]
-          const column = targetTable._tableAllColumns.find(col => col._fieldName === columnName)
+          const column = targetTable.tableAllColumns.find(col => col._fieldName === columnName)
           if (column) {
             entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
           }
@@ -490,10 +497,10 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
         if (resultSet.goToNextRow()) {
           const entity = {} as T
           for (let i = 0; i < resultSet.columnNames.length; i++) {
-            const columnName = resultSet.columnNames[i];
-            const column = this.targetTable._tableAllColumns.find(item => item._fieldName === columnName)
-            const value = resultSet.getValue(i) as SupportValueType
-            if (column && value) {
+            const columnName = resultSet.columnNames[i]
+            const column = this.targetTable.tableAllColumns.find(item => item._fieldName === columnName)
+            if (column) {
+              const value = resultSet.getValue(i) as SupportValueType
               entity[column._key] = this.restore(column, value)
             }
           }

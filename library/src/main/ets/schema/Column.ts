@@ -1,5 +1,5 @@
 import { Check } from '../utils/Check';
-import { ITable, Table } from './Table';
+import { Table } from './Table';
 
 export type SupportValueType = number | string | boolean | Uint8Array
 
@@ -154,10 +154,11 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
   bindTo<T>(targetTable: Table<T>, key: SafeTypes<T, M>): IValueColumn {
     Check.checkColumnUniqueBindTo(this)
     this.valueColumn._key = key.toString()
-    const varTable = targetTable as ITable
-    varTable._tableAllColumns.push(this)
+    const tableAllColumns = targetTable.tableAllColumns as Column<SupportValueType, any>[]
+    tableAllColumns.push(this)
     if (this._isPrimaryKey) {
-      varTable._tableIdColumns.push(this)
+      const tableIdColumns = targetTable.tableIdColumns as Column<SupportValueType, any>[]
+      tableIdColumns.push(this)
     }
     return this
   }
@@ -224,7 +225,7 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
   /**
    * 将Column绑定到参考Table中，相当于关系数据库中的外键
    * Storm会将参考Table中实体的主键存储到这个Column上，在查询时Storm会自动从参考Table中查询并填充到这个Column所绑定的实体属性上
-   * @todo 使用时需要确保参考Table和其实体都存在主键
+   * @todo 使用时需要确保参考Table和其实体都存在唯一主键
    * @param fieldName  Column的名称
    * @param referencesTable 参考的Table
    */
