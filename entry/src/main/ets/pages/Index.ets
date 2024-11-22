@@ -10,12 +10,13 @@ import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../logic/demo/TransactionTest'
 import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
 import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
+import { BlobTest } from '../logic/demo/BlobTest'
 
 @Entry
 @ComponentV2
 struct Index {
   @Local private works: Test[] =
-    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest, TransactionTest]
+    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest, TransactionTest, BlobTest]
 
   build() {
     Navigation() {

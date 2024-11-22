@@ -77,11 +77,11 @@ export type TypeConverters<F extends SupportValueType, E> = {
   /**
    * 将实体转换为数据库支持的类型保存
    */
-  save: (value: E) => F
+  save: (value: E | null) => F | null
   /**
    * 将从数据库中读出的数据转换回实体
    */
-  restore: (value: F) => E
+  restore: (value: F | null) => E | null
 }
 
 /**

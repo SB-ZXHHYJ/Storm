@@ -22,8 +22,11 @@ export const AddTest: Test = {
   },
   verify: function (): boolean {
     const addBook = database.of(books).query().first()
-    return (addBook && addBook.id !== undefined && addBook.bookcase != undefined && addBook.bookcase.id !== undefined &&
-      addBook.visibility === true)
+    return addBook &&
+      addBook.id !== undefined &&
+      addBook.bookcase != undefined &&
+      addBook.bookcase.id !== undefined &&
+      addBook.visibility === true
   },
   name: "AddTest"
 }

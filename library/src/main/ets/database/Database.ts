@@ -4,10 +4,10 @@ import { QueryPredicate } from '../utils/QueryPredicate'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
 import { Column, IValueColumn, ReferencesColumn, SupportValueType } from '../schema/Column'
-import { StormTableVersion, stormTableVersions } from '../model/StormTableVersion'
+import { stormTableVersions } from '../model/StormTableVersion'
 import { nothings } from '../model/Nothing'
 
-type DatabaseCrudOnlyTo = Pick<DatabaseCrud<never>, 'to'>
+type DatabaseCrudOnlyTo<M> = Pick<DatabaseCrud<M>, 'to'>
 
 type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
 
@@ -62,7 +62,7 @@ export class Database {
    * @param scope 普通lambda
    * @returns {DatabaseCrud<Nothing>}
    */
-  run(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<never> {
+  run(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).run(scope)
   }
 
@@ -71,7 +71,7 @@ export class Database {
    * @param scope 事务lambda
    * @returns {DatabaseCrud<Nothing>}
    */
-  beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void): DatabaseCrud<never> {
+  beginTransaction(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
     return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).beginTransaction(scope)
   }
 
@@ -144,7 +144,7 @@ interface IDatabaseCrud<T> {
    * @param model 要更新的数据
    * @returns 返回当前实例
    */
-  updateIf(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>,
+  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>,
     model: T | ColumnValuePairs): this
 
   /**
@@ -163,10 +163,10 @@ interface IDatabaseCrud<T> {
 
   /**
    * 根据条件删除Table中的数据
-   * @param wrapperLambda 查询条件
+   * @param predicate 查询条件
    * @returns 返回当前实例
    */
-  removeIf(wrapperLambda: (wrapper: QueryPredicate<T>) => QueryPredicate<T>): this
+  removeIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): this
 
   /**
    * 清空整个Table的数据并重置自增主键计数
@@ -178,7 +178,7 @@ interface IDatabaseCrud<T> {
    * 清空整个Table的数据并重置自增主键计数
    * @returns 返回当前实例
    */
-  delete(): DatabaseCrudOnlyTo
+  delete(): DatabaseCrudOnlyTo<T>
 
   /**
    * 指定条件创建DatabaseQuery
@@ -186,7 +186,7 @@ interface IDatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns DatabaseQuery
    */
-  query(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>): DatabaseQuery<T>
+  query(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): DatabaseQuery<T>
 }
 
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
@@ -198,10 +198,11 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
         .join(',')})`)
     }
     if (targetTable.tableVersion > 1) {
-      const oldTableVersion: StormTableVersion | undefined =
-        this.to(stormTableVersions).query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))[0]
-      const currentVersion = oldTableVersion?.version ?? 1;
-      if (currentVersion < targetTable.tableVersion) {
+      const oldTableVersion = this
+        .to(stormTableVersions)
+        .query(it => it.equalTo(stormTableVersions.name, targetTable.tableName))
+        .firstOrNull()
+      if ((oldTableVersion?.version ?? 1) < targetTable.tableVersion) {
         this.beginTransaction(() => {
           const resultSet = this.rdbStore.querySync(new QueryPredicate(targetTable).getRdbPredicates())
           const backupTableName = `backup_${targetTable.tableName}`
@@ -340,7 +341,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return this
   }
 
-  updateIf(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T>, model: T | ColumnValuePairs): this {
+  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: T | ColumnValuePairs): this {
     const rdbPredicates = predicate(new QueryPredicate(this.targetTable)).getRdbPredicates()
     if (Array.isArray(model)) {
       const valueBucket: relationalStore.ValuesBucket = model.reduce((acc, [column, value]) => {
@@ -377,8 +378,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return this
   }
 
-  removeIf(wrapperLambda: (wrapper: QueryPredicate<T>) => QueryPredicate<T>): this {
-    this.rdbStore.deleteSync(wrapperLambda(new QueryPredicate(this.targetTable)).getRdbPredicates())
+  removeIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): this {
+    this.rdbStore.deleteSync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     return this
   }
 
@@ -393,7 +394,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  delete(): DatabaseCrudOnlyTo {
+  delete(): DatabaseCrudOnlyTo<T> {
     try {
       this.rdbStore.executeSync(`DROP TABLE IF EXISTS ${this.targetTable.tableName}`)
       SessionQueueManager.delete(this.targetTable)
@@ -402,9 +403,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  query(predicate: (wrapper: QueryPredicate<T>) => QueryPredicate<T> = (wrapper) => {
-    return wrapper
-  }): DatabaseQuery<T> {
+  query(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): DatabaseQuery<T> {
     return new DatabaseQuery(this.rdbStore, predicate(new QueryPredicate(this.targetTable)), this.targetTable)
   }
 }
@@ -571,14 +570,14 @@ export namespace database {
   /**
    * @see globalDatabase
    */
-  export function run(scope: (it: DatabaseCrudOnlyTo) => void) {
+  export function run(scope: (it: DatabaseCrudOnlyTo<never>) => void) {
     return globalDatabase!!.run(scope)
   }
 
   /**
    * @see globalDatabase
    */
-  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo) => void) {
+  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo<never>) => void) {
     return globalDatabase!!.beginTransaction(scope)
   }
 }
