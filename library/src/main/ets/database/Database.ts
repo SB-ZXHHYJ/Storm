@@ -296,28 +296,14 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }))
 
     const idColumn = this.targetTable.tableIdColumns[0]
-    if (idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER') {
-      // 更新每个值桶中的主键字段
-      valueBuckets.forEach((valueBucket, index) => {
-        if (valueBucket[idColumn._fieldName] === undefined) {
-          const sqlSequence = this
-            .to(sqliteSequences)
-            .query(it => it.equalTo(sqliteSequences.name, this.targetTable.tableName))
-            .firstOrNull()
-          if (sqlSequence) {
-            valueBucket[idColumn._fieldName] = sqlSequence.seq + 1
-          } else {
-            valueBucket[idColumn._fieldName] = 1
-          }
-        }
-        this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
-        models[index][idColumn._key] = valueBucket[idColumn._fieldName]
-      })
-      return this
-    }
-    for (const valueBucket of valueBuckets) {
-      this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
-    }
+    const isRowIdAlias = idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER';
+
+    valueBuckets.forEach((valueBucket, index) => {
+      const rowId = this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
+      if (isRowIdAlias) {
+        models[index][idColumn._key] = rowId
+      }
+    })
     return this
   }
 
