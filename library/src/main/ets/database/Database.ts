@@ -240,7 +240,10 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (column instanceof ReferencesColumn) {
       Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
       const idColumn = column._referencesTable.tableIdColumns[0]
-      return value[idColumn._fieldName]
+      if (value) {
+        return value[idColumn._fieldName]
+      }
+      return value
     }
     if (column instanceof Column) {
       if (column._typeConverters) {
