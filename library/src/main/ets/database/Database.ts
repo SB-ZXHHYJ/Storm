@@ -302,6 +302,10 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     const isRowIdAlias = idColumn !== undefined && idColumn._isAutoincrement && idColumn._dataType === 'INTEGER';
 
     valueBuckets.forEach((valueBucket, index) => {
+      // 对于id列是自增的情况下，如果id的值不是有效值(if条件判断为false的值)，则移除该列以确保使用自增值。
+      if (isRowIdAlias && !valueBucket[idColumn._fieldName]) {
+        delete valueBucket[idColumn._fieldName]
+      }
       const rowId = this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
       if (isRowIdAlias) {
         models[index][idColumn._key] = rowId
