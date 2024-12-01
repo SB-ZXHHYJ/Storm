@@ -10,8 +10,8 @@
 
 #### 修复
 
-- 修复当ReferencesColumn的值为null或者undefined的时候报错的问题。
-- 修复在事务中自增ID获取的问题。
+- 修复当`ReferencesColumn`的值为`undefined`或者`null`的时候报错的问题。
+- 修复在事务中自增`ID`获取的问题。
 
 ### 2024/11/26 - 1.7.3
 
@@ -50,7 +50,7 @@
 
 #### 警告
 
-- **注意`1.7.0`不再支持`qurey()[0]`，请改用`qurey().first()`或者`qurey().toList()[0]`**
+- **注意`1.7.0`不再支持`qurey()[index]`的形式获取值，请改用`qurey().first()`或者`qurey().toList()[index]`**
 
 ### 2024/11/13 - 1.6.2
 

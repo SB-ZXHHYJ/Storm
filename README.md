@@ -1,6 +1,6 @@
 ## 介绍
 
-Storm是直接基于纯`TypeScript`编写的高效简洁的轻量级`OpenHarmonyOS SQL ORM`框架，提供了`强类型`的`SQL DSL`
+`Storm`是直接基于纯`TypeScript`编写的高效简洁的轻量级`OpenHarmonyOS SQL ORM`框架，提供了`强类型`的`SQL DSL`
 ，直接将低级bug暴露在编译期，并且所有的`SQL`都是自动生成的，你不需要写任何`SQL`，`Storm`会帮你处理好一切。
 
 其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
@@ -17,7 +17,7 @@ ohpm install @zxhhyj/storm
 
 ### 初始化数据库
 
-使用`Database.create()`函数来创建数据库实例后，可以将其赋值给`database.globalDatabase`这是库中预留的全局唯一`Database`
+使用`Database.create()`函数来创建`Database`实例后，可以将其赋值给`database.globalDatabase`这是库中预留的全局唯一`Database`
 变量，当然，你也可用自己手动定义一个全局`Database`，我们建议在`AbilityStage`创建时初始化`Database`。
 
 ```typescript
