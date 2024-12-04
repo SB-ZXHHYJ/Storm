@@ -2,6 +2,9 @@ import { database } from '@zxhhyj/storm'
 import { Blob, blobs } from '../model/Blob'
 import { Test } from './Test'
 
+/**
+ * @todo 不是很规范，但暂时想不到更好的办法
+ */
 export const BlobTest: Test = {
   main: () => {
     const blob: Blob = {

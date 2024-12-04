@@ -210,9 +210,9 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
           const newFieldNames = targetTable.tableAllColumns.map(item => item._fieldName)
           // 获取目标表的所有字段名称
           const copyFieldNames = resultSet.columnNames.filter(item => newFieldNames.includes(item))
-          // 从结果集中筛选出需要复制的字段名称
+          // 从结果中筛选出需要复制的字段名称
           resultSet.close()
-          // 关闭结果集，释放资源
+          // 释放资源
           rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
             .join(',')})`)
           rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
@@ -416,6 +416,12 @@ interface IDatabaseQuery<T> {
   toList(): ReadonlyArray<T>
 
   /**
+   * 返回DatabaseQuery的全部实体
+   * @returns 包含所有实体的数组
+   */
+  toMutableList(): Array<T>
+
+  /**
    * 获取DatabaseQuery的第一个实体
    * @returns 第一个实体
    * @throws 如果DatabaseQuery为空，抛出错误
@@ -426,7 +432,20 @@ interface IDatabaseQuery<T> {
    * 获取DatabaseQuery的第一个实体，如果不存在则返回undefined
    * @returns 第一个实体或undefined
    */
-  firstOrNull(): T | undefined
+  firstOrNull(): T | null
+
+  /**
+   * 获取DatabaseQuery的最后一个实体
+   * @returns 最后一个实体或undefined
+   * @throws 如果DatabaseQuery为空，抛出错误
+   */
+  last(): T
+
+  /**
+   * 获取DatabaseQuery的最后一个实体，如果不存在则返回undefined
+   * @returns 最后一个实体或undefined
+   */
+  lastOrNull(): T | null
 }
 
 export class DatabaseQuery<T> implements IDatabaseQuery<T> {
@@ -517,12 +536,16 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
     }
   }
 
-  toList(): ReadonlyArray<T> {
+  toMutableList(): T[] {
     const list: T[] = []
     for (const element of this) {
       list.push(element)
     }
-    return list as ReadonlyArray<T>
+    return list
+  }
+
+  toList(): ReadonlyArray<T> {
+    return this.toMutableList() as ReadonlyArray<T>
   }
 
   first(): T {
@@ -533,11 +556,40 @@ export class DatabaseQuery<T> implements IDatabaseQuery<T> {
     throw Error("DatabaseQuery is empty.")
   }
 
-  firstOrNull(): T | undefined {
+  firstOrNull(): T | null {
     for (const first of this) {
       return first
     }
-    return undefined
+    return null
+  }
+
+  last(): T {
+    const last = this.lastOrNull()
+    if (last) {
+      return last
+    }
+    throw Error("DatabaseQuery is empty.")
+  }
+
+  lastOrNull(): T | null {
+    const resultSet = this.rdbStore.querySync(this.predicate.getRdbPredicates())
+    try {
+      if (!resultSet.goToLastRow()) {
+        return null
+      }
+      const entity = {} as T
+      for (let i = 0; i < resultSet.columnNames.length; i++) {
+        const columnName = resultSet.columnNames[i]
+        const column = this.targetTable.tableAllColumns.find(item => item._fieldName === columnName)
+        if (column) {
+          const value = resultSet.getValue(i) as SupportValueType
+          entity[column._key] = this.restore(column, value)
+        }
+      }
+      return entity
+    } finally {
+      resultSet.close()
+    }
   }
 }
 

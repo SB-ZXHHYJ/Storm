@@ -11,12 +11,23 @@ import { TransactionTest } from '../logic/demo/TransactionTest'
 import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
 import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
 import { BlobTest } from '../logic/demo/BlobTest'
+import { OtherTest } from '../logic/demo/OtherTest'
 
 @Entry
 @ComponentV2
 struct Index {
   @Local private works: Test[] =
-    [AddTest, RemoveTest, UpdateIfTest, UpdateIfNullTest, UpdateTest, RemoveIfTest, TransactionTest, BlobTest]
+    [
+      AddTest,
+      RemoveTest,
+      UpdateIfTest,
+      UpdateIfNullTest,
+      UpdateTest,
+      RemoveIfTest,
+      TransactionTest,
+      BlobTest,
+      OtherTest
+    ]
 
   build() {
     Navigation() {
@@ -36,6 +47,7 @@ struct Index {
             if (!worksElement.verify()) {
               //throw Error(`任务${worksElement.name}测试失败`)
               promptAction.showToast({ message: `任务${worksElement.name}测试不通过` })
+              return
             }
           }
           promptAction.showToast({ message: "全部任务验证通过" })
