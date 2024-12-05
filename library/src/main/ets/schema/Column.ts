@@ -108,6 +108,18 @@ const DateTypeConverters: TypeConverters<string, Date> = {
   }
 }
 
+/**
+ * 内置的Timestamp类型转换器
+ */
+const TimestampTypeConverters: TypeConverters<number, Date> = {
+  save: value => {
+    return value?.getTime() || null
+  },
+  restore: value => {
+    return value ? new Date(value) : null
+  }
+}
+
 export class Column<V extends SupportValueType, M> implements IValueColumn, IFunctionColumn<V, M> {
   protected constructor(
     readonly _fieldName: string,
@@ -212,6 +224,15 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
    */
   static date(fieldName: string): Column<string, Date> {
     return this.json(fieldName, DateTypeConverters)
+  }
+
+  /**
+   * 创建INTEGER类型的Column并通过TimestampTypeConverters将类型转换为Date
+   * @see TimestampTypeConverters
+   * @param fieldName  Column的名称
+   */
+  static timestamp(fieldName: string): Column<number, Date> {
+    return new Column(fieldName, 'INTEGER', TimestampTypeConverters);
   }
 
   /**
