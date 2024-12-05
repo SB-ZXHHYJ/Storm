@@ -429,21 +429,21 @@ interface IDatabaseQuery<T> {
   first(): T
 
   /**
-   * 获取DatabaseQuery的第一个实体，如果不存在则返回undefined
-   * @returns 第一个实体或undefined
+   * 获取DatabaseQuery的第一个实体，如果不存在则返回null
+   * @returns 第一个实体或null
    */
   firstOrNull(): T | null
 
   /**
    * 获取DatabaseQuery的最后一个实体
-   * @returns 最后一个实体或undefined
+   * @returns 最后一个实体或null
    * @throws 如果DatabaseQuery为空，抛出错误
    */
   last(): T
 
   /**
-   * 获取DatabaseQuery的最后一个实体，如果不存在则返回undefined
-   * @returns 最后一个实体或undefined
+   * 获取DatabaseQuery的最后一个实体，如果不存在则返回null
+   * @returns 最后一个实体或null
    */
   lastOrNull(): T | null
 }
