@@ -13,7 +13,7 @@ export const RemoveTest: Test = {
       .remove(bookcase) //移除数据
   },
   verify: function (): boolean {
-    return database.of(bookcases).query().toList().length === 0
+    return database.of(bookcases).count() === 0
   },
   name: "RemoveTest"
 }

@@ -19,36 +19,33 @@ export const OtherTest: Test = {
     }
   },
   verify: () => {
-    const query = database
-      .of(books)
-      .query()
 
-    if (!query.length) {
+    if (!database.of(books).count()) {
       return false
     }
 
-    if (!query.toMutableList()) {
+    if (!database.of(books).toList()) {
       return false
     }
 
-    if (!query.toList()) {
+    if (!database.of(books).toListOrNull()) {
       return false
     }
 
-    if (!query.firstOrNull()) {
+    if (!database.of(books).firstOrNull()) {
       return false
     }
 
-    if (!query.first()) {
+    if (!database.of(books).first()) {
       return false
     }
 
-    const lastOrNull = query.lastOrNull()
+    const lastOrNull = database.of(books).lastOrNull()
     if (!(lastOrNull && lastOrNull.name === indexes[indexes.length-1].toString())) {
       return false
     }
 
-    if (!query.last()) {
+    if (!database.of(books).last()) {
       return false
     }
 

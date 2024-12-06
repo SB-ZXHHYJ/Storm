@@ -17,7 +17,6 @@ export const BlobTest: Test = {
   },
   verify: function (): boolean {
     return database.of(blobs)
-      .query()
       .first()
       .photo
       .toString() === "10,20,30,40"

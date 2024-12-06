@@ -13,7 +13,7 @@ export const RemoveIfTest: Test = {
       .removeIf(it => it.equalTo(bookcases.name, "科幻小说")) //指定条件来删除数据
   },
   verify: function (): boolean {
-    return database.of(bookcases).query().length === 0
+    return database.of(bookcases).count() === 0
   },
   name: "RemoveIfTest"
 }

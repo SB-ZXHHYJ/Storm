@@ -16,7 +16,7 @@ export const UpdateTest: Test = {
       .update(bookcase) //将修改后的name更新到数据库中
   },
   verify: function (): boolean {
-    return database.of(bookcases).query(it => it.equalTo(bookcases.name, "女生小说")).first() !== undefined
+    return database.of(bookcases).first(it => it.equalTo(bookcases.name, "女生小说")) !== undefined
   },
   name: "UpdateTest"
 }
