@@ -100,7 +100,7 @@ interface IDatabaseCrud<T> {
   /**
    * 切换要操作的Table
    * @param targetTable 目标Table
-   * @returns 返回这个Table的DatabaseSession
+   * @returns 返回这个Table的IDatabaseCrud
    */
   to<T>(targetTable: Table<T>): IDatabaseCrud<T>
 
@@ -191,73 +191,113 @@ interface IDatabaseCrud<T> {
   delete(): DatabaseCrudOnlyTo<T>
 
   /**
-   * 获取DatabaseQuery的长度
-   * @todo 除非你只想获取长度而不执行其他操作，否则不建议你使用它
-   * @returns DatabaseQuery的行数
+   * 查询符合指定条件的数据条数
+   * @param predicate 查询条件
+   * @returns 满足条件的数据条数
    */
   count(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): number
 
   /**
-   * 返回DatabaseQuery的全部实体
-   * @returns 包含所有实体的只读数组
+   * 根据指定条件查询实体
+   * @param predicate 查询条件
+   * @returns 满足条件的实体的只读数组
+   * @throws 如果结果为空，抛出错误
    */
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T>
 
+  /**
+   * 根据指定条件查询实体
+   * @param predicate 查询条件
+   * @returns 满足条件的实体的只读数组或null
+   */
   toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T> | null
 
   /**
-   * 获取DatabaseQuery的第一个实体
-   * @returns 第一个实体
-   * @throws 如果DatabaseQuery为空，抛出错误
+   * 获取满足指定条件的第一个实体
+   * @param predicate 查询条件
+   * @returns 第一个满足条件的实体
+   * @throws 如果结果为空，抛出错误
    */
   first(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T
 
   /**
-   * 获取DatabaseQuery的第一个实体，如果不存在则返回null
-   * @returns 第一个实体或null
+   * 获取满足指定条件的第一个实体
+   * @param predicate 查询条件
+   * @returns 第一个满足条件的实体或null
    */
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T | null
 
   /**
-   * 获取DatabaseQuery的最后一个实体
-   * @returns 最后一个实体或null
-   * @throws 如果DatabaseQuery为空，抛出错误
-   */
-  last(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T
-
-  /**
-   * 获取DatabaseQuery的最后一个实体，如果不存在则返回null
-   * @returns 最后一个实体或null
-   */
-  lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T | null
-
-  /**
-   * 返回游标
-   * @param predicate
-   * @returns 返回游标操作对象，注意如果不使用了务必要关闭游标！
+   * 返回一个游标对象，以便对符合条件的数据进行操作
+   * @param predicate 查询条件
+   * @returns 游标操作对象，用于遍历和操作查询结果，注意如果不使用了务必要关闭游标！
    */
   toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ICursor<T>
 }
 
 interface ICursor<T> {
+  /**
+   * 获取集合中元素的数量
+   * @returns 集合的长度
+   */
   get length(): number
 
+  /**
+   * 返回集合中的第一个元素，如果集合为空，则返回null
+   * @returns 第一个元素或null
+   */
   firstOrNull(): T | null
 
+  /**
+   * 返回集合中的第一个元素
+   * @returns 第一个元素
+   * @throws 如果结果为空，抛出错误
+   */
   first(): T
 
+  /**
+   * 返回集合中的最后一个元素
+   * @returns 最后一个元素或null
+   */
   lastOrNull(): T | null
 
+  /**
+   * 返回集合中的最后一个元素
+   * @returns 最后一个元素
+   * @throws 如果结果为空，抛出错误
+   */
   last(): T
 
-  getOrNull(index: number): T | null
-
+  /**
+   * 根据索引返回集合中的元素
+   * @param index 索引位置
+   * @returns 对应的元素
+   * @throws 如果结果为空，抛出错误
+   */
   get(index: number): T
 
+  /**
+   * 根据索引返回集合中的元素
+   * @param index 索引位置
+   * @returns 对应的元素或null
+   */
+  getOrNull(index: number): T | null
+
+  /**
+   * 返回集合中所有元素的只读数组
+   * @returns 所有元素的只读数组
+   */
   toList(): ReadonlyArray<T>
 
+  /**
+   * 返回集合中所有元素的只读数组
+   * @returns 所有元素的只读数组或null
+   */
   toListOrNull(): ReadonlyArray<T> | null
 
+  /**
+   * 释放内存
+   */
   close(): void
 }
 
@@ -529,22 +569,6 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToFirstRow()) {
-      return this.buildEntityFromResultSet(resultSet, this.targetTable)
-    }
-    return null
-  }
-
-  last(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
-    const last = this.lastOrNull(predicate)
-    if (last) {
-      return last
-    }
-    throw Error("Query is empty.")
-  }
-
-  lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
-    if (resultSet.goToLastRow()) {
       return this.buildEntityFromResultSet(resultSet, this.targetTable)
     }
     return null
