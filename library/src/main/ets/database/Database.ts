@@ -12,38 +12,40 @@ type DatabaseCrudOnlyTo<M> = Pick<DatabaseCrud<M>, 'to'>
 type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
 
 class SessionQueueManager {
-  private constructor() {
+  constructor(private database: Database) {
   }
 
-  private static readonly sessionQueueMap = new Map<string, DatabaseCrud<any>>()
+  private readonly sessionQueueMap = new Map<string, DatabaseCrud<any>>()
 
-  static getSessionQueue<M>(rdbStore: relationalStore.RdbStore, targetTable: Table<M>): DatabaseCrud<M> {
+  getSessionQueue<M>(targetTable: Table<M>): DatabaseCrud<M> {
     if (this.sessionQueueMap.has(targetTable.tableName)) {
       return this.sessionQueueMap.get(targetTable.tableName)
     }
-    const newSessionQueue = new DatabaseCrud(rdbStore, targetTable)
+    const newSessionQueue = new DatabaseCrud(this.database, targetTable)
     this.sessionQueueMap.set(targetTable.tableName, newSessionQueue)
     return newSessionQueue
   }
 
-  static delete(targetTable: Table<any>): void {
+  delete(targetTable: Table<any>): void {
     this.sessionQueueMap.delete(targetTable.tableName)
   }
 
-  static clear(): void {
+  clear(): void {
     this.sessionQueueMap.clear()
   }
 }
 
 export class Database {
-  private constructor(private readonly rdbStore: relationalStore.RdbStore) {
+  private readonly sessionQueueManager = new SessionQueueManager(this);
+
+  private constructor(readonly rdbStore: relationalStore.RdbStore) {
   }
 
   /**
    * 异步关闭数据库
    */
   async close(): Promise<void> {
-    SessionQueueManager.clear()
+    this.sessionQueueManager.clear()
     return this.rdbStore.close()
   }
 
@@ -53,7 +55,7 @@ export class Database {
    * @returns {DatabaseCrud<M>}
    */
   of<M>(targetTable: Table<M>): DatabaseCrud<M> {
-    return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
+    return this.sessionQueueManager.getSessionQueue(targetTable)
   }
 
   /**
@@ -63,7 +65,16 @@ export class Database {
    * @returns {DatabaseCrud<Nothing>}
    */
   run(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
-    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).run(scope)
+    return this.sessionQueueManager.getSessionQueue(nothings).run(scope)
+  }
+
+  /**
+   * 删除指定Table
+   * @param targetTable
+   */
+  delete<M>(targetTable: Table<M>): void {
+    this.rdbStore.executeSync(`DROP TABLE IF EXISTS ${targetTable.tableName}`)
+    this.sessionQueueManager.delete(targetTable)
   }
 
   /**
@@ -72,7 +83,7 @@ export class Database {
    * @returns {DatabaseCrud<Nothing>}
    */
   beginTransaction(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
-    return SessionQueueManager.getSessionQueue(this.rdbStore, nothings).beginTransaction(scope)
+    return this.sessionQueueManager.getSessionQueue(nothings).beginTransaction(scope)
   }
 
   /**
@@ -219,10 +230,42 @@ interface IDatabaseCrud<T> {
    * @returns 最后一个实体或null
    */
   lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T | null
+
+  /**
+   * 返回游标
+   * @param predicate
+   * @returns 返回游标操作对象，注意如果不使用了务必要关闭游标！
+   */
+  toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ICursor<T>
+}
+
+interface ICursor<T> {
+  get length(): number
+
+  firstOrNull(): T | null
+
+  first(): T
+
+  lastOrNull(): T | null
+
+  last(): T
+
+  getOrNull(index: number): T | null
+
+  get(index: number): T
+
+  toList(): ReadonlyArray<T>
+
+  toListOrNull(): ReadonlyArray<T> | null
+
+  close(): void
 }
 
 export class DatabaseCrud<T> implements IDatabaseCrud<T> {
-  constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: Table<T>) {
+  private readonly rdbStore: relationalStore.RdbStore;
+
+  constructor(private readonly database: Database, private readonly targetTable: Table<T>) {
+    this.rdbStore = database.rdbStore
     Check.checkTableAndColumns(targetTable)
     if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableAllColumns
@@ -244,13 +287,13 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
           // 从结果中筛选出需要复制的字段名称
           resultSet.close()
           // 释放资源
-          rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
+          database.rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
             .join(',')})`)
-          rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
+          database.rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
           // 将目标表中需要的字段数据插入到备份表
-          rdbStore.executeSync(`DROP TABLE ${targetTable.tableName}`)
+          database.rdbStore.executeSync(`DROP TABLE ${targetTable.tableName}`)
           // 删除原始目标表
-          rdbStore.executeSync(`ALTER TABLE ${backupTableName} RENAME TO ${targetTable.tableName}`)
+          database.rdbStore.executeSync(`ALTER TABLE ${backupTableName} RENAME TO ${targetTable.tableName}`)
           // 将备份表重命名为原始目标表的名称
           if (oldTableVersion) {
             this
@@ -267,32 +310,17 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  /**
-   * 查询单个实体
-   * @param predicate 查询条件
-   * @param targetTable 目标Table
-   * @returns 实体或undefined
-   */
-  private queryOne<T>(
-    predicate: QueryPredicate<T>,
-    targetTable: Table<T>): T | undefined {
-    const resultSet = this.rdbStore.querySync(predicate.getRdbPredicates())
-    try {
-      while (resultSet.goToNextRow()) {
-        const entity = {} as T
-        for (let i = 0; i < resultSet.columnNames.length; i++) {
-          const columnName = resultSet.columnNames[i]
-          const column = targetTable.tableAllColumns.find(col => col._fieldName === columnName)
-          if (column) {
-            entity[column._key] = this.restore(column, resultSet.getValue(i) as SupportValueType)
-          }
-        }
-        return entity
+  private buildEntityFromResultSet<E>(resultSet: relationalStore.ResultSet, targetTable: Table<E>): E {
+    const entity = {} as E
+    for (let i = 0; i < resultSet.columnNames.length; i++) {
+      const columnName = resultSet.columnNames[i]
+      const column = targetTable.tableAllColumns.find(item => item._fieldName === columnName)
+      if (column) {
+        const value = resultSet.getValue(i) as SupportValueType
+        entity[column._key] = this.restore(column, value)
       }
-    } finally {
-      resultSet.close()
     }
-    return undefined
+    return entity
   }
 
   private restore(column: Column<SupportValueType, any>, value: SupportValueType) {
@@ -300,9 +328,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       const referencesTable = column._referencesTable
       Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
       const idColumn = referencesTable?.tableIdColumns[0]
-      const predicates = new QueryPredicate(referencesTable)
-      predicates.equalTo(idColumn, value as SupportValueType)
-      return this.queryOne(predicates, referencesTable)
+      return this.to(referencesTable).firstOrNull(it => it.equalTo(idColumn, value));
     }
     if (column instanceof Column && column._typeConverters) {
       return column._typeConverters?.restore(value)
@@ -339,7 +365,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   to<T>(targetTable: Table<T>): DatabaseCrud<T> {
-    return SessionQueueManager.getSessionQueue(this.rdbStore, targetTable)
+    return this.database.of(targetTable);
   }
 
   run<E extends DatabaseCrud<T>>(scope: (it: E) => void): this {
@@ -462,12 +488,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   delete(): DatabaseCrudOnlyTo<T> {
-    try {
-      this.rdbStore.executeSync(`DROP TABLE IF EXISTS ${this.targetTable.tableName}`)
-      SessionQueueManager.delete(this.targetTable)
-    } finally {
-      return this
-    }
+    this.database.delete(this.targetTable)
+    return this
   }
 
   count(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): number {
@@ -491,18 +513,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     const list: T[] = []
     while (resultSet.goToNextRow()) {
-      const entity = {} as T
-      for (let i = 0; i < resultSet.columnNames.length; i++) {
-        const columnName = resultSet.columnNames[i]
-        const column = this.targetTable.tableAllColumns.find(item => item._fieldName === columnName)
-        if (column) {
-          const value = resultSet.getValue(i) as SupportValueType
-          entity[column._key] = this.restore(column, value)
-        }
-      }
-      list.push(entity)
+      list.push(this.buildEntityFromResultSet(resultSet, this.targetTable))
     }
-
     return list.length > 0 ? list : null
   }
 
@@ -517,16 +529,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToFirstRow()) {
-      const entity = {} as T
-      for (let i = 0; i < resultSet.columnNames.length; i++) {
-        const columnName = resultSet.columnNames[i]
-        const column = this.targetTable.tableAllColumns.find(item => item._fieldName === columnName)
-        if (column) {
-          const value = resultSet.getValue(i) as SupportValueType
-          entity[column._key] = this.restore(column, value)
-        }
-      }
-      return entity
+      return this.buildEntityFromResultSet(resultSet, this.targetTable)
     }
     return null
   }
@@ -542,18 +545,89 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToLastRow()) {
-      const entity = {} as T
-      for (let i = 0; i < resultSet.columnNames.length; i++) {
-        const columnName = resultSet.columnNames[i]
-        const column = this.targetTable.tableAllColumns.find(item => item._fieldName === columnName)
-        if (column) {
-          const value = resultSet.getValue(i) as SupportValueType
-          entity[column._key] = this.restore(column, value)
-        }
-      }
-      return entity
+      return this.buildEntityFromResultSet(resultSet, this.targetTable)
     }
     return null
+  }
+
+  toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ICursor<T> {
+    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const rowCount = resultSet.rowCount
+
+    const firstOrNull = () => {
+      if (resultSet.goToFirstRow()) {
+        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+      }
+      return null
+    }
+    const first = () => {
+      const first = firstOrNull()
+      if (first) {
+        return first
+      }
+      throw Error("Query is empty.")
+    }
+    const lastOrNull = () => {
+      if (resultSet.goToLastRow()) {
+        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+      }
+      return null
+    }
+    const last = () => {
+      const last = lastOrNull()
+      if (last) {
+        return last
+      }
+      throw Error("Query is empty.")
+    }
+    const getOrNull = (position: number) => {
+      if (position < 0 || position > rowCount - 1) {
+        return null;
+      }
+
+      if (resultSet.goToRow(position)) {
+        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+      }
+
+      return null
+    };
+    const get = (position: number) => {
+      const item = getOrNull(position)
+      if (item) {
+        return item
+      }
+      throw Error("Index out of range.")
+    }
+    const toListOrNull = () => {
+      const list: T[] = []
+      while (resultSet.goToNextRow()) {
+        list.push(this.buildEntityFromResultSet(resultSet, this.targetTable))
+      }
+      return list.length > 0 ? list : null
+    }
+    const toList = () => {
+      const list = toListOrNull()
+      if (list) {
+        return list
+      }
+      throw Error("Query is empty.")
+    }
+    const close = () => resultSet.close();
+
+    const cursor: ICursor<T> = {
+      length: rowCount,
+      firstOrNull: firstOrNull,
+      first: first,
+      lastOrNull: lastOrNull,
+      last: last,
+      getOrNull: getOrNull,
+      get: get,
+      toListOrNull: toListOrNull,
+      toList: toList,
+      close: close,
+    }
+
+    return cursor;
   }
 }
 
