@@ -1,6 +1,6 @@
 import { relationalStore } from '@kit.ArkData';
 import { Table } from '../schema/Table';
-import { IValueColumn, SupportValueType } from '../schema/Column';
+import { IIndex, IValueColumn, SupportValueType } from '../schema/Column';
 
 /**
  * 对relationalStore.RdbPredicates进行包装
@@ -148,8 +148,8 @@ export class QueryPredicate<T> {
     return this
   }
 
-  indexedBy(column: IValueColumn) {
-    this.rdbPredicates.indexedBy(column._fieldName)
+  indexedBy(column: IIndex) {
+    this.rdbPredicates.indexedBy(column._name)
     return this
   }
 
