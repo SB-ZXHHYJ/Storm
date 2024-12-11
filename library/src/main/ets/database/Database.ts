@@ -235,7 +235,7 @@ interface IDatabaseCrud<T> {
   toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ICursor<T>
 }
 
-interface ICursor<T> {
+export interface ICursor<T> {
   /**
    * 获取集合中元素的数量
    * @returns 集合的长度
@@ -574,7 +574,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return null
   }
 
-  toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ICursor<T> {
+  toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): ICursor<T> {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     const rowCount = resultSet.rowCount
 
