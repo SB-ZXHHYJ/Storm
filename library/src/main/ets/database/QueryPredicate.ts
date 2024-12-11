@@ -37,7 +37,7 @@ export class QueryPredicate<T> {
   }
 
   endWrap() {
-    this.rdbPredicates.beginWrap()
+    this.rdbPredicates.endWrap()
     return this
   }
 
