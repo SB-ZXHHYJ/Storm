@@ -228,6 +228,21 @@ interface IDatabaseCrud<T> {
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T | null
 
   /**
+   * 获取满足指定条件的最后一个实体
+   * @param predicate 查询条件
+   * @returns 最后一个满足条件的实体
+   * @throws 如果结果为空，抛出错误
+   */
+  last(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T
+
+  /**
+   * 获取满足指定条件的最后一个实体
+   * @param predicate 查询条件
+   * @returns 最后一个满足条件的实体或null
+   */
+  lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): T | null
+
+  /**
    * 返回一个游标对象，以便对符合条件的数据进行操作
    * @param predicate 查询条件
    * @returns 游标操作对象，用于遍历和操作查询结果，注意如果不使用了务必要关闭游标！
@@ -296,7 +311,7 @@ export interface ICursor<T> {
   toListOrNull(): ReadonlyArray<T> | null
 
   /**
-   * 释放内存
+   * 关闭游标
    */
   close(): void
 }
@@ -583,6 +598,22 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToFirstRow()) {
+      return this.buildEntityFromResultSet(resultSet, this.targetTable)
+    }
+    return null
+  }
+
+  last(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
+    const last = this.lastOrNull(predicate)
+    if (last) {
+      return last
+    }
+    throw Error("Query is empty.")
+  }
+
+  lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
+    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    if (resultSet.goToLastRow()) {
       return this.buildEntityFromResultSet(resultSet, this.targetTable)
     }
     return null
