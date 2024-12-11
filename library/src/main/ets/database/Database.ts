@@ -3,7 +3,7 @@ import { Table } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { Column, IValueColumn, ReferencesColumn, SupportValueType } from '../schema/Column'
+import { IValueColumn, ReferencesColumn, SupportValueType } from '../schema/Column'
 import { stormTableVersions } from '../model/StormTableVersion'
 import { nothings } from '../model/Nothing'
 
@@ -379,58 +379,42 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  private buildEntityFromResultSet<E>(resultSet: relationalStore.ResultSet, targetTable: Table<E>): E {
-    const entity = {} as E
-    for (let i = 0; i < resultSet.columnNames.length; i++) {
-      const columnName = resultSet.columnNames[i]
-      const column = targetTable.tableAllColumns.find(item => item._fieldName === columnName)
-      if (column) {
-        const value = resultSet.getValue(i) as SupportValueType
-        entity[column._key] = this.restore(column, value)
+  private modelToValueBucket(model: {}, targetTable: Table<any>): relationalStore.ValuesBucket {
+    const vb: relationalStore.ValuesBucket = {}
+    targetTable.tableAllColumns.forEach(column => {
+      if (column instanceof ReferencesColumn) {
+        Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+        const idColumn = column._referencesTable.tableIdColumns[0]
+        vb[column._fieldName] = model[column._key]?.[idColumn._key]
+        return
       }
-    }
-    return entity
-  }
-
-  private restore(column: Column<SupportValueType, any>, value: SupportValueType) {
-    if (column instanceof ReferencesColumn) {
-      const referencesTable = column._referencesTable
-      Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
-      const idColumn = referencesTable?.tableIdColumns[0]
-      return this.to(referencesTable).firstOrNull(it => it.equalTo(idColumn, value));
-    }
-    if (column instanceof Column && column._typeConverters) {
-      return column._typeConverters?.restore(value)
-    }
-    return value
-  }
-
-  private save(column: Column<SupportValueType, any>, value: any) {
-    if (column instanceof ReferencesColumn) {
-      Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
-      const idColumn = column._referencesTable.tableIdColumns[0]
-      if (value) {
-        return value[idColumn._fieldName]
-      }
-      return value
-    }
-    if (column instanceof Column) {
       if (column._typeConverters) {
-        return column._typeConverters.save(value)
+        vb[column._fieldName] = column._typeConverters.save(model[column._key] ?? null)
+        return
       }
-    }
-    return value
+      vb[column._fieldName] = model[column._key]
+    })
+    return vb
   }
 
-  private modelToValueBucket(model: T): relationalStore.ValuesBucket {
-    const valueBucket: relationalStore.ValuesBucket = {}
-    for (const key of Object.keys(model)) {
-      const column = this.targetTable.tableAllColumns.find(it => it._key === key)
-      if (column) {
-        valueBucket[column._fieldName] = this.save(column, model[key])
+  private valueBucketToModel<T>(inputVb: relationalStore.ValuesBucket, targetTable: Table<T>): T {
+    const vb = {} as T
+    targetTable.tableAllColumns.forEach(column => {
+      if (column instanceof ReferencesColumn) {
+        Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
+        vb[column._key] = this
+          .to(column._referencesTable)
+          .firstOrNull(it =>
+          it.equalTo(column._referencesTable.tableIdColumns[0], inputVb[column._fieldName] as SupportValueType))
+        return
       }
-    }
-    return valueBucket
+      if (column._typeConverters) {
+        vb[column._key] = column._typeConverters.restore(inputVb[column._fieldName] as SupportValueType ?? null)
+        return
+      }
+      vb[column._key] = inputVb[column._fieldName]
+    })
+    return vb
   }
 
   to<T>(targetTable: Table<T>): DatabaseCrud<T> {
@@ -464,7 +448,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
 
     const valueBuckets = models.map((item => {
-      return this.modelToValueBucket(item)
+      return this.modelToValueBucket(item, this.targetTable)
     }))
 
     const idColumn = this.targetTable.tableIdColumns[0]
@@ -494,7 +478,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     models
-      .map(item => this.modelToValueBucket(item))
+      .map(item => this.modelToValueBucket(item, this.targetTable))
       .forEach(item => {
         const wrapper = new QueryPredicate(this.targetTable).equalTo(idColumn,
           item[idColumn._fieldName] as SupportValueType)
@@ -513,7 +497,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       this.rdbStore.updateSync(valueBucket, rdbPredicates)
       return this
     }
-    this.rdbStore.updateSync(this.modelToValueBucket(model as T), rdbPredicates)
+    this.rdbStore.updateSync(this.modelToValueBucket(model, this.targetTable), rdbPredicates)
     return this
   }
 
@@ -529,7 +513,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
     const valueBuckets = models.map((item => {
-      return this.modelToValueBucket(item)
+      return this.modelToValueBucket(item, this.targetTable)
     }))
     valueBuckets
       .forEach(item => {
@@ -582,7 +566,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     const list: T[] = []
     while (resultSet.goToNextRow()) {
-      list.push(this.buildEntityFromResultSet(resultSet, this.targetTable))
+      list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
     }
     return list.length > 0 ? list : null
   }
@@ -598,7 +582,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToFirstRow()) {
-      return this.buildEntityFromResultSet(resultSet, this.targetTable)
+      return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
     }
     return null
   }
@@ -614,7 +598,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     if (resultSet.goToLastRow()) {
-      return this.buildEntityFromResultSet(resultSet, this.targetTable)
+      return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
     }
     return null
   }
@@ -625,7 +609,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
     const firstOrNull = () => {
       if (resultSet.goToFirstRow()) {
-        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+        return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
       }
       return null
     }
@@ -638,7 +622,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
     const lastOrNull = () => {
       if (resultSet.goToLastRow()) {
-        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+        return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
       }
       return null
     }
@@ -655,7 +639,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       }
 
       if (resultSet.goToRow(position)) {
-        return this.buildEntityFromResultSet(resultSet, this.targetTable)
+        return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
       }
 
       return null
@@ -668,11 +652,11 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       throw Error("Index out of range.")
     }
     const toListOrNull = () => {
-      const list: T[] = []
+      const list: {}[] = []
       while (resultSet.goToNextRow()) {
-        list.push(this.buildEntityFromResultSet(resultSet, this.targetTable))
+        list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
       }
-      return list.length > 0 ? list : null
+      return list.length > 0 ? list as T[] : null
     }
     const toList = () => {
       const list = toListOrNull()
@@ -681,7 +665,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       }
       throw Error("Query is empty.")
     }
-    const close = () => resultSet.close();
+    const close = () => resultSet.close()
 
     const cursor: ICursor<T> = {
       length: rowCount,
