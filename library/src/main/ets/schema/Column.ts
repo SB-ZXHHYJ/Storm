@@ -120,6 +120,79 @@ const TimestampTypeConverters: TypeConverters<number, Date> = {
   }
 }
 
+export interface IIndex {
+  /**
+   * 索引的名称
+   */
+  _name: string;
+
+  /**
+   * 索引包含的列名
+   */
+  _columns: IValueColumn[];
+
+  /**
+   * 是否为唯一索引
+   */
+  _unique?: boolean;
+
+  /**
+   * 索引顺序
+   */
+  _order?: 'ASC' | 'DESC';
+}
+
+/**
+ * 索引构建器类
+ */
+class IndexBuilder implements IIndex {
+  readonly _columns: IValueColumn[] = [];
+  _unique: boolean = false;
+  _order?: 'ASC' | 'DESC';
+
+  constructor(
+    readonly _name: string,
+  ) {
+  }
+
+  unique(unique: boolean = true): this {
+    this._unique = unique;
+    return this;
+  }
+
+  order(order: 'ASC' | 'DESC'): this {
+    this._order = order;
+    return this;
+  }
+
+  /**
+   * 添加列到索引中
+   * @param columns 要添加的列
+   */
+  columns(...columns: IValueColumn[]): this {
+    this._columns.push(...columns);
+    return this;
+  }
+
+  /**
+   * 构建索引定义
+   */
+  bindTo<T>(targetTable: Table<T>): IIndex {
+    if (this._columns.length === 0) {
+      throw new Error('The index must contain at least one column.');
+    }
+    // 检查是否存在重复列
+    const columnKeys = this._columns.map(it => it._key);
+    if (new Set(columnKeys).size !== columnKeys.length) {
+      throw new Error('Duplicate columns exist in the index.');
+    }
+
+    const tableIndies = targetTable.tableIndexes as IIndex[]
+    tableIndies.push(this)
+    return this
+  }
+}
+
 export class Column<V extends SupportValueType, M> implements IValueColumn, IFunctionColumn<V, M> {
   protected constructor(
     readonly _fieldName: string,
@@ -252,6 +325,15 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
    */
   static references<M>(fieldName: string, referencesTable: Table<M>): Column<number, M> {
     return new ReferencesColumn(fieldName, referencesTable)
+  }
+
+  /**
+   * 创建索引构建器
+   * @param indexName 索引名称
+   * @param unique 是否为唯一索引
+   */
+  static index(indexName: string, ...indexes: IValueColumn[]): IndexBuilder {
+    return new IndexBuilder(indexName).columns(...indexes);
   }
 }
 

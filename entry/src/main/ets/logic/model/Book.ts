@@ -9,6 +9,10 @@ class Books extends Table<Book> {
   readonly createDataTime =
     Column.date('create_data_time').default(new Date().toString()).bindTo(this, 'createDataTime')
   readonly visibility = Column.boolean('visibility').bindTo(this, 'visibility')
+
+  /*实际使用的时候建议使用private或者protected标记 */
+  /*protected*/
+  readonly _datetimeIndex = Column.index('t_book_create_data_time_index', this.name).bindTo(this)
 }
 
 export const books = new Books()

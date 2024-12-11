@@ -1,4 +1,4 @@
-import { Column, SupportValueType } from './Column';
+import { Column, IIndex, SupportValueType } from './Column';
 
 export abstract class Table<M> {
   /**
@@ -15,6 +15,11 @@ export abstract class Table<M> {
    * 表中被指定主键的Column数组
    */
   readonly tableIdColumns: readonly Column<SupportValueType, any>[] = []
+
+  /**
+   * 表的所有索引
+   */
+  readonly tableIndexes: readonly IIndex[] = []
 
   /**
    * 版本号，必须为整数，且不可小于1,默认为1

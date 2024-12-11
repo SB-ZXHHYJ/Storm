@@ -12,6 +12,7 @@ import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
 import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
 import { BlobTest } from '../logic/demo/BlobTest'
 import { OtherTest } from '../logic/demo/OtherTest'
+import { IndexTest } from '../logic/demo/IndexTest'
 
 @Entry
 @ComponentV2
@@ -26,6 +27,7 @@ struct Index {
       RemoveIfTest,
       TransactionTest,
       BlobTest,
+      IndexTest,
       OtherTest
     ]
 

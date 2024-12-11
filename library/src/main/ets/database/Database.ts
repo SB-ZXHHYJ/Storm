@@ -311,6 +311,13 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableAllColumns
         .map(column => column._columnModifier)
         .join(',')})`)
+      // 创建表索引
+      for (const index of targetTable.tableIndexes) {
+        const columns = index._columns.map(it => it._fieldName).join(',')
+        const unique = index._unique ? 'UNIQUE' : ''
+        const order = index._order ? index._order : ''
+        this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index._name} ON ${targetTable.tableName} (${columns} ${order})`)
+      }
     }
     if (targetTable.tableVersion > 1) {
       const oldTableVersion = this
@@ -329,6 +336,13 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
           // 释放资源
           database.rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
             .join(',')})`)
+          // 为备份表创建索引, 与目标表相同
+          for (const index of targetTable.tableIndexes) {
+            const columns = index._columns.map(it => it._fieldName).join(',')
+            const unique = index._unique ? 'UNIQUE' : ''
+            const order = index._order ? index._order : ''
+            this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index._name} ON ${backupTableName} (${columns} ${order})`)
+          }
           database.rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
           // 将目标表中需要的字段数据插入到备份表
           database.rdbStore.executeSync(`DROP TABLE ${targetTable.tableName}`)
