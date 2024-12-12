@@ -200,8 +200,7 @@ interface IDatabaseCrud<T> {
   /**
    * 根据指定条件查询实体
    * @param predicate 查询条件
-   * @returns 满足条件的实体的只读数组
-   * @throws 如果结果为空，抛出错误
+   * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T>
 
