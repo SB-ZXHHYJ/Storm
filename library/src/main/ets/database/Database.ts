@@ -564,11 +564,15 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
   toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
-    const list: T[] = []
-    while (resultSet.goToNextRow()) {
-      list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
+    try {
+      const list: T[] = []
+      while (resultSet.goToNextRow()) {
+        list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
+      }
+      return list.length > 0 ? list : null
+    } finally {
+      resultSet.close()
     }
-    return list.length > 0 ? list : null
   }
 
   first(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
@@ -581,10 +585,14 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
-    if (resultSet.goToFirstRow()) {
-      return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
+    try {
+      if (resultSet.goToFirstRow()) {
+        return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
+      }
+      return null
+    } finally {
+      resultSet.close()
     }
-    return null
   }
 
   last(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
@@ -597,10 +605,14 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
 
   lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
-    if (resultSet.goToLastRow()) {
-      return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
+    try {
+      if (resultSet.goToLastRow()) {
+        return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
+      }
+      return null
+    } finally {
+      resultSet.close()
     }
-    return null
   }
 
   toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): ICursor<T> {
@@ -665,7 +677,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       }
       throw Error("Query is empty.")
     }
-    const close = () => resultSet.close()
+    const close = () => resultSet.close();
 
     const cursor: ICursor<T> = {
       length: rowCount,
