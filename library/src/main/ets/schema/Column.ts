@@ -1,20 +1,23 @@
 import { Check } from '../utils/Check';
 import { Table } from './Table';
 
-export type SupportValueType = null | number | string | boolean | Uint8Array
+export type SupportValueTypes = null | number | string | boolean | Uint8Array
 
-type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
+export type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
-type SafeTypes<T, M> = {
+export type SafeKeys<T, M> = {
   [K in keyof T]: T[K] extends M ? K : never
 }[keyof T] & keyof T
 
-export interface IValueColumn {
+export type SafeColumns<T extends Table<any>> = {
+  [K in keyof T]: T[K] extends IColumn ? T[K] : never
+}[keyof T]
+
+export interface IColumn {
   /**
    * Column的名称
    */
-  _fieldName: string,
-
+  _fieldName: string
   /**
    * Column的类型
    */
@@ -32,48 +35,12 @@ export interface IValueColumn {
    */
   _isAutoincrement: boolean
   /**
-   * Column修饰符
+   * Column修饰符，即Column名称和Column类型的集合
    */
   _columnModifier: string
 }
 
-export interface IFunctionColumn<V, M> {
-  /**
-   * 使用PRIMARY KEY修饰Column
-   * @param autoincrement 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
-   * @returns 返回当前实例
-   */
-  primaryKey(autoincrement?: boolean): IFunctionColumn<V, M>
-
-  /**
-   * 使用NOT NULL修饰Column
-   * @returns 返回当前实例
-   */
-  notNull(): IFunctionColumn<V, M>
-
-  /**
-   * 使用UNIQUE修饰Column
-   * @returns 返回当前实例
-   */
-  unique(): IFunctionColumn<V, M>
-
-  /**
-   * 设置Column的默认值
-   * @param value 默认值
-   * @returns 返回当前实例
-   */
-  default(value: V): IFunctionColumn<V, M>
-
-  /**
-   * 将Column绑定到目标Table的实体模型中的指定属性
-   * @param targetTable 目标Table
-   * @param key 实体模型中的属性名称
-   * @returns 返回当前实例
-   */
-  bindTo<T>(targetTable: Table<T>, key: SafeTypes<T, M>): IValueColumn
-}
-
-export type TypeConverters<F extends SupportValueType, E> = {
+export type TypeConverters<F extends SupportValueTypes, E> = {
   /**
    * 将实体转换为数据库支持的类型保存
    */
@@ -120,80 +87,7 @@ const TimestampTypeConverters: TypeConverters<number, Date> = {
   }
 }
 
-export interface IIndex {
-  /**
-   * 索引的名称
-   */
-  _name: string;
-
-  /**
-   * 索引包含的列名
-   */
-  _columns: IValueColumn[];
-
-  /**
-   * 是否为唯一索引
-   */
-  _unique?: boolean;
-
-  /**
-   * 索引顺序
-   */
-  _order?: 'ASC' | 'DESC';
-}
-
-/**
- * 索引构建器类
- */
-class IndexBuilder implements IIndex {
-  readonly _columns: IValueColumn[] = [];
-  _unique: boolean = false;
-  _order?: 'ASC' | 'DESC';
-
-  constructor(
-    readonly _name: string,
-  ) {
-  }
-
-  unique(unique: boolean = true): this {
-    this._unique = unique;
-    return this;
-  }
-
-  order(order: 'ASC' | 'DESC'): this {
-    this._order = order;
-    return this;
-  }
-
-  /**
-   * 添加列到索引中
-   * @param columns 要添加的列
-   */
-  columns(...columns: IValueColumn[]): this {
-    this._columns.push(...columns);
-    return this;
-  }
-
-  /**
-   * 构建索引定义
-   */
-  bindTo<T>(targetTable: Table<T>): IIndex {
-    if (this._columns.length === 0) {
-      throw new Error('The index must contain at least one column.');
-    }
-    // 检查是否存在重复列
-    const columnKeys = this._columns.map(it => it._key);
-    if (new Set(columnKeys).size !== columnKeys.length) {
-      throw new Error('Duplicate columns exist in the index.');
-    }
-
-    const tableIndies = targetTable.tableIndexes as IIndex[]
-    tableIndies.push(this)
-    return this
-  }
-}
-
-export class Column<V extends SupportValueType, M> implements IValueColumn, IFunctionColumn<V, M> {
+export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> implements IColumn {
   protected constructor(
     readonly _fieldName: string,
     readonly _dataType: DataTypes,
@@ -209,40 +103,64 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
 
   readonly _key: string
 
-  private readonly valueColumn = this as IValueColumn
+  private readonly that = this as IColumn
 
+  /**
+   * 使用PRIMARY KEY修饰Column
+   * @param autoincrement 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
+   * @returns 返回当前实例
+   */
   primaryKey(autoincrement?: boolean): this {
-    this.valueColumn._isPrimaryKey = true
-    this.valueColumn._columnModifier += ' PRIMARY KEY'
+    this.that._isPrimaryKey = true
+    this.that._columnModifier += ' PRIMARY KEY'
     if (autoincrement && this._dataType === 'INTEGER') {
-      this.valueColumn._columnModifier += ' AUTOINCREMENT'
-      this.valueColumn._isAutoincrement = true
+      this.that._columnModifier += ' AUTOINCREMENT'
+      this.that._isAutoincrement = true
     }
     return this
   }
 
+  /**
+   * 使用NOT NULL修饰Column
+   * @returns 返回当前实例
+   */
   notNull(): this {
-    this.valueColumn._columnModifier += ' NOT NULL';
+    this.that._columnModifier += ' NOT NULL';
     return this
   }
 
+  /**
+   * 使用UNIQUE修饰Column
+   * @returns 返回当前实例
+   */
   unique(): this {
-    this.valueColumn._columnModifier += ' UNIQUE';
+    this.that._columnModifier += ' UNIQUE';
     return this
   }
 
+  /**
+   * 设置Column的默认值
+   * @param value 默认值
+   * @returns 返回当前实例
+   */
   default(value: V): this {
-    this.valueColumn._columnModifier += ` DEFAULT '${value}'`;
+    this.that._columnModifier += ` DEFAULT '${value}'`;
     return this
   }
 
-  bindTo<T>(targetTable: Table<T>, key: SafeTypes<T, M>): IValueColumn {
+  /**
+   * 将Column绑定到目标Table的实体模型中的指定属性
+   * @param targetTable 目标Table
+   * @param key 实体模型中的属性名称
+   * @returns 返回当前实例
+   */
+  bindTo<T>(targetTable: Table<T>, key: SafeKeys<T, M>): IColumn {
     Check.checkColumnUniqueBindTo(this)
-    this.valueColumn._key = key.toString()
-    const tableAllColumns = targetTable.tableAllColumns as Column<SupportValueType, any>[]
+    this.that._key = key.toString()
+    const tableAllColumns = targetTable.tableColumns as Column<SupportValueTypes, any>[]
     tableAllColumns.push(this)
     if (this._isPrimaryKey) {
-      const tableIdColumns = targetTable.tableIdColumns as Column<SupportValueType, any>[]
+      const tableIdColumns = targetTable.tableIdColumns as Column<SupportValueTypes, any>[]
       tableIdColumns.push(this)
     }
     return this
@@ -332,16 +250,88 @@ export class Column<V extends SupportValueType, M> implements IValueColumn, IFun
    * @param indexName 索引名称
    * @param unique 是否为唯一索引
    */
-  static index(indexName: string, ...indexes: IValueColumn[]): IndexBuilder {
-    return new IndexBuilder(indexName).columns(...indexes);
+  static index(indexName: string, ...indexes: IColumn[]): IndexColumn {
+    return new IndexColumn(indexName, indexes)
   }
 }
 
-export class ReferencesColumn<T extends SupportValueType, E> extends Column<T, E> {
+export class ReferencesColumn<T extends SupportValueTypes, E> extends Column<T, E> {
   constructor(
     readonly _fieldName: string,
     readonly _referencesTable: Table<E>
   ) {
     super(_fieldName, 'INTEGER', undefined)
+  }
+}
+
+export interface IIndexColumn extends IColumn {
+  /**
+   * 索引包含的列名
+   */
+  _columns: readonly IColumn[]
+  /**
+   * 是否为唯一索引
+   */
+  _isUnique?: boolean
+  /**
+   * 索引顺序
+   */
+  _order?: 'ASC' | 'DESC'
+}
+
+/**
+ * 索引构建器类
+ */
+class IndexColumn implements IIndexColumn {
+  readonly _isUnique: boolean = false
+  readonly _order?: 'ASC' | 'DESC'
+
+  constructor(readonly _fieldName: string, readonly _columns: readonly IColumn[]) {
+  }
+
+  get _dataType(): DataTypes {
+    throw new Error('IndexColumn does not support get _dataType')
+  }
+
+  get _key(): string {
+    throw new Error('IndexColumn does not support get _key')
+  }
+
+  get _isPrimaryKey(): boolean {
+    throw new Error('IndexColumn does not support get _isPrimaryKey')
+  }
+
+  get _isAutoincrement(): boolean {
+    throw new Error('IndexColumn does not support get _isAutoincrement')
+  }
+
+  get _columnModifier(): string {
+    throw new Error('IndexColumn does not support get _columnModifier')
+  }
+
+  private readonly that = this as IIndexColumn
+
+  unique(unique: boolean = true): this {
+    this.that._isUnique = unique
+    return this
+  }
+
+  order(order: 'ASC' | 'DESC'): this {
+    this.that._order = order
+    return this
+  }
+
+  bindTo<T>(targetTable: Table<T>): IIndexColumn {
+    if (this._columns.length === 0) {
+      throw new Error('The index must contain at least one column.')
+    }
+    // 检查是否存在重复列
+    const columnKeys = this._columns.map(it => it._key)
+    if (new Set(columnKeys).size !== columnKeys.length) {
+      throw new Error('Duplicate columns exist in the index.')
+    }
+    const tableIndies = targetTable.tableIndexColumns as IIndexColumn[]
+    tableIndies.push(this)
+    return this
   }
 }

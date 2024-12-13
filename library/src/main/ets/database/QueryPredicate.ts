@@ -1,6 +1,6 @@
 import { relationalStore } from '@kit.ArkData';
 import { Table } from '../schema/Table';
-import { IIndex, IValueColumn, SupportValueType } from '../schema/Column';
+import { IColumn, IIndexColumn, SupportValueTypes } from '../schema/Column';
 
 /**
  * 对relationalStore.RdbPredicates进行包装
@@ -21,12 +21,12 @@ export class QueryPredicate<T> {
     this.rdbPredicates = new relationalStore.RdbPredicates(targetTable.tableName)
   }
 
-  equalTo(column: IValueColumn, value: SupportValueType) {
+  equalTo(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.equalTo(column._fieldName, value)
     return this
   }
 
-  notEqualTo(column: IValueColumn, value: SupportValueType) {
+  notEqualTo(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.notEqualTo(column._fieldName, value)
     return this
   }
@@ -51,77 +51,77 @@ export class QueryPredicate<T> {
     return this
   }
 
-  isNull(column: IValueColumn) {
+  isNull(column: IColumn) {
     this.rdbPredicates.isNull(column._fieldName)
     return this
   }
 
-  isNotNull(column: IValueColumn) {
+  isNotNull(column: IColumn) {
     this.rdbPredicates.isNotNull(column._fieldName)
     return this
   }
 
-  like(column: IValueColumn, value: string) {
+  like(column: IColumn, value: string) {
     this.rdbPredicates.like(column._fieldName, value)
     return this
   }
 
-  contains(column: IValueColumn, value: string) {
+  contains(column: IColumn, value: string) {
     this.rdbPredicates.contains(column._fieldName, value)
     return this
   }
 
-  beginsWith(column: IValueColumn, value: string) {
+  beginsWith(column: IColumn, value: string) {
     this.rdbPredicates.beginsWith(column._fieldName, value)
     return this
   }
 
-  endsWith(column: IValueColumn, value: string) {
+  endsWith(column: IColumn, value: string) {
     this.rdbPredicates.endsWith(column._fieldName, value)
     return this
   }
 
-  glob(column: IValueColumn, value: string) {
+  glob(column: IColumn, value: string) {
     this.rdbPredicates.glob(column._fieldName, value)
     return this
   }
 
-  between(column: IValueColumn, low: SupportValueType, high: SupportValueType) {
+  between(column: IColumn, low: SupportValueTypes, high: SupportValueTypes) {
     this.rdbPredicates.between(column._fieldName, low, high)
     return this
   }
 
-  notBetween(column: IValueColumn, low: SupportValueType, high: SupportValueType) {
+  notBetween(column: IColumn, low: SupportValueTypes, high: SupportValueTypes) {
     this.rdbPredicates.notBetween(column._fieldName, low, high)
     return this
   }
 
-  greaterThan(column: IValueColumn, value: SupportValueType) {
+  greaterThan(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.greaterThan(column._fieldName, value)
     return this
   }
 
-  lessThan(column: IValueColumn, value: SupportValueType) {
+  lessThan(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.lessThan(column._fieldName, value)
     return this
   }
 
-  greaterThanOrEqualTo(column: IValueColumn, value: SupportValueType) {
+  greaterThanOrEqualTo(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.greaterThanOrEqualTo(column._fieldName, value)
     return this
   }
 
-  lessThanOrEqualTo(column: IValueColumn, value: SupportValueType) {
+  lessThanOrEqualTo(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.lessThanOrEqualTo(column._fieldName, value)
     return this
   }
 
-  orderByAsc(column: IValueColumn) {
+  orderByAsc(column: IColumn) {
     this.rdbPredicates.orderByAsc(column._fieldName)
     return this
   }
 
-  orderByDesc(column: IValueColumn) {
+  orderByDesc(column: IColumn) {
     this.rdbPredicates.orderByDesc(column._fieldName)
     return this
   }
@@ -141,34 +141,34 @@ export class QueryPredicate<T> {
     return this
   }
 
-  groupBy(columns: IValueColumn[]) {
+  groupBy(columns: IColumn[]) {
     this.rdbPredicates.groupBy(columns.map(item => {
       return item._fieldName
     }))
     return this
   }
 
-  indexedBy(column: IIndex) {
-    this.rdbPredicates.indexedBy(column._name)
+  indexedBy(column: IIndexColumn) {
+    this.rdbPredicates.indexedBy(column._fieldName)
     return this
   }
 
-  in(column: IValueColumn, value: Array<SupportValueType>) {
+  in(column: IColumn, value: Array<SupportValueTypes>) {
     this.rdbPredicates.in(column._fieldName, value)
     return this
   }
 
-  notIn(column: IValueColumn, value: Array<SupportValueType>) {
+  notIn(column: IColumn, value: Array<SupportValueTypes>) {
     this.rdbPredicates.notIn(column._fieldName, value)
     return this
   }
 
-  notContains(column: IValueColumn, value: SupportValueType) {
+  notContains(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.notContains(column._fieldName, value.toString())
     return this
   }
 
-  notLike(column: IValueColumn, value: SupportValueType) {
+  notLike(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.notLike(column._fieldName, value.toString())
     return this
   }

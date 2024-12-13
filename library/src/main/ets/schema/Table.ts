@@ -1,4 +1,4 @@
-import { Column, IIndex, SupportValueType } from './Column';
+import { IColumn, IIndexColumn } from './Column';
 
 export abstract class Table<M> {
   /**
@@ -7,27 +7,22 @@ export abstract class Table<M> {
   protected readonly nothing: M
 
   /**
-   * 表中所有Column的数组
+   * 表中所有列的数组，但不包括索引列
    */
-  readonly tableAllColumns: readonly Column<SupportValueType, any>[] = []
+  readonly tableColumns: readonly IColumn[] = []
 
   /**
-   * 表中被指定主键的Column数组
+   * 表中被指定为主键的列数组
    */
-  readonly tableIdColumns: readonly Column<SupportValueType, any>[] = []
+  readonly tableIdColumns: readonly IColumn[] = []
 
   /**
-   * 表的所有索引
+   * 表中所有索引列的数组
    */
-  readonly tableIndexes: readonly IIndex[] = []
+  readonly tableIndexColumns: readonly IIndexColumn[] = []
 
   /**
-   * 版本号，必须为整数，且不可小于1,默认为1
-   */
-  readonly tableVersion: number = 1
-
-  /**
-   * Table的名称
+   * 表的名称
    */
   abstract readonly tableName: string
 }

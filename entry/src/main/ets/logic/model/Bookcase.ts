@@ -1,4 +1,4 @@
-import { Column, Table } from '@zxhhyj/storm';
+import { Column, Migration, Operate, Table } from '@zxhhyj/storm';
 
 class Bookcases extends Table<Bookcase> {
   override readonly tableName = 't_bookcase'
@@ -12,3 +12,15 @@ export interface Bookcase {
   id?: number
   name: string
 }
+
+class BookcasesMigration extends Migration<Bookcases> {
+  readonly tableVersion: number = 2
+
+  onVersionUp(targetVersion: number, operate: Operate<Bookcases>): void {
+    if (targetVersion === 2) {
+      operate.addColumn(bookcases.name)
+    }
+  }
+}
+
+const bookcasesMigration = new BookcasesMigration()

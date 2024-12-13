@@ -3,13 +3,12 @@ import { Table } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { IValueColumn, ReferencesColumn, SupportValueType } from '../schema/Column'
-import { stormTableVersions } from '../model/StormTableVersion'
+import { Column, IColumn, ReferencesColumn, SupportValueTypes } from '../schema/Column'
 import { nothings } from '../model/Nothing'
 
 type DatabaseCrudOnlyTo<M> = Pick<DatabaseCrud<M>, 'to'>
 
-type ColumnValuePairs = ReadonlyArray<[IValueColumn, SupportValueType]>
+type ColumnValuePairs = ReadonlyArray<[IColumn, SupportValueTypes]>
 
 class SessionQueueManager {
   constructor(private database: Database) {
@@ -128,7 +127,6 @@ interface IDatabaseCrud<T> {
 
   /**
    * 插入一组数据
-   * @todo
    * @param models 要插入的数据模型数组
    * @returns 返回当前实例
    */
@@ -322,96 +320,56 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     this.rdbStore = database.rdbStore
     Check.checkTableAndColumns(targetTable)
     if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableAllColumns
+      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableColumns
         .map(column => column._columnModifier)
         .join(',')})`)
-      // 创建表索引
-      for (const index of targetTable.tableIndexes) {
+      for (const index of targetTable.tableIndexColumns) {
         const columns = index._columns.map(it => it._fieldName).join(',')
-        const unique = index._unique ? 'UNIQUE' : ''
+        const unique = index._isUnique ? 'UNIQUE' : ''
         const order = index._order ? index._order : ''
-        this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index._name} ON ${targetTable.tableName} (${columns} ${order})`)
-      }
-    }
-    if (targetTable.tableVersion > 1) {
-      const oldTableVersion = this
-        .to(stormTableVersions)
-        .firstOrNull(it => it.equalTo(stormTableVersions.name, targetTable.tableName))
-      if ((oldTableVersion?.version ?? 1) < targetTable.tableVersion) {
-        this.beginTransaction(() => {
-          const resultSet = this.rdbStore.querySync(new QueryPredicate(targetTable).getRdbPredicates())
-          const backupTableName = `backup_${targetTable.tableName}`
-          // 备份表的名称
-          const newFieldNames = targetTable.tableAllColumns.map(item => item._fieldName)
-          // 获取目标表的所有字段名称
-          const copyFieldNames = resultSet.columnNames.filter(item => newFieldNames.includes(item))
-          // 从结果中筛选出需要复制的字段名称
-          resultSet.close()
-          // 释放资源
-          database.rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${targetTable.tableAllColumns.map(item => item._columnModifier)// 创建备份表，结构与目标表相同
-            .join(',')})`)
-          // 为备份表创建索引, 与目标表相同
-          for (const index of targetTable.tableIndexes) {
-            const columns = index._columns.map(it => it._fieldName).join(',')
-            const unique = index._unique ? 'UNIQUE' : ''
-            const order = index._order ? index._order : ''
-            this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index._name} ON ${backupTableName} (${columns} ${order})`)
-          }
-          database.rdbStore.executeSync(`INSERT INTO ${backupTableName}(${copyFieldNames.join(',')}) SELECT ${copyFieldNames.join(',')} FROM ${targetTable.tableName}`)
-          // 将目标表中需要的字段数据插入到备份表
-          database.rdbStore.executeSync(`DROP TABLE ${targetTable.tableName}`)
-          // 删除原始目标表
-          database.rdbStore.executeSync(`ALTER TABLE ${backupTableName} RENAME TO ${targetTable.tableName}`)
-          // 将备份表重命名为原始目标表的名称
-          if (oldTableVersion) {
-            this
-              .to(stormTableVersions)
-              .updateIf(it => it.equalTo(stormTableVersions.name, targetTable.tableName),
-                [[stormTableVersions.version, targetTable.tableVersion]])
-          } else {
-            this
-              .to(stormTableVersions)
-              .add({ name: targetTable.tableName, version: targetTable.tableVersion })
-          }
-        })
+        this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index._fieldName} ON ${targetTable.tableName} (${columns} ${order})`)
       }
     }
   }
 
   private modelToValueBucket(model: {}, targetTable: Table<any>): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
-    targetTable.tableAllColumns.forEach(column => {
+    targetTable.tableColumns.forEach(column => {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
         const idColumn = column._referencesTable.tableIdColumns[0]
         vb[column._fieldName] = model[column._key]?.[idColumn._key]
         return
       }
-      if (column._typeConverters) {
-        vb[column._fieldName] = column._typeConverters.save(model[column._key] ?? null)
-        return
+      if (column instanceof Column) {
+        if (column._typeConverters) {
+          vb[column._fieldName] = column._typeConverters.save(model[column._key] ?? null)
+          return
+        }
+        vb[column._fieldName] = model[column._key]
       }
-      vb[column._fieldName] = model[column._key]
     })
     return vb
   }
 
   private valueBucketToModel<T>(inputVb: relationalStore.ValuesBucket, targetTable: Table<T>): T {
     const vb = {} as T
-    targetTable.tableAllColumns.forEach(column => {
+    targetTable.tableColumns.forEach(column => {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
         vb[column._key] = this
           .to(column._referencesTable)
           .firstOrNull(it =>
-          it.equalTo(column._referencesTable.tableIdColumns[0], inputVb[column._fieldName] as SupportValueType))
+          it.equalTo(column._referencesTable.tableIdColumns[0], inputVb[column._fieldName] as SupportValueTypes))
         return
       }
-      if (column._typeConverters) {
-        vb[column._key] = column._typeConverters.restore(inputVb[column._fieldName] as SupportValueType ?? null)
-        return
+      if (column instanceof Column) {
+        if (column._typeConverters) {
+          vb[column._key] = column._typeConverters.restore(inputVb[column._fieldName] ?? null)
+          return
+        }
+        vb[column._key] = inputVb[column._fieldName]
       }
-      vb[column._key] = inputVb[column._fieldName]
     })
     return vb
   }
@@ -480,7 +438,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       .map(item => this.modelToValueBucket(item, this.targetTable))
       .forEach(item => {
         const wrapper = new QueryPredicate(this.targetTable).equalTo(idColumn,
-          item[idColumn._fieldName] as SupportValueType)
+          item[idColumn._fieldName] as SupportValueTypes)
         this.rdbStore.updateSync(item, wrapper.getRdbPredicates())
       })
     return this
@@ -509,15 +467,15 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
+    const idColumn = this.targetTable.tableIdColumns[0]
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item, this.targetTable)
     }))
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new QueryPredicate(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as SupportValueType)
+          new QueryPredicate(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as SupportValueTypes)
         this.rdbStore.deleteSync(wrapper.getRdbPredicates())
       })
     return this
@@ -651,7 +609,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       }
 
       return null
-    };
+    }
     const get = (position: number) => {
       const item = getOrNull(position)
       if (item) {
@@ -660,11 +618,11 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       throw Error("Index out of range.")
     }
     const toListOrNull = () => {
-      const list: {}[] = []
+      const list: T[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
       }
-      return list.length > 0 ? list as T[] : null
+      return list.length > 0 ? list : null
     }
     const toList = () => {
       const list = toListOrNull()
@@ -673,7 +631,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
       }
       throw Error("Query is empty.")
     }
-    const close = () => resultSet.close();
+    const close = () => resultSet.close()
 
     const cursor: ICursor<T> = {
       length: rowCount,

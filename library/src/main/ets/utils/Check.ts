@@ -1,4 +1,4 @@
-import { Column, SupportValueType } from '../schema/Column';
+import { Column } from '../schema/Column';
 import { Table } from '../schema/Table';
 
 export namespace Check {
@@ -29,11 +29,8 @@ export namespace Check {
    * @param targetTable
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
-    if (!Number.isInteger(targetTable.tableVersion)) {
-      throw new Error(`In ${targetTable.tableName}, the version number must be an integer.`)
-    }
-
-    const keys = targetTable.tableAllColumns.map(it => it._key);
+    const keys =
+      targetTable.tableColumns.map(it => it._key).concat(targetTable.tableIndexColumns.map(item => item._fieldName))
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }
@@ -43,7 +40,7 @@ export namespace Check {
    * 检查column是否重复绑定属性
    * @param column 要检查的column
    */
-  export function checkColumnUniqueBindTo(column: Column<SupportValueType, any>) {
+  export function checkColumnUniqueBindTo(column: Column) {
     if (column._key) {
       throw new Error(`In ${column._fieldName}, each property can only be decorated with one bindTo().`)
     }
