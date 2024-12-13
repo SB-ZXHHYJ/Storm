@@ -200,8 +200,7 @@ interface IDatabaseCrud<T> {
   /**
    * 根据指定条件查询实体
    * @param predicate 查询条件
-   * @returns 满足条件的实体的只读数组
-   * @throws 如果结果为空，抛出错误
+   * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T>
 
@@ -555,24 +554,21 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] {
-    const list = this.toListOrNull(predicate)
-    if (list) {
-      return list
-    }
-    throw Error("Query is empty.")
-  }
-
-  toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] | null {
     const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
     try {
       const list: T[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), this.targetTable))
       }
-      return list.length > 0 ? list : null
+      return list
     } finally {
       resultSet.close()
     }
+  }
+
+  toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] | null {
+    const list = this.toList(predicate)
+    return list.length > 0 ? list : null
   }
 
   first(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
