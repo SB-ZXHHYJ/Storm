@@ -170,24 +170,35 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * 创建INTEGER类型的Column
    * @param fieldName Column的名称
    */
-  static integer(fieldName: string): Column<number, number> {
-    return new Column(fieldName, 'INTEGER')
+  static integer<M = number>(fieldName: string, typeConverters?: TypeConverters<number, M>): Column<number, M> {
+    return new Column(fieldName, 'INTEGER', typeConverters)
   }
 
   /**
    * 创建REAL类型的Column
    * @param fieldName Column的名称
    */
-  static real(fieldName: string): Column<number, number> {
-    return new Column(fieldName, 'REAL')
+  static real<M = number>(fieldName: string, typeConverters?: TypeConverters<number, M>): Column<number, M> {
+    return new Column(fieldName, 'REAL', typeConverters)
   }
 
   /**
    * 创建TEXT类型的Column
    * @param fieldName Column的名称
    */
-  static text(fieldName: string): Column<string, string> {
-    return new Column(fieldName, 'TEXT')
+  static text<M = string>(fieldName: string, typeConverters?: TypeConverters<string, M>): Column<string, M> {
+    return new Column(fieldName, 'TEXT', typeConverters)
+  }
+
+  /**
+   * 创建Uint8Array类型的Column
+   * @param fieldName Column的名称
+   */
+  static blob<M = Uint8Array>(
+    fieldName: string,
+    typeConverters?: TypeConverters<Uint8Array, M>
+  ): Column<Uint8Array, M> {
+    return new Column(fieldName, 'BLOB', typeConverters)
   }
 
   /**
@@ -205,7 +216,7 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @param fieldName Column的名称
    */
   static date(fieldName: string): Column<string, Date> {
-    return new Column(fieldName, 'TEXT', DateTypeConverters)
+    return this.text(fieldName, DateTypeConverters)
   }
 
   /**
@@ -214,15 +225,7 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @param fieldName Column的名称
    */
   static timestamp(fieldName: string): Column<number, Date> {
-    return new Column(fieldName, 'INTEGER', TimestampTypeConverters);
-  }
-
-  /**
-   * 创建Uint8Array类型的Column
-   * @param fieldName Column的名称
-   */
-  static blob(fieldName: string): Column<Uint8Array, Uint8Array> {
-    return new Column(fieldName, 'BLOB')
+    return this.integer(fieldName, TimestampTypeConverters)
   }
 
   /**
@@ -234,10 +237,6 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
     return new Column(fieldName, 'TEXT', converters)
   }
 
-  static custom<T>(fieldName: string, dataType: DataTypes,
-    typeConverters?: TypeConverters<string, T>): Column<string, T> {
-    return new Column(fieldName, dataType, typeConverters)
-  }
 
   /**
    * 将Column绑定到参考Table中，相当于关系数据库中的外键，使用时需要确保参考Table和其实体都存在唯一主键
