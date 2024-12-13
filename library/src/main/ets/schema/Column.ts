@@ -68,7 +68,7 @@ const BooleanTypeConverters: TypeConverters<number, boolean> = {
  */
 const DateTypeConverters: TypeConverters<string, Date> = {
   save: value => {
-    return value.toString() || null
+    return value?.toString() || null
   },
   restore: value => {
     return value ? new Date(value) : null
@@ -234,7 +234,8 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
     return new Column(fieldName, 'TEXT', converters)
   }
 
-  static custom<T>(fieldName: string, dataType: DataTypes, typeConverters?: TypeConverters<string, T>): Column<string, T> {
+  static custom<T>(fieldName: string, dataType: DataTypes,
+    typeConverters?: TypeConverters<string, T>): Column<string, T> {
     return new Column(fieldName, dataType, typeConverters)
   }
 

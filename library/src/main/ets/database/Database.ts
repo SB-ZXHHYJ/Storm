@@ -153,7 +153,7 @@ interface IDatabaseCrud<T> {
    * @param model 要更新的数据
    * @returns 返回当前实例
    */
-  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: T | ColumnValuePairs): this
+  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: Partial<T>): this
 
   /**
    * 删除一条数据
@@ -444,16 +444,8 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     return this
   }
 
-  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: T | ColumnValuePairs): this {
+  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: Partial<T>): this {
     const rdbPredicates = predicate(new QueryPredicate(this.targetTable)).getRdbPredicates()
-    if (Array.isArray(model)) {
-      const valueBucket: relationalStore.ValuesBucket = model.reduce((acc, [column, value]) => {
-        acc[column._fieldName] = value
-        return acc
-      }, {} as T)
-      this.rdbStore.updateSync(valueBucket, rdbPredicates)
-      return this
-    }
     this.rdbStore.updateSync(this.modelToValueBucket(model, this.targetTable), rdbPredicates)
     return this
   }
