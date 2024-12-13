@@ -3,12 +3,10 @@ import { Table } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { Column, IColumn, ReferencesColumn, SupportValueTypes } from '../schema/Column'
+import { Column, ReferencesColumn, SupportValueTypes } from '../schema/Column'
 import { nothings } from '../model/Nothing'
 
 type DatabaseCrudOnlyTo<M> = Pick<DatabaseCrud<M>, 'to'>
-
-type ColumnValuePairs = ReadonlyArray<[IColumn, SupportValueTypes]>
 
 class SessionQueueManager {
   constructor(private database: Database) {
@@ -201,13 +199,6 @@ interface IDatabaseCrud<T> {
    * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T>
-
-  /**
-   * 根据指定条件查询实体
-   * @param predicate 查询条件
-   * @returns 满足条件的实体的只读数组或null
-   */
-  toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): ReadonlyArray<T> | null
 
   /**
    * 获取满足指定条件的第一个实体
@@ -445,6 +436,9 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: Partial<T>): this {
+    if (Object.values(model).length === 0) {
+      return this
+    }
     const rdbPredicates = predicate(new QueryPredicate(this.targetTable)).getRdbPredicates()
     this.rdbStore.updateSync(this.modelToValueBucket(model, this.targetTable), rdbPredicates)
     return this
@@ -514,11 +508,6 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     } finally {
       resultSet.close()
     }
-  }
-
-  toListOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] | null {
-    const list = this.toList(predicate)
-    return list.length > 0 ? list : null
   }
 
   first(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T {
