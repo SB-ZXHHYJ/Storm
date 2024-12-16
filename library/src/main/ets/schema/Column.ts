@@ -7,7 +7,7 @@ export type SupportValueTypes = null | number | string | boolean | Uint8Array
 export type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
 export type SafeKeys<T, M> = {
-  [K in keyof T]: T[K] extends M ? K : never
+  [K in keyof T]: T[K] extends (M | undefined) ? K : never
 }[keyof T] & keyof T
 
 export type SafeColumns<T extends Table<any>> = {
