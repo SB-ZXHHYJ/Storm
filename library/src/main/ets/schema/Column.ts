@@ -1,4 +1,3 @@
-import { Check } from '../utils/Check';
 import { Table } from './Table';
 import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, TypeConverters } from './TypeConverters';
 
@@ -80,7 +79,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 使用NOT NULL修饰Column
+   * 使用 NOT NULL 修饰 Column
    * @returns {this}
    */
   notNull(): this {
@@ -89,7 +88,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 使用UNIQUE修饰Column
+   * 使用 UNIQUE 修饰 Column
    * @returns {this}
    */
   unique(): this {
@@ -98,7 +97,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 设置Column的默认值
+   * 设置 Column 的默认值
    * @param value 默认值
    * @returns {this}
    */
@@ -108,9 +107,9 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 将Column绑定到目标Table的实体模型中的指定属性
-   * @param targetTable 目标Table
-   * @param key 实体模型中的属性名称
+   * 将 Column 绑定到目标 Table 中实体模型的指定属性
+   * @param targetTable 目标 Table
+   * @param key 实体模型中指定的属性
    * @returns {this}
    */
   bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
@@ -125,8 +124,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建INTEGER类型的Column
-   * @param fieldName Column的名称
+   * 创建 INTEGER 类型的 Column
+   * @param fieldName 列名
    */
   static integer<FieldName extends string, WriteType extends number>(
     fieldName: FieldName,
@@ -135,8 +134,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建REAL类型的Column
-   * @param fieldName Column的名称
+   * 创建 REAL 类型的 Column
+   * @param fieldName 列名
    */
   static real<FieldName extends string, WriteType extends number>(fieldName: FieldName,
     typeConverters?: TypeConverters<number, WriteType>) {
@@ -144,8 +143,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建TEXT类型的Column
-   * @param fieldName Column的名称
+   * 创建 TEXT 类型的 Column
+   * @param fieldName 列名
    */
   static text<FieldName extends string, WriteType extends string>(fieldName: FieldName,
     typeConverters?: TypeConverters<string, WriteType>) {
@@ -153,61 +152,64 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建Uint8Array类型的Column
-   * @param fieldName Column的名称
+   * 创建 Uint8Array 类型的 Column
+   * @param fieldName 列名
    */
   static blob<FieldName extends string>(fieldName: FieldName, typeConverters?: TypeConverters<Uint8Array, Uint8Array>) {
     return new Column(fieldName, 'BLOB', typeConverters)
   }
 
   /**
-   * 创建INTEGER类型的Column并通过BooleanTypeConverters将类型转换为boolean
+   * 创建 INTEGER 类型的 Column 并通过 BooleanTypeConverters 将类型转换为 boolean
    * @see BooleanTypeConverters
-   * @param fieldName Column的名称
+   * @param fieldName 列名
    */
   static boolean(fieldName: string) {
     return new Column(fieldName, 'INTEGER', BooleanTypeConverters)
   }
 
   /**
-   * 创建TEXT类型的Column并通过DateTypeConverters将类型转换为Date
+   * 创建 TEXT 类型的 Column 并通过 DateTypeConverters 将类型转换为 Date
    * @see DateTypeConverters
-   * @param fieldName Column的名称
+   * @param fieldName 列名
    */
   static date(fieldName: string) {
     return new Column(fieldName, 'TEXT', DateTypeConverters)
   }
 
   /**
-   * 创建INTEGER类型的Column并通过TimestampTypeConverters将类型转换为Date
+   * 创建 INTEGER 类型的 Column 并通过 TimestampTypeConverters 将类型转换为 Date
    * @see TimestampTypeConverters
-   * @param fieldName Column的名称
+   * @param fieldName 列名
    */
   static timestamp(fieldName: string) {
     return new Column(fieldName, 'INTEGER', TimestampTypeConverters)
   }
 
   /**
-   * 将Column绑定到参考Table中，相当于关系数据库中的外键，使用时需要确保参考Table和其实体都存在唯一主键
-   * Storm会将参考Table中实体的主键存储到这个Column上，在查询时Storm会自动从参考Table中查询并填充到这个Column所绑定的实体属性上
-   * @param fieldName Column的名称
-   * @param referencesTable 参考的Table
+   * 将 Column 绑定到参考 Table 中，相当于关系数据库中的外键，使用时需要确保参考 Table 和其实体都存在唯一主键
+   * Storm 会将参考 Table 中实体的主键存储到这个 Column 上，在查询时 Storm 会自动从参考 Table 中查询并填充到这个 Colum n所绑定的实体属性上
+   * @param fieldName 列名
+   * @param referencesTable 参考的 Table
    */
   static references<FieldName extends string, ReadType>(fieldName: FieldName, referencesTable: Table<ReadType>) {
     return new ReferencesColumn(fieldName, referencesTable)
   }
 
   /**
-   * 创建索引构建器
-   * @param indexName 索引名称
-   * @param unique 是否为唯一索引
+   * 创建 IndexColumn
+   * @param fieldName 列名
    */
-  static index(indexName: string): IndexColumn {
-    return new IndexColumn(indexName)
+  static index(fieldName: string): IndexColumn {
+    return new IndexColumn(fieldName)
   }
 }
 
-export class ReferencesColumn<FieldName extends string, Key extends string, ReadType> extends Column<FieldName, Key, SupportValueTypes, ReadType> {
+/**
+ * 参考列
+ */
+export class ReferencesColumn<FieldName extends string, Key extends string, ReadType>
+  extends Column<FieldName, Key, SupportValueTypes, ReadType> {
   constructor(
     readonly fieldName: FieldName,
     readonly referencesTable: Table<ReadType>
@@ -216,8 +218,14 @@ export class ReferencesColumn<FieldName extends string, Key extends string, Read
   }
 }
 
+/**
+ * IndexColumn 的顺序
+ */
 type Order = 'ASC' | 'DESC'
 
+/**
+ * 索引列
+ */
 export class IndexColumn {
   constructor(readonly fieldName: string) {
   }
@@ -240,16 +248,32 @@ export class IndexColumn {
     return this._sortOrder
   }
 
+  /**
+   * 设置为唯一 IndexColumn
+   * @param unique 是否为唯一 IndexColumn，默认为 true
+   * @returns {this}
+   */
   unique(unique: boolean = true): this {
     this._isUnique = unique
     return this
   }
 
+  /**
+   * 将 IndexColumn 绑定到目标 Table 中
+   * @param order {Order}
+   * @returns {this}
+   */
   order(order: Order): this {
     this._sortOrder = order
     return this
   }
 
+  /**
+   * 将 IndexColumn 绑定到目标 Table 中
+   * @param targetTable 目标 Table
+   * @param columns 要创建索引的 Column
+   * @returns {this}
+   */
   bindTo<T>(targetTable: Table<T>, ...columns: ColumnTypes[]) {
     if (columns.length === 0) {
       throw new Error('The index must contain at least one column.')
