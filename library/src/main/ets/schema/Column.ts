@@ -114,7 +114,6 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @returns {this}
    */
   bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
-    Check.checkColumnUniqueBindTo(this)
     this._key = key
     const tableAllColumns = targetTable.tableColumns as ColumnTypes[]
     tableAllColumns.push(this)
