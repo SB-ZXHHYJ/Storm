@@ -1,4 +1,4 @@
-import { IColumn, IIndexColumn } from './Column';
+import { ColumnTypes, IndexColumn } from './Column';
 
 export abstract class Table<M> {
   /**
@@ -9,17 +9,17 @@ export abstract class Table<M> {
   /**
    * 表中所有列的数组，但不包括索引列
    */
-  readonly tableColumns: readonly IColumn[] = []
+  readonly tableColumns: ReadonlyArray<ColumnTypes> = []
 
   /**
    * 表中被指定为主键的列数组
    */
-  readonly tableIdColumns: readonly IColumn[] = []
+  readonly tableIdColumns: ReadonlyArray<ColumnTypes> = []
 
   /**
    * 表中所有索引列的数组
    */
-  readonly tableIndexColumns: readonly IIndexColumn[] = []
+  readonly tableIndexColumns: ReadonlyArray<IndexColumn> = []
 
   /**
    * 表的名称

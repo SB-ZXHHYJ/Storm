@@ -2,103 +2,108 @@ import { Check } from '../utils/Check';
 import { Table } from './Table';
 import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, TypeConverters } from './TypeConverters';
 
+/**
+ * Storm 支持存储的基本类型
+ */
 export type SupportValueTypes = null | number | string | boolean | Uint8Array
 
+/**
+ * 用于获取 Column 的 Key
+ */
+export type ColumnKey<T
+extends ColumnTypes> = T extends Column<any, infer M, any, any> ? M extends string ? M : never : never
+
+/**
+ * Column 的类型
+ */
+export type ColumnTypes = Column<any, any, any, any>
+
+/**
+ * 支持在 Sqlite 中声明的基本类型
+ */
 export type DataTypes = 'INTEGER' | 'TEXT' | 'BLOB' | 'REAL'
 
+/**
+ * 用于为 bindTo 提供一定的 IDE 检查
+ */
 export type SafeKeys<T, M> = {
   [K in keyof T]: T[K] extends (M | undefined) ? K : never
-}[keyof T] & keyof T
+}[keyof T] extends infer U ? U extends string ? U : never : never
 
-export type SafeColumns<T extends Table<any>> = {
-  [K in keyof T]: T[K] extends IColumn ? T[K] : never
-}[keyof T]
-
-export interface IColumn {
-  /**
-   * Column的名称
-   */
-  _fieldName: string
-  /**
-   * Column的类型
-   */
-  _dataType: DataTypes
-  /**
-   * 实体中对应的属性名称
-   */
-  _key: string
-  /**
-   * 是否为主键
-   */
-  _isPrimaryKey: boolean
-  /**
-   * 是否自增
-   */
-  _isAutoincrement: boolean
-  /**
-   * Column修饰符，即Column名称和Column类型的集合
-   */
-  _columnModifier: string
-}
-
-export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> implements IColumn {
+export class Column<FieldName extends string, Key extends string, WriteType extends SupportValueTypes, ReadType> {
   protected constructor(
-    readonly _fieldName: string,
-    readonly _dataType: DataTypes,
-    readonly _typeConverters?: TypeConverters<V, M>
+    readonly fieldName: FieldName,
+    readonly dataType: DataTypes,
+    readonly typeConverters: TypeConverters<WriteType, ReadType>
   ) {
   }
 
-  readonly _isPrimaryKey: boolean = false
+  private _isPrimaryKey = false
 
-  readonly _isAutoincrement: boolean = false
+  private _isAutoincrement = false
 
-  readonly _columnModifier: string = `${this._fieldName} ${this._dataType}`
+  private _columnModifier = `${this.fieldName} ${this.dataType}`
 
-  readonly _key: string
+  private _key: Key
 
-  private readonly that = this as IColumn
+  get isPrimaryKey() {
+    return this._isPrimaryKey
+  }
+
+  get isAutoincrement() {
+    return this._isAutoincrement
+  }
+
+  get columnModifier() {
+    return this._columnModifier
+  }
+
+  get key() {
+    return this._key
+  }
 
   /**
-   * 使用PRIMARY KEY修饰Column
-   * @param autoincrement 是否使用PRIMARY KEY AUTOINCREMENT修饰Column
-   * @returns 返回当前实例
+   * 使用 PRIMARY KEY 修饰 Column
+   * @param autoincrement 是否是 AUTOINCREMENT Column
+   * @returns {this}
    */
-  primaryKey(autoincrement?: boolean): this {
-    this.that._isPrimaryKey = true
-    this.that._columnModifier += ' PRIMARY KEY'
-    if (autoincrement && this._dataType === 'INTEGER') {
-      this.that._columnModifier += ' AUTOINCREMENT'
-      this.that._isAutoincrement = true
+  primaryKey(autoincrement: boolean = false): this {
+    this._isPrimaryKey = true
+    this._columnModifier += ' PRIMARY KEY'
+    if (autoincrement && this.dataType === 'INTEGER') {
+      this._columnModifier += ' AUTOINCREMENT'
+      this._isAutoincrement = true
+    } else {
+      throw new Error('The autoincrement option can only be set for INTEGER data types.')
     }
     return this
   }
 
   /**
    * 使用NOT NULL修饰Column
-   * @returns 返回当前实例
+   * @returns {this}
    */
   notNull(): this {
-    this.that._columnModifier += ' NOT NULL';
+    this._columnModifier += ' NOT NULL';
     return this
   }
 
   /**
    * 使用UNIQUE修饰Column
-   * @returns 返回当前实例
+   * @returns {this}
    */
   unique(): this {
-    this.that._columnModifier += ' UNIQUE';
+    this._columnModifier += ' UNIQUE';
     return this
   }
 
   /**
    * 设置Column的默认值
    * @param value 默认值
-   * @returns 返回当前实例
+   * @returns {this}
    */
-  default(value: V): this {
-    this.that._columnModifier += ` DEFAULT '${value}'`;
+  default(value: WriteType): this {
+    this._columnModifier += ` DEFAULT '${value}'`;
     return this
   }
 
@@ -106,25 +111,27 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * 将Column绑定到目标Table的实体模型中的指定属性
    * @param targetTable 目标Table
    * @param key 实体模型中的属性名称
-   * @returns 返回当前实例
+   * @returns {this}
    */
-  bindTo<T>(targetTable: Table<T>, key: SafeKeys<T, M>): IColumn {
+  bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
     Check.checkColumnUniqueBindTo(this)
-    this.that._key = key.toString()
-    const tableAllColumns = targetTable.tableColumns as Column<SupportValueTypes, any>[]
+    this._key = key
+    const tableAllColumns = targetTable.tableColumns as ColumnTypes[]
     tableAllColumns.push(this)
-    if (this._isPrimaryKey) {
-      const tableIdColumns = targetTable.tableIdColumns as Column<SupportValueTypes, any>[]
+    if (this.isPrimaryKey) {
+      const tableIdColumns = targetTable.tableIdColumns as ColumnTypes[]
       tableIdColumns.push(this)
     }
-    return this
+    return this as Column<FieldName, Key, WriteType, ReadType>
   }
 
   /**
    * 创建INTEGER类型的Column
    * @param fieldName Column的名称
    */
-  static integer<M = number>(fieldName: string, typeConverters?: TypeConverters<number, M>): Column<number, M> {
+  static integer<FieldName extends string, WriteType extends number>(
+    fieldName: FieldName,
+    typeConverters?: TypeConverters<number, WriteType>) {
     return new Column(fieldName, 'INTEGER', typeConverters)
   }
 
@@ -132,7 +139,8 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * 创建REAL类型的Column
    * @param fieldName Column的名称
    */
-  static real<M = number>(fieldName: string, typeConverters?: TypeConverters<number, M>): Column<number, M> {
+  static real<FieldName extends string, WriteType extends number>(fieldName: FieldName,
+    typeConverters?: TypeConverters<number, WriteType>) {
     return new Column(fieldName, 'REAL', typeConverters)
   }
 
@@ -140,7 +148,8 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * 创建TEXT类型的Column
    * @param fieldName Column的名称
    */
-  static text<M = string>(fieldName: string, typeConverters?: TypeConverters<string, M>): Column<string, M> {
+  static text<FieldName extends string, WriteType extends string>(fieldName: FieldName,
+    typeConverters?: TypeConverters<string, WriteType>) {
     return new Column(fieldName, 'TEXT', typeConverters)
   }
 
@@ -148,10 +157,7 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * 创建Uint8Array类型的Column
    * @param fieldName Column的名称
    */
-  static blob<M = Uint8Array>(
-    fieldName: string,
-    typeConverters?: TypeConverters<Uint8Array, M>
-  ): Column<Uint8Array, M> {
+  static blob<FieldName extends string>(fieldName: FieldName, typeConverters?: TypeConverters<Uint8Array, Uint8Array>) {
     return new Column(fieldName, 'BLOB', typeConverters)
   }
 
@@ -160,7 +166,7 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @see BooleanTypeConverters
    * @param fieldName Column的名称
    */
-  static boolean(fieldName: string): Column<number, boolean> {
+  static boolean(fieldName: string) {
     return new Column(fieldName, 'INTEGER', BooleanTypeConverters)
   }
 
@@ -169,8 +175,8 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @see DateTypeConverters
    * @param fieldName Column的名称
    */
-  static date(fieldName: string): Column<string, Date> {
-    return this.text(fieldName, DateTypeConverters)
+  static date(fieldName: string) {
+    return new Column(fieldName, 'TEXT', DateTypeConverters)
   }
 
   /**
@@ -178,19 +184,9 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @see TimestampTypeConverters
    * @param fieldName Column的名称
    */
-  static timestamp(fieldName: string): Column<number, Date> {
-    return this.integer(fieldName, TimestampTypeConverters)
+  static timestamp(fieldName: string) {
+    return new Column(fieldName, 'INTEGER', TimestampTypeConverters)
   }
-
-  /**
-   * 创建TEXT类型的列并通过自定义converters来进行类型转换
-   * @param fieldName Column的名称
-   * @param converters 转换器
-   */
-  static json<T>(fieldName: string, converters: TypeConverters<string, T>): Column<string, T> {
-    return new Column(fieldName, 'TEXT', converters)
-  }
-
 
   /**
    * 将Column绑定到参考Table中，相当于关系数据库中的外键，使用时需要确保参考Table和其实体都存在唯一主键
@@ -198,7 +194,7 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @param fieldName Column的名称
    * @param referencesTable 参考的Table
    */
-  static references<M>(fieldName: string, referencesTable: Table<M>): Column<number, M> {
+  static references<FieldName extends string, ReadType>(fieldName: FieldName, referencesTable: Table<ReadType>) {
     return new ReferencesColumn(fieldName, referencesTable)
   }
 
@@ -207,87 +203,64 @@ export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> im
    * @param indexName 索引名称
    * @param unique 是否为唯一索引
    */
-  static index(indexName: string, ...indexes: IColumn[]): IndexColumn {
-    return new IndexColumn(indexName, indexes)
+  static index(indexName: string): IndexColumn {
+    return new IndexColumn(indexName)
   }
 }
 
-export class ReferencesColumn<T extends SupportValueTypes, E> extends Column<T, E> {
+export class ReferencesColumn<FieldName extends string, Key extends string, ReadType> extends Column<FieldName, Key, SupportValueTypes, ReadType> {
   constructor(
-    readonly _fieldName: string,
-    readonly _referencesTable: Table<E>
+    readonly fieldName: FieldName,
+    readonly referencesTable: Table<ReadType>
   ) {
-    super(_fieldName, 'INTEGER', undefined)
+    super(fieldName, 'INTEGER', undefined)
   }
 }
 
-export interface IIndexColumn extends IColumn {
-  /**
-   * 索引包含的列名
-   */
-  _columns: readonly IColumn[]
-  /**
-   * 是否为唯一索引
-   */
-  _isUnique?: boolean
-  /**
-   * 索引顺序
-   */
-  _order?: 'ASC' | 'DESC'
-}
+type Order = 'ASC' | 'DESC'
 
-/**
- * 索引构建器类
- */
-class IndexColumn implements IIndexColumn {
-  readonly _isUnique: boolean = false
-  readonly _order?: 'ASC' | 'DESC'
-
-  constructor(readonly _fieldName: string, readonly _columns: readonly IColumn[]) {
+export class IndexColumn {
+  constructor(readonly fieldName: string) {
   }
 
-  get _dataType(): DataTypes {
-    throw new Error('IndexColumn does not support get _dataType')
+  private _columns: ColumnTypes[] = []
+
+  private _isUnique = false
+
+  private _sortOrder: Order
+
+  get columns() {
+    return this._columns
   }
 
-  get _key(): string {
-    throw new Error('IndexColumn does not support get _key')
+  get isUnique() {
+    return this._isUnique
   }
 
-  get _isPrimaryKey(): boolean {
-    throw new Error('IndexColumn does not support get _isPrimaryKey')
+  get sortOrder() {
+    return this._sortOrder
   }
-
-  get _isAutoincrement(): boolean {
-    throw new Error('IndexColumn does not support get _isAutoincrement')
-  }
-
-  get _columnModifier(): string {
-    throw new Error('IndexColumn does not support get _columnModifier')
-  }
-
-  private readonly that = this as IIndexColumn
 
   unique(unique: boolean = true): this {
-    this.that._isUnique = unique
+    this._isUnique = unique
     return this
   }
 
-  order(order: 'ASC' | 'DESC'): this {
-    this.that._order = order
+  order(order: Order): this {
+    this._sortOrder = order
     return this
   }
 
-  bindTo<T>(targetTable: Table<T>): IIndexColumn {
-    if (this._columns.length === 0) {
+  bindTo<T>(targetTable: Table<T>, ...columns: ColumnTypes[]) {
+    if (columns.length === 0) {
       throw new Error('The index must contain at least one column.')
     }
-    // 检查是否存在重复列
-    const columnKeys = this._columns.map(it => it._key)
-    if (new Set(columnKeys).size !== columnKeys.length) {
+    const columnFieldName = columns.map(it => it.fieldName)
+    if (new Set(columnFieldName).size !== columnFieldName.length) {
       throw new Error('Duplicate columns exist in the index.')
     }
-    const tableIndies = targetTable.tableIndexColumns as IIndexColumn[]
+    this._columns = columns
+    const tableIndies = targetTable.tableIndexColumns as IndexColumn[]
     tableIndies.push(this)
     return this
   }

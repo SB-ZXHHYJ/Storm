@@ -8,7 +8,7 @@ export const IndexTest: Test = {
   },
   verify: function (): boolean {
     // 检查索引表是否存在
-    const indexName = books._datetimeIndex._fieldName;
+    const indexName = books.datetimeIndex.fieldName;
     const rs =
       database.globalDatabase.rdbStore.querySqlSync(`SELECT * FROM sqlite_master WHERE type='index' AND name='${indexName}'`)
     return rs.rowCount > 0

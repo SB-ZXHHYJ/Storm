@@ -1,4 +1,4 @@
-import { Column } from '../schema/Column';
+import { Column, ColumnTypes } from '../schema/Column';
 import { Table } from '../schema/Table';
 
 export namespace Check {
@@ -29,8 +29,7 @@ export namespace Check {
    * @param targetTable
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
-    const keys =
-      targetTable.tableColumns.map(it => it._key).concat(targetTable.tableIndexColumns.map(item => item._fieldName))
+    const keys = targetTable.tableColumns.map(it => it.key)
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }
@@ -40,9 +39,9 @@ export namespace Check {
    * 检查column是否重复绑定属性
    * @param column 要检查的column
    */
-  export function checkColumnUniqueBindTo(column: Column) {
-    if (column._key) {
-      throw new Error(`In ${column._fieldName}, each property can only be decorated with one bindTo().`)
+  export function checkColumnUniqueBindTo(column: ColumnTypes) {
+    if (column.key) {
+      throw new Error(`In ${column.fieldName}, each property can only be decorated with one bindTo().`)
     }
   }
 }
