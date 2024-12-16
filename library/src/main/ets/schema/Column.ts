@@ -1,5 +1,6 @@
 import { Check } from '../utils/Check';
 import { Table } from './Table';
+import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, TypeConverters } from './TypeConverters';
 
 export type SupportValueTypes = null | number | string | boolean | Uint8Array
 
@@ -38,53 +39,6 @@ export interface IColumn {
    * Column修饰符，即Column名称和Column类型的集合
    */
   _columnModifier: string
-}
-
-export type TypeConverters<F extends SupportValueTypes, E> = {
-  /**
-   * 将实体转换为数据库支持的类型保存
-   */
-  save: (value: E | null) => F | null
-  /**
-   * 将从数据库中读出的数据转换回实体
-   */
-  restore: (value: F | null) => E | null
-}
-
-/**
- * 内置的布尔类型转换器
- */
-const BooleanTypeConverters: TypeConverters<number, boolean> = {
-  save: value => {
-    return (value === true ? 1 : value === false ? 0 : null)
-  },
-  restore: value => {
-    return (value === 1 ? true : value === 0 ? false : null)
-  }
-}
-
-/**
- * 内置的Date类型转换器
- */
-const DateTypeConverters: TypeConverters<string, Date> = {
-  save: value => {
-    return value?.toString() || null
-  },
-  restore: value => {
-    return value ? new Date(value) : null
-  }
-}
-
-/**
- * 内置的Timestamp类型转换器
- */
-const TimestampTypeConverters: TypeConverters<number, Date> = {
-  save: value => {
-    return value?.getTime() || null
-  },
-  restore: value => {
-    return value ? new Date(value) : null
-  }
 }
 
 export class Column<V extends SupportValueTypes = SupportValueTypes, M = any> implements IColumn {

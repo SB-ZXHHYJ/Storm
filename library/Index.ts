@@ -1,6 +1,8 @@
 export { Table } from './src/main/ets/schema/Table'
 
-export { Column, TypeConverters } from './src/main/ets/schema/Column'
+export { Column } from './src/main/ets/schema/Column'
+
+export { TypeConverters } from './src/main/ets/schema/TypeConverters'
 
 export { Database, DatabaseCrud, ICursor, database } from './src/main/ets/database/Database'
 

@@ -28,10 +28,6 @@ export const OtherTest: Test = {
       return false
     }
 
-    if (!database.of(books).toListOrNull()) {
-      return false
-    }
-
     if (!database.of(books).firstOrNull()) {
       return false
     }

@@ -323,45 +323,45 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     }
   }
 
-  private modelToValueBucket(model: {}, targetTable: Table<any>): relationalStore.ValuesBucket {
+  private modelToValueBucket(model: {}, targetTable: Table<T>): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
-    targetTable.tableColumns.forEach(column => {
+    for (const column of targetTable.tableColumns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
         const idColumn = column._referencesTable.tableIdColumns[0]
         vb[column._fieldName] = model[column._key]?.[idColumn._key]
-        return
+        continue
       }
       if (column instanceof Column) {
         if (column._typeConverters) {
           vb[column._fieldName] = column._typeConverters.save(model[column._key] ?? null)
-          return
+          continue
         }
         vb[column._fieldName] = model[column._key]
       }
-    })
+    }
     return vb
   }
 
   private valueBucketToModel<T>(inputVb: relationalStore.ValuesBucket, targetTable: Table<T>): T {
     const vb = {} as T
-    targetTable.tableColumns.forEach(column => {
+    for (const column of targetTable.tableColumns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column._referencesTable)
         vb[column._key] = this
           .to(column._referencesTable)
           .firstOrNull(it =>
           it.equalTo(column._referencesTable.tableIdColumns[0], inputVb[column._fieldName] as SupportValueTypes))
-        return
+        continue
       }
       if (column instanceof Column) {
         if (column._typeConverters) {
           vb[column._key] = column._typeConverters.restore(inputVb[column._fieldName] ?? null)
-          return
+          continue
         }
         vb[column._key] = inputVb[column._fieldName]
       }
-    })
+    }
     return vb
   }
 
@@ -423,23 +423,25 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     if (!models.length) {
       return this
     }
-    const idColumn = this.targetTable.tableIdColumns[0]
     Check.checkTableHasIdColumn(this.targetTable)
+    const idColumn = this.targetTable.tableIdColumns[0]
     models
       .map(item => this.modelToValueBucket(item, this.targetTable))
       .forEach(item => {
-        const wrapper = new QueryPredicate(this.targetTable).equalTo(idColumn,
-          item[idColumn._fieldName] as SupportValueTypes)
-        this.rdbStore.updateSync(item, wrapper.getRdbPredicates())
+        this.rdbStore.updateSync(
+          item,
+          QueryPredicate
+            .of(this.targetTable)
+            .equalTo(idColumn, item[idColumn._fieldName] as SupportValueTypes).getRdbPredicates())
       })
     return this
   }
 
   updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: Partial<T>): this {
-    if (Object.values(model).length === 0) {
+    if (Object.keys(model).length === 0) {
       return this
     }
-    const rdbPredicates = predicate(new QueryPredicate(this.targetTable)).getRdbPredicates()
+    const rdbPredicates = predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates()
     this.rdbStore.updateSync(this.modelToValueBucket(model, this.targetTable), rdbPredicates)
     return this
   }
@@ -461,20 +463,20 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
     valueBuckets
       .forEach(item => {
         const wrapper =
-          new QueryPredicate(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as SupportValueTypes)
+          QueryPredicate.of(this.targetTable).equalTo(idColumn, item[idColumn._fieldName] as SupportValueTypes)
         this.rdbStore.deleteSync(wrapper.getRdbPredicates())
       })
     return this
   }
 
   removeIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): this {
-    this.rdbStore.deleteSync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    this.rdbStore.deleteSync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     return this
   }
 
   clear(): this {
     try {
-      this.rdbStore.deleteSync(new QueryPredicate(this.targetTable).getRdbPredicates())
+      this.rdbStore.deleteSync(QueryPredicate.of(this.targetTable).getRdbPredicates())
       this
         .to(sqliteSequences)
         .removeIf(it => it.equalTo(sqliteSequences.name, this.targetTable.tableName))
@@ -489,7 +491,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   count(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): number {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     try {
       return resultSet.rowCount
     } finally {
@@ -498,7 +500,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   toList(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): readonly T[] {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     try {
       const list: T[] = []
       while (resultSet.goToNextRow()) {
@@ -519,7 +521,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   firstOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     try {
       if (resultSet.goToFirstRow()) {
         return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
@@ -539,7 +541,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   lastOrNull(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): T | null {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     try {
       if (resultSet.goToLastRow()) {
         return this.valueBucketToModel(resultSet.getRow(), this.targetTable)
@@ -551,7 +553,7 @@ export class DatabaseCrud<T> implements IDatabaseCrud<T> {
   }
 
   toCursor(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): ICursor<T> {
-    const resultSet = this.rdbStore.querySync(predicate(new QueryPredicate(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     const rowCount = resultSet.rowCount
 
     const firstOrNull = () => {

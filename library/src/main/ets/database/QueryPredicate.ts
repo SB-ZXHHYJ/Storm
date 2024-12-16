@@ -9,16 +9,12 @@ import { IColumn, IIndexColumn, SupportValueTypes } from '../schema/Column';
 export class QueryPredicate<T> {
   private readonly rdbPredicates: relationalStore.RdbPredicates
 
-  /**
-   * 获取实际的relationalStore.RdbPredicates
-   * @returns {relationalStore.RdbPredicates}
-   */
-  getRdbPredicates() {
-    return this.rdbPredicates
+  private constructor(targetTable: Table<T>) {
+    this.rdbPredicates = new relationalStore.RdbPredicates(targetTable.tableName)
   }
 
-  constructor(targetTable: Table<T>) {
-    this.rdbPredicates = new relationalStore.RdbPredicates(targetTable.tableName)
+  static of<T>(targetTable: Table<T>) {
+    return new QueryPredicate(targetTable)
   }
 
   equalTo(column: IColumn, value: SupportValueTypes) {
@@ -171,5 +167,13 @@ export class QueryPredicate<T> {
   notLike(column: IColumn, value: SupportValueTypes) {
     this.rdbPredicates.notLike(column._fieldName, value.toString())
     return this
+  }
+
+  /**
+   * 获取实际的relationalStore.RdbPredicates
+   * @returns {relationalStore.RdbPredicates}
+   */
+  getRdbPredicates() {
+    return this.rdbPredicates
   }
 }
