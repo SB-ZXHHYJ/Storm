@@ -1,14 +1,14 @@
 import { SupportValueTypes } from './Column'
 
-export type TypeConverters<F extends SupportValueTypes, E> = {
+export type TypeConverters<WriteType extends SupportValueTypes, ReadType> = {
   /**
    * 将实体转换为数据库支持的类型保存
    */
-  save: (value: E | null) => F | null
+  save: (value: ReadType | null) => WriteType | null
   /**
    * 将从数据库中读出的数据转换回实体
    */
-  restore: (value: F | null) => E | null
+  restore: (value: WriteType | null) => ReadType | null
 }
 
 /**
@@ -24,7 +24,7 @@ export const BooleanTypeConverters: TypeConverters<number, boolean> = {
 }
 
 /**
- * 内置的Date类型转换器
+ * 内置的 Date 类型转换器
  */
 export const DateTypeConverters: TypeConverters<string, Date> = {
   save: value => {
@@ -36,7 +36,7 @@ export const DateTypeConverters: TypeConverters<string, Date> = {
 }
 
 /**
- * 内置的Timestamp类型转换器
+ * 内置的 TimeStamp 类型转换器
  */
 export const TimestampTypeConverters: TypeConverters<number, Date> = {
   save: value => {
