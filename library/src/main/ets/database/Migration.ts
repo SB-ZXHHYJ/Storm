@@ -1,5 +1,5 @@
 import { ColumnTypes } from '../schema/Column';
-import { Table } from '../schema/Table';
+import { Table, UseColumns } from '../schema/Table';
 import { Database } from './Database';
 
 export class Operate<T extends Table<any>> {
@@ -16,11 +16,12 @@ export class Operate<T extends Table<any>> {
     return this
   }
 
-  recreate(oldInNewMap: Map<ColumnTypes, ColumnTypes>): this {
+  recreate(...oldToNewColumns: [ColumnTypes, ColumnTypes][]): this {
+    const useColumns = this.targetTable[UseColumns]()
     const backupTableName = `${this.targetTable.tableName}_backup`
-    this.database.rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${this.targetTable.tableColumns.map(item => item.columnModifier)// 创建备份表，结构与目标表相同
+    this.database.rdbStore.executeSync(`CREATE TABLE ${backupTableName}(${useColumns.columns.map(item => item.columnModifier)// 创建备份表，结构与目标表相同
       .join(',')})`)
-    const columns = Array.from(oldInNewMap).map(([oldCol, newCol]) => {
+    const columns = Array.from(oldToNewColumns).map(([oldCol, newCol]) => {
       return { oldColumn: oldCol, targetColumn: newCol }
     })
     const oldColumns = columns.map(item => item.oldColumn.fieldName)
@@ -30,18 +31,22 @@ export class Operate<T extends Table<any>> {
     this.database.rdbStore.executeSync(`ALTER TABLE ${backupTableName} RENAME TO ${this.targetTable.tableName}`)
     return this
   }
+
+  executeSync(sql: string) {
+    this.database.rdbStore.executeSync(sql)
+  }
 }
 
 export abstract class Migration<T extends Table<any>> {
   /**
-   * 默认版本号
+   * 当前版本号，必须为整数，且不可小于 1
    */
-  public static DEFAULT_TABLE_VERSION = 1
+  abstract readonly currentVersion: number
 
   /**
-   * 版本号，必须为整数，且不可小于1
+   * 目标版本号，必须为整数，且不可小于等于 1
    */
-  abstract readonly tableVersion: number
+  abstract readonly targetVersion: number
 
-  abstract onVersionUp(targetVersion: number, operate: Operate<T>): void
+  abstract migrate(operate: Operate<T>): void
 }

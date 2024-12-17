@@ -1,5 +1,5 @@
 import { relationalStore } from '@kit.ArkData'
-import { Table } from '../schema/Table'
+import { Table, UseColumns, UseMigrations } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { sqliteSequences } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
@@ -36,6 +36,7 @@ class SessionQueueManager {
 }
 
 export class Database {
+  //private readonly databaseCrudCache = new HashMap<string, DatabaseCrud<any>>()
   private readonly sessionQueueManager = new SessionQueueManager(this);
 
   private constructor(readonly rdbStore: relationalStore.RdbStore) {
@@ -165,14 +166,18 @@ export interface Cursor<T> {
 export class DatabaseCrud<T> {
   private readonly rdbStore: relationalStore.RdbStore
 
+  private readonly useColumns = this.targetTable[UseColumns]()
+
+  private readonly useMigrations = this.targetTable[UseMigrations]()
+
   constructor(private readonly database: Database, private readonly targetTable: Table<T>) {
     this.rdbStore = database.rdbStore
     Check.checkTableAndColumns(targetTable)
     if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.targetTable.tableColumns
+      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.useColumns.columns
         .map(column => column.columnModifier)
         .join(',')})`)
-      for (const index of targetTable.tableIndexColumns) {
+      for (const index of this.useColumns.indexColumns) {
         const columns = index.columns.map(it => it.fieldName).join(',')
         const unique = index.isUnique ? 'UNIQUE' : ''
         const order = index.sortOrder ? index.sortOrder : ''
@@ -183,10 +188,11 @@ export class DatabaseCrud<T> {
 
   private modelToValueBucket(model: {}, columns?: ColumnTypes[]): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
-    for (const column of (columns ?? this.targetTable.tableColumns)) {
+    for (const column of (columns ?? this.useColumns.columns)) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
-        const idColumn = column.referencesTable.tableIdColumns[0]
+        const useColumns = column.referencesTable[UseColumns]()
+        const idColumn = useColumns.idColumns[0]
         vb[column.fieldName] = model[column.key]?.[idColumn.key] ?? null
         continue
       }
@@ -203,10 +209,11 @@ export class DatabaseCrud<T> {
 
   private valueBucketToModel(inputVb: relationalStore.ValuesBucket, columns?: ColumnTypes[]): T {
     const vb = {} as T
-    for (const column of (columns ?? this.targetTable.tableColumns)) {
+    for (const column of (columns ?? this.useColumns.columns)) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
-        const idColumn = column.referencesTable.tableIdColumns[0]
+        const useColumns = column.referencesTable[UseColumns]()
+        const idColumn = useColumns.idColumns[0]
         const id = inputVb[column.fieldName] as SupportValueTypes
         if (id) {
           vb[column.key] = this
@@ -288,7 +295,7 @@ export class DatabaseCrud<T> {
     }))
 
     Check.checkTableHasAtMostOneIdColumn(this.targetTable)
-    const idColumn = this.targetTable.tableIdColumns[0]
+    const idColumn = this.useColumns.idColumns[0]
     const isRowIdAlias = idColumn && idColumn.isAutoincrement && idColumn.dataType === 'INTEGER';
 
     valueBuckets.forEach((valueBucket, index) => {
@@ -324,7 +331,7 @@ export class DatabaseCrud<T> {
       return this
     }
     Check.checkTableHasIdColumn(this.targetTable)
-    const idColumn = this.targetTable.tableIdColumns[0]
+    const idColumn = this.useColumns.idColumns[0]
     models
       .map(item => this.modelToValueBucket(item))
       .forEach(item => {
@@ -372,7 +379,7 @@ export class DatabaseCrud<T> {
       return this
     }
     Check.checkTableHasIdColumn(this.targetTable)
-    const idColumn = this.targetTable.tableIdColumns[0]
+    const idColumn = this.useColumns.idColumns[0]
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)
     }))

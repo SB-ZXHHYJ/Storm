@@ -2,7 +2,7 @@ import { Column, Table } from '@zxhhyj/storm';
 import { Bookcase, bookcases } from './Bookcase';
 
 class Books extends Table<Book> {
-  override readonly tableName = 't_book'
+  readonly tableName = 't_book'
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
 

@@ -1,4 +1,4 @@
-import { Table } from '../schema/Table';
+import { Table, UseColumns } from '../schema/Table';
 
 export namespace Check {
 
@@ -7,7 +7,8 @@ export namespace Check {
    * @param targetTable 要检查的 Table
    */
   export function checkTableHasIdColumn(targetTable: Table<any>) {
-    if (targetTable.tableIdColumns.length === 0) {
+    const useColumns = targetTable[UseColumns]()
+    if (useColumns.idColumns.length === 0) {
       throw new Error(`In "${targetTable.tableName}", there is no primary key.`)
     }
   }
@@ -17,8 +18,9 @@ export namespace Check {
    * @param targetTable 要检查的 Table
    */
   export function checkTableHasAtMostOneIdColumn(targetTable: Table<any>) {
-    checkTableHasIdColumn(targetTable);
-    if (targetTable.tableIdColumns.length > 1) {
+    checkTableHasIdColumn(targetTable)
+    const useColumns = targetTable[UseColumns]()
+    if (useColumns.idColumns.length > 1) {
       throw new Error(`In "${targetTable.tableName}", there is more than one primary key. Only one primary key is allowed.`)
     }
   }
@@ -28,12 +30,12 @@ export namespace Check {
    * @param targetTable 要检查的 Table
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
-    const keys = targetTable.tableColumns.map(it => it.key)
+    const useColumns = targetTable[UseColumns]()
+    const keys = useColumns.columns.map(it => it.key)
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }
-    const fieldNames =
-      targetTable.tableColumns.map(it => it.fieldName).concat(targetTable.tableIndexColumns.map(it => it.fieldName))
+    const fieldNames = useColumns.columns.map(it => it.fieldName).concat(useColumns.indexColumns.map(it => it.fieldName))
     if (new Set(fieldNames).size !== fieldNames.length) {
       throw new Error(`In ${targetTable.tableName}, there is a problem with duplicate column names.`)
     }

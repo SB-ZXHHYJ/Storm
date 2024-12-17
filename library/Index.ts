@@ -9,3 +9,5 @@ export { Database, DatabaseCrud, Cursor, database } from './src/main/ets/databas
 export { Operate, Migration } from './src/main/ets/database/Migration'
 
 export { QueryPredicate } from './src/main/ets/database/QueryPredicate'
+
+export { Storm } from './src/main/ets/storm/Storm'

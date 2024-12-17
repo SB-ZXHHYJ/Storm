@@ -1,4 +1,4 @@
-import { Table } from './Table';
+import { Table, UseColumns } from './Table';
 import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, TypeConverters } from './TypeConverters';
 
 /**
@@ -9,13 +9,18 @@ export type SupportValueTypes = null | number | string | boolean | Uint8Array
 /**
  * 用于获取 Column 的 Key
  */
-export type ColumnKey<T
-extends ColumnTypes> = T extends Column<any, infer M, any, any> ? M extends string ? M : never : never
+export type ColumnKey<T extends ColumnTypes> =
+  T extends Readonly<Column<any, infer M, any, any>> ? M extends string ? M : never : never
 
 /**
- * Column 的类型
+ * Column 的通用类型
  */
-export type ColumnTypes = Column<any, any, any, any>
+export type ColumnTypes = Readonly<Column<any, any, any, any>>
+
+/**
+ * IndexColumn 的通用类型
+ */
+export type IndexColumnTypes = Readonly<IndexColumn>
 
 /**
  * 支持在 Sqlite 中声明的基本类型
@@ -114,13 +119,9 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    */
   bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
     this._key = key
-    const tableAllColumns = targetTable.tableColumns as ColumnTypes[]
-    tableAllColumns.push(this)
-    if (this.isPrimaryKey) {
-      const tableIdColumns = targetTable.tableIdColumns as ColumnTypes[]
-      tableIdColumns.push(this)
-    }
-    return this as Column<FieldName, Key, WriteType, ReadType>
+    const useColumns = targetTable[UseColumns]()
+    useColumns.addColumn(this)
+    return Object.freeze(this as Column<FieldName, Key, WriteType, ReadType>)
   }
 
   /**
@@ -283,8 +284,8 @@ export class IndexColumn {
       throw new Error('Duplicate columns exist in the index.')
     }
     this._columns = columns
-    const tableIndies = targetTable.tableIndexColumns as IndexColumn[]
-    tableIndies.push(this)
-    return this
+    const useColumns = targetTable[UseColumns]()
+    useColumns.addColumn(this)
+    return Object.freeze(this)
   }
 }

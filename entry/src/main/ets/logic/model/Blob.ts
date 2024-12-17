@@ -1,7 +1,7 @@
 import { Column, Table } from '@zxhhyj/storm';
 
 class Blobs extends Table<Blob> {
-  override readonly tableName = 't_blob'
+  readonly tableName = 't_blob'
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
 
