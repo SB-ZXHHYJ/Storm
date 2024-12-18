@@ -1,13 +1,13 @@
 import { relationalStore } from '@kit.ArkData'
-import { Table, ExtractTableModel, UseColumns, UseMigrations } from '../schema/Table'
+import { ExtractTableModel, Table, UseColumns, UseMigrations } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { SqliteSequencesTable } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
-import { Column, ColumnKey, ColumnTypes, ReferencesColumn, SupportValueTypes } from '../schema/Column'
+import { Column, ColumnTypes, ExtractColumnKey, ReferencesColumn, SupportValueTypes } from '../schema/Column'
 import { Cursor } from './Cursor'
 
-type QueryReturnTypes<Model, T
-extends ColumnTypes[]> = T['length'] extends 0 ? Model : Pick<Model, ColumnKey<T[number]>>
+type QueryReturnTypes<Model, QueryColumns extends ColumnTypes[]> =
+  QueryColumns['length'] extends 0 ? Model : Pick<Model, ExtractColumnKey<QueryColumns[number]>>
 
 export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T> = ExtractTableModel<T>> {
   private readonly useColumns = this.targetTable[UseColumns]()
@@ -29,9 +29,11 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }
   }
 
-  private modelToValueBucket(model: Model, columns?: ColumnTypes[]): relationalStore.ValuesBucket {
+  private modelToValueBucket(
+    model: Model,
+    columns: readonly ColumnTypes[] = this.useColumns.columns): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
-    for (const column of (columns ?? this.useColumns.columns)) {
+    for (const column of columns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
         const useColumns = column.referencesTable[UseColumns]()
@@ -50,9 +52,17 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     return vb
   }
 
-  private valueBucketToModel(inputVb: relationalStore.ValuesBucket, columns?: ColumnTypes[]): Model {
+  /**
+   * 将 valueBucket 转回 Model
+   * @param inputVb 需要转换的 valueBucket
+   * @param columns 对哪些列进行处理
+   * @returns {Model}
+   */
+  private valueBucketToModel(
+    inputVb: relationalStore.ValuesBucket,
+    columns: readonly ColumnTypes[] = this.useColumns.columns): Model {
     const vb = {}
-    for (const column of (columns ?? this.useColumns.columns)) {
+    for (const column of columns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
         const useColumns = column.referencesTable[UseColumns]()
@@ -171,7 +181,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
         this.rdbStore.updateSync(
           item,
           QueryPredicate
-            .of(this.targetTable)
+            .select(this.targetTable)
             .equalTo(idColumn, item[idColumn.fieldName] as SupportValueTypes).getRdbPredicates())
       })
     return this
@@ -187,7 +197,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     if (Object.keys(model).length === 0) {
       return this
     }
-    const rdbPredicates = predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates()
+    const rdbPredicates = predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates()
     this.rdbStore.updateSync(this.modelToValueBucket(model as Model), rdbPredicates)
     return this
   }
@@ -219,7 +229,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     valueBuckets
       .forEach(item => {
         const wrapper =
-          QueryPredicate.of(this.targetTable).equalTo(idColumn, item[idColumn.fieldName] as SupportValueTypes)
+          QueryPredicate.select(this.targetTable).equalTo(idColumn, item[idColumn.fieldName] as SupportValueTypes)
         this.rdbStore.deleteSync(wrapper.getRdbPredicates())
       })
     return this
@@ -231,7 +241,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @returns 返回当前实例
    */
   removeIf(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model>): this {
-    this.rdbStore.deleteSync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
+    this.rdbStore.deleteSync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates())
     return this
   }
 
@@ -241,7 +251,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    */
   clear(): this {
     try {
-      this.rdbStore.deleteSync(QueryPredicate.of(this.targetTable).getRdbPredicates())
+      this.rdbStore.deleteSync(QueryPredicate.select(this.targetTable).getRdbPredicates())
     } finally {
       return this
     }
@@ -262,7 +272,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @returns 满足条件的数据条数
    */
   count(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it): number {
-    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates())
     try {
       return resultSet.rowCount
     } finally {
@@ -276,13 +286,14 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
   toList<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    columns?: Columns): readonly QueryReturnTypes<Model, Columns>[] {
-    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
-      columns?.map(item => item.fieldName))
+    ...columns: Columns): readonly QueryReturnTypes<Model, Columns>[] {
+    const realColumns = columns.length === 0 ? undefined : columns
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
+      realColumns?.map(item => item.fieldName))
     try {
       const list: Model[] = []
       while (resultSet.goToNextRow()) {
-        list.push(this.valueBucketToModel(resultSet.getRow(), columns))
+        list.push(this.valueBucketToModel(resultSet.getRow(), realColumns))
       }
       return list
     } finally {
@@ -298,8 +309,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    */
   first<Columns extends ColumnTypes[]>(
     predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    columns?: Columns): QueryReturnTypes<Model, Columns> {
-    const first = this.firstOrNull(predicate, columns)
+    ...columns: Columns): QueryReturnTypes<Model, Columns> {
+    const first = this.firstOrNull(predicate, ...columns)
     if (first) {
       return first
     }
@@ -313,12 +324,13 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    */
   firstOrNull<Columns extends ColumnTypes[]>(
     predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    columns?: Columns): QueryReturnTypes<Model, Columns> | null {
-    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
-      columns?.map(item => item.fieldName))
+    ...columns: Columns): QueryReturnTypes<Model, Columns> | null {
+    const realColumns = columns.length === 0 ? undefined : columns
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
+      realColumns?.map(item => item.fieldName))
     try {
       if (resultSet.goToFirstRow()) {
-        return this.valueBucketToModel(resultSet.getRow(), columns)
+        return this.valueBucketToModel(resultSet.getRow(), realColumns)
       }
       return null
     } finally {
@@ -333,8 +345,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @throws 如果结果为空，抛出错误
    */
   last<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    columns?: Columns): QueryReturnTypes<Model, Columns> {
-    const last = this.lastOrNull(predicate, columns)
+    ...columns: Columns): QueryReturnTypes<Model, Columns> {
+    const last = this.lastOrNull(predicate, ...columns)
     if (last) {
       return last
     }
@@ -347,12 +359,13 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @returns 最后一个满足条件的实体或null
    */
   lastOrNull<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    columns?: Columns): QueryReturnTypes<Model, Columns> | null {
-    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
-      columns?.map(item => item.fieldName))
+    ...columns: Columns): QueryReturnTypes<Model, Columns> | null {
+    const realColumns = columns.length === 0 ? undefined : columns
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
+      realColumns?.map(item => item.fieldName))
     try {
       if (resultSet.goToLastRow()) {
-        return this.valueBucketToModel(resultSet.getRow(), columns)
+        return this.valueBucketToModel(resultSet.getRow(), realColumns)
       }
       return null
     } finally {
@@ -367,13 +380,14 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    */
   toCursor<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
     ...columns: Columns): Cursor<QueryReturnTypes<Model, Columns>> {
-    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
-      columns?.map(item => item.fieldName))
+    const realColumns = columns.length === 0 ? undefined : columns
+    const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
+      realColumns?.map(item => item.fieldName))
     const rowCount = resultSet.rowCount
 
     const firstOrNull = () => {
       if (resultSet.goToFirstRow()) {
-        return this.valueBucketToModel(resultSet.getRow(), columns)
+        return this.valueBucketToModel(resultSet.getRow(), realColumns)
       }
       return null
     }

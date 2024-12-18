@@ -7,9 +7,9 @@ import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, Typ
 export type SupportValueTypes = null | number | string | boolean | Uint8Array
 
 /**
- * 用于获取 Column 的 Key
+ * 用于提取 Column 的泛型 Key
  */
-export type ColumnKey<T extends ColumnTypes> =
+export type ExtractColumnKey<T extends ColumnTypes> =
   T extends Column<any, infer M, any, any> ? M extends string ? M : never : never
 
 /**
@@ -79,8 +79,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 使用 PRIMARY KEY 修饰 Column
-   * @param autoincrement 是否是 AUTOINCREMENT Column
+   * 使用 PRIMARY KEY 修饰列
+   * @param autoincrement 是否是自增列
    * @returns {this}
    */
   primaryKey(autoincrement: boolean = false): this {
@@ -134,7 +134,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
     const useColumns = targetTable[UseColumns]()
     useColumns.addColumn(this)
     Object.freeze(this)
-    return this
+    return this as Column<FieldName, Key, WriteType, ReadType>
   }
 
   /**
@@ -233,7 +233,7 @@ export class ReferencesColumn<FieldName extends string, Key extends string, Read
 }
 
 /**
- * 索引列的顺序
+ * 索引的顺序
  */
 type Order = 'ASC' | 'DESC'
 
@@ -263,17 +263,16 @@ export class IndexColumn {
   }
 
   /**
-   * 设置为唯一 IndexColumn
-   * @param unique 是否为唯一 IndexColumn，默认为 true
+   * 使用 UNIQUE 修饰索引列
    * @returns {this}
    */
-  unique(unique: boolean = true): this {
-    this._isUnique = unique
+  unique(): this {
+    this._isUnique = true
     return this
   }
 
   /**
-   * 将 IndexColumn 绑定到目标 Table 中
+   * 设置索引的顺序
    * @param order {Order}
    * @returns {this}
    */
@@ -283,9 +282,9 @@ export class IndexColumn {
   }
 
   /**
-   * 将 IndexColumn 绑定到目标 Table 中
-   * @param targetTable 目标 Table
-   * @param columns 要创建索引的 Column
+   * 将索引列绑定到目标表中
+   * @param targetTable 目标表
+   * @param columns 需要创建索引的列
    * @returns {this}
    */
   bindTo<T>(targetTable: Table<T>, ...columns: ColumnTypes[]) {

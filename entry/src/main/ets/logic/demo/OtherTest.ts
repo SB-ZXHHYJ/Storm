@@ -17,9 +17,6 @@ export const OtherTest: Test = {
     }
   },
   verify: () => {
-
-    const test = myDatabase.bookDao.toList(it => it)
-    console.log(test.toString())
     if (!myDatabase.bookDao.count()) {
       return false
     }

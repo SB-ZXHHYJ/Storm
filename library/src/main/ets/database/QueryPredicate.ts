@@ -13,7 +13,7 @@ export class QueryPredicate<T> {
     this.rdbPredicates = new relationalStore.RdbPredicates(targetTable.tableName)
   }
 
-  static of<T>(targetTable: Table<T>) {
+  static select<T>(targetTable: Table<T>) {
     return new QueryPredicate(targetTable)
   }
 
