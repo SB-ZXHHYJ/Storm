@@ -1,6 +1,6 @@
-import { database } from '@zxhhyj/storm'
-import { Book, books } from '../model/Book'
-import { Bookcase, bookcases } from '../model/Bookcase'
+import { myDatabase } from '../database/AppDatabase'
+import { Book } from '../model/Book'
+import { Bookcase } from '../model/Bookcase'
 import { Test } from './Test'
 
 export const AddTest: Test = {
@@ -14,14 +14,11 @@ export const AddTest: Test = {
       createDataTime: new Date(),
       visibility: true
     }
-    database
-      .of(bookcases)
-      .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
-      .to(books)
-      .add(book) //添加数据，添加成功后会将自增id填充到book.id中
+    myDatabase.bookcaseDao.add(bookcase)
+    myDatabase.bookDao.add(book)
   },
   verify: function (): boolean {
-    const addBook = database.of(books).first()
+    const addBook = myDatabase.bookDao.first()
     return addBook &&
       addBook.id !== undefined &&
       addBook.bookcase != undefined &&

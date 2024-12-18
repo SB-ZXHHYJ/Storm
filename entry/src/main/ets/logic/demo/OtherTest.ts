@@ -1,5 +1,5 @@
-import { database } from '@zxhhyj/storm'
-import { Book, books } from '../model/Book'
+import { myDatabase } from '../database/AppDatabase'
+import { Book } from '../model/Book'
 import { Test } from './Test'
 
 const indexes: readonly number[] = [0, 1, 2, 3, 4, 5]
@@ -13,35 +13,35 @@ export const OtherTest: Test = {
         visibility: true,
         bookcase: undefined!!
       }
-      database
-        .of(books)
-        .add(book)
+      myDatabase.bookDao.add(book)
     }
   },
   verify: () => {
 
-    if (!database.of(books).count()) {
+    const test = myDatabase.bookDao.toList(it => it)
+    console.log(test.toString())
+    if (!myDatabase.bookDao.count()) {
       return false
     }
 
-    if (!database.of(books).toList()) {
+    if (!myDatabase.bookDao.toList()) {
       return false
     }
 
-    if (!database.of(books).firstOrNull()) {
+    if (!myDatabase.bookDao.firstOrNull()) {
       return false
     }
 
-    if (!database.of(books).first()) {
+    if (!myDatabase.bookDao.first()) {
       return false
     }
 
-    const lastOrNull = database.of(books).lastOrNull()
+    const lastOrNull = myDatabase.bookDao.lastOrNull()
     if (!(lastOrNull && lastOrNull.name === indexes[indexes.length-1].toString())) {
       return false
     }
 
-    if (!database.of(books).last()) {
+    if (!myDatabase.bookDao.last()) {
       return false
     }
 

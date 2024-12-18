@@ -1,6 +1,6 @@
-import { database } from '@zxhhyj/storm'
-import { Book, books } from '../model/Book'
-import { Bookcase, bookcases } from '../model/Bookcase'
+import { myDatabase } from '../database/AppDatabase'
+import { Book, TableBook } from '../model/Book'
+import { Bookcase } from '../model/Bookcase'
 import { Test } from './Test'
 
 export const UpdateIfNullTest: Test = {
@@ -14,16 +14,18 @@ export const UpdateIfNullTest: Test = {
       createDataTime: new Date(),
       visibility: false
     }
-    database
-      .of(bookcases)
-      .add(bookcase)//添加数据，添加成功后会将自增id填充到bookcase.id中
-      .to(books)
-      .add(book)//添加数据，添加成功后会将自增id填充到book.id中
-      .updateIf(it => it.equalTo(books.id, book.id), { name: null })
-    //将这一列的内容删掉，如果使用常规的update更新，你需要满足类型检查，这样的操作可以避免类型检查
+
+    myDatabase.beginTransaction((it) => {
+      myDatabase.bookcaseDao
+        .add(bookcase) //添加数据，添加成功后会将自增 id 填充到 bookcase.id 中
+      myDatabase.bookDao
+        .add(book)//添加数据，添加成功后会将自增 id 填充到 book.id 中
+        .updateIf(it => it.equalTo(TableBook.id, book.id), { name: null })
+      //将这一列的内容删掉，如果使用常规的 update 更新，你需要满足类型检查，updateIf 可以避免类型检查
+    })
   },
   verify: function (): boolean {
-    return database.of(books).count(it => it.isNull(books.name)) > 0
+    return myDatabase.bookDao.count(it => it.isNull(TableBook.name)) > 0
   },
   name: "UpdateIfNullTest"
 }

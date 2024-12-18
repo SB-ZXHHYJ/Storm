@@ -1,19 +1,22 @@
-import { database } from '@zxhhyj/storm'
-import { Bookcase, bookcases } from '../model/Bookcase'
+import { myDatabase } from '../database/AppDatabase'
+import { TableBook } from '../model/Book'
+import { Bookcase } from '../model/Bookcase'
 import { Test } from './Test'
+
+const bookcase: Bookcase = {
+  name: "《月老馒不懂》"
+}
 
 export const RemoveTest: Test = {
   main: () => {
-    const bookcase: Bookcase = {
-      name: "科幻小说"
-    }
-    database
-      .of(bookcases)
+    myDatabase.bookcaseDao
       .add(bookcase)
       .remove(bookcase) //移除数据
+    const list = myDatabase.bookcaseDao.toList()
+    console.log(list.toString())
   },
   verify: function (): boolean {
-    return database.of(bookcases).count() === 0
+    return myDatabase.bookcaseDao.count(it => it.equalTo(TableBook.name, bookcase.name)) === 0
   },
   name: "RemoveTest"
 }

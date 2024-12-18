@@ -1,6 +1,8 @@
 import { Migration } from '../../../../Index';
 import { Column, ColumnTypes, IndexColumn } from './Column';
 
+export type TableModelTypes<T> = T extends Table<infer M> ? M : never
+
 export const UseMigrations = Symbol('UseMigrations')
 
 export const UseColumns = Symbol('UseColumns')

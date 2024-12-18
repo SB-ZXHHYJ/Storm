@@ -10,17 +10,17 @@ export type SupportValueTypes = null | number | string | boolean | Uint8Array
  * 用于获取 Column 的 Key
  */
 export type ColumnKey<T extends ColumnTypes> =
-  T extends Readonly<Column<any, infer M, any, any>> ? M extends string ? M : never : never
+  T extends Column<any, infer M, any, any> ? M extends string ? M : never : never
 
 /**
  * Column 的通用类型
  */
-export type ColumnTypes = Readonly<Column<any, any, any, any>>
+export type ColumnTypes = Column<any, any, any, any>
 
 /**
  * IndexColumn 的通用类型
  */
-export type IndexColumnTypes = Readonly<IndexColumn>
+export type IndexColumnTypes = IndexColumn
 
 /**
  * 支持在 Sqlite 中声明的基本类型
@@ -121,7 +121,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
     this._key = key
     const useColumns = targetTable[UseColumns]()
     useColumns.addColumn(this)
-    return Object.freeze(this as Column<FieldName, Key, WriteType, ReadType>)
+    Object.freeze(this)
+    return this
   }
 
   /**
@@ -286,6 +287,7 @@ export class IndexColumn {
     this._columns = columns
     const useColumns = targetTable[UseColumns]()
     useColumns.addColumn(this)
-    return Object.freeze(this)
+    Object.freeze(this)
+    return this
   }
 }

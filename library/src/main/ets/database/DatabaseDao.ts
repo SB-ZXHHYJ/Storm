@@ -1,179 +1,22 @@
 import { relationalStore } from '@kit.ArkData'
-import { Table, UseColumns, UseMigrations } from '../schema/Table'
+import { Table, TableModelTypes, UseColumns, UseMigrations } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
-import { sqliteSequences } from '../model/SqliteSequence'
+import { SqliteSequencesTable } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
 import { Column, ColumnKey, ColumnTypes, ReferencesColumn, SupportValueTypes } from '../schema/Column'
-import { nothings } from '../model/Nothing'
+import { Cursor } from './Cursor'
 
 type QueryReturnTypes<Model, T
 extends ColumnTypes[]> = T['length'] extends 0 ? Model : Pick<Model, ColumnKey<T[number]>>
 
-type DatabaseCrudOnlyTo<M> = Pick<DatabaseCrud<M>, 'to'>
-
-class SessionQueueManager {
-  constructor(private database: Database) {
-  }
-
-  private readonly sessionQueueMap = new Map<string, DatabaseCrud<any>>()
-
-  getSessionQueue<M>(targetTable: Table<M>): DatabaseCrud<M> {
-    if (this.sessionQueueMap.has(targetTable.tableName)) {
-      return this.sessionQueueMap.get(targetTable.tableName)
-    }
-    const newSessionQueue = new DatabaseCrud(this.database, targetTable)
-    this.sessionQueueMap.set(targetTable.tableName, newSessionQueue)
-    return newSessionQueue
-  }
-
-  delete(targetTable: Table<any>): void {
-    this.sessionQueueMap.delete(targetTable.tableName)
-  }
-
-  clear(): void {
-    this.sessionQueueMap.clear()
-  }
-}
-
-export class Database {
-  //private readonly databaseCrudCache = new HashMap<string, DatabaseCrud<any>>()
-  private readonly sessionQueueManager = new SessionQueueManager(this);
-
-  private constructor(readonly rdbStore: relationalStore.RdbStore) {
-  }
-
-  /**
-   * 异步关闭数据库
-   */
-  async close(): Promise<void> {
-    this.sessionQueueManager.clear()
-    return this.rdbStore.close()
-  }
-
-  /**
-   * 对指定Table进行增删改查操作
-   * @param targetTable 要操作的Table
-   * @returns {DatabaseCrud<M>}
-   */
-  of<M>(targetTable: Table<M>): DatabaseCrud<M> {
-    return this.sessionQueueManager.getSessionQueue(targetTable)
-  }
-
-  /**
-   * 开启一个普通lambda
-   * 主要用于链式调用时执行额外的代码逻辑
-   * @param scope 普通lambda
-   * @returns {DatabaseCrud<Nothing>}
-   */
-  run(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
-    return this.sessionQueueManager.getSessionQueue(nothings).run(scope)
-  }
-
-  /**
-   * 删除指定Table
-   * @param targetTable
-   */
-  delete<M>(targetTable: Table<M>): void {
-    this.rdbStore.executeSync(`DROP TABLE IF EXISTS ${targetTable.tableName}`)
-    this.sessionQueueManager.delete(targetTable)
-  }
-
-  /**
-   * 开启一个事务lambda
-   * @param scope 事务lambda
-   * @returns {DatabaseCrud<Nothing>}
-   */
-  beginTransaction(scope: (it: DatabaseCrudOnlyTo<never>) => void): DatabaseCrud<never> {
-    return this.sessionQueueManager.getSessionQueue(nothings).beginTransaction(scope)
-  }
-
-  /**
-   * 创建Database
-   * @param rdbStore relationalStore.RdbStore
-   * @returns {Database}
-   */
-  static create(rdbStore: relationalStore.RdbStore): Database {
-    return new Database(rdbStore)
-  }
-}
-
-export interface Cursor<T> {
-  /**
-   * 获取集合中元素的数量
-   * @returns 集合的长度
-   */
-  get length(): number
-
-  /**
-   * 返回集合中的第一个元素，如果集合为空，则返回null
-   * @returns 第一个元素或null
-   */
-  firstOrNull(): T | null
-
-  /**
-   * 返回集合中的第一个元素
-   * @returns 第一个元素
-   * @throws 如果结果为空，抛出错误
-   */
-  first(): T
-
-  /**
-   * 返回集合中的最后一个元素
-   * @returns 最后一个元素或null
-   */
-  lastOrNull(): T | null
-
-  /**
-   * 返回集合中的最后一个元素
-   * @returns 最后一个元素
-   * @throws 如果结果为空，抛出错误
-   */
-  last(): T
-
-  /**
-   * 根据索引返回集合中的元素
-   * @param index 索引位置
-   * @returns 对应的元素
-   * @throws 如果结果为空，抛出错误
-   */
-  get(index: number): T
-
-  /**
-   * 根据索引返回集合中的元素
-   * @param index 索引位置
-   * @returns 对应的元素或null
-   */
-  getOrNull(index: number): T | null
-
-  /**
-   * 返回集合中所有元素的只读数组
-   * @returns 所有元素的只读数组
-   */
-  toList(): ReadonlyArray<T>
-
-  /**
-   * 返回集合中所有元素的只读数组
-   * @returns 所有元素的只读数组或null
-   */
-  toListOrNull(): ReadonlyArray<T> | null
-
-  /**
-   * 关闭游标
-   */
-  close(): void
-}
-
-export class DatabaseCrud<T> {
-  private readonly rdbStore: relationalStore.RdbStore
-
+export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> = TableModelTypes<T>> {
   private readonly useColumns = this.targetTable[UseColumns]()
 
   private readonly useMigrations = this.targetTable[UseMigrations]()
 
-  constructor(private readonly database: Database, private readonly targetTable: Table<T>) {
-    this.rdbStore = database.rdbStore
+  constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: T) {
     Check.checkTableAndColumns(targetTable)
-    if (!Object.is(targetTable, sqliteSequences) && !Object.is(targetTable, nothings)) {
+    if (!Object.is(targetTable, SqliteSequencesTable)) {
       this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.useColumns.columns
         .map(column => column.columnModifier)
         .join(',')})`)
@@ -186,7 +29,7 @@ export class DatabaseCrud<T> {
     }
   }
 
-  private modelToValueBucket(model: {}, columns?: ColumnTypes[]): relationalStore.ValuesBucket {
+  private modelToValueBucket(model: Model, columns?: ColumnTypes[]): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
     for (const column of (columns ?? this.useColumns.columns)) {
       if (column instanceof ReferencesColumn) {
@@ -207,8 +50,8 @@ export class DatabaseCrud<T> {
     return vb
   }
 
-  private valueBucketToModel(inputVb: relationalStore.ValuesBucket, columns?: ColumnTypes[]): T {
-    const vb = {} as T
+  private valueBucketToModel(inputVb: relationalStore.ValuesBucket, columns?: ColumnTypes[]): Model {
+    const vb = {}
     for (const column of (columns ?? this.useColumns.columns)) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
@@ -216,9 +59,8 @@ export class DatabaseCrud<T> {
         const idColumn = useColumns.idColumns[0]
         const id = inputVb[column.fieldName] as SupportValueTypes
         if (id) {
-          vb[column.key] = this
-            .to(column.referencesTable)
-            .firstOrNull(it => it.equalTo(idColumn, id)) ?? null
+          vb[column.key] =
+            new DatabaseDao(this.rdbStore, column.referencesTable).firstOrNull(it => it.equalTo(idColumn, id)) ?? null
           continue
         }
         continue
@@ -231,7 +73,7 @@ export class DatabaseCrud<T> {
         vb[column.key] = inputVb[column.fieldName]
       }
     }
-    return vb
+    return vb as Model
   }
 
   /**
@@ -239,8 +81,8 @@ export class DatabaseCrud<T> {
    * @param targetTable 目标Table
    * @returns 返回这个Table的IDatabaseCrud
    */
-  to<T>(targetTable: Table<T>): DatabaseCrud<T> {
-    return this.database.of(targetTable);
+  to(targetTable: Table<T>): DatabaseDao<T, Model> {
+    return;
   }
 
   /**
@@ -276,7 +118,7 @@ export class DatabaseCrud<T> {
    * @param model 要插入的数据模型
    * @returns 返回当前实例
    */
-  add(model: T): this {
+  add(model: Model): this {
     return this.adds([model])
   }
 
@@ -285,7 +127,7 @@ export class DatabaseCrud<T> {
    * @param models 要插入的数据模型数组
    * @returns 返回当前实例
    */
-  adds(models: T[]): this {
+  adds(models: Model[]): this {
     if (!models.length) {
       return this
     }
@@ -316,7 +158,7 @@ export class DatabaseCrud<T> {
    * @param model 要更新的数据模型
    * @returns 返回当前实例
    */
-  update(model: T): this {
+  update(model: Model): this {
     return this.updates([model])
   }
 
@@ -326,7 +168,7 @@ export class DatabaseCrud<T> {
    *
    * @returns 返回当前实例
    */
-  updates(models: T[]): this {
+  updates(models: Model[]): this {
     if (!models.length) {
       return this
     }
@@ -350,12 +192,12 @@ export class DatabaseCrud<T> {
    * @param model 要更新的数据
    * @returns 返回当前实例
    */
-  updateIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>, model: Partial<T>): this {
+  updateIf(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model>, model: Partial<Model>): this {
     if (Object.keys(model).length === 0) {
       return this
     }
     const rdbPredicates = predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates()
-    this.rdbStore.updateSync(this.modelToValueBucket(model), rdbPredicates)
+    this.rdbStore.updateSync(this.modelToValueBucket(model as Model), rdbPredicates)
     return this
   }
 
@@ -364,7 +206,7 @@ export class DatabaseCrud<T> {
    * @param model 要删除的数据模型
    * @returns 返回当前实例
    */
-  remove(model: T): this {
+  remove(model: Model): this {
     this.removes([model])
     return this
   }
@@ -374,7 +216,7 @@ export class DatabaseCrud<T> {
    * @param models 要删除的数据模型数组
    * @returns 返回当前实例
    */
-  removes(models: T[]): this {
+  removes(models: Model[]): this {
     if (!models.length) {
       return this
     }
@@ -397,7 +239,7 @@ export class DatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns 返回当前实例
    */
-  removeIf(predicate: (it: QueryPredicate<T>) => QueryPredicate<T>): this {
+  removeIf(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model>): this {
     this.rdbStore.deleteSync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     return this
   }
@@ -409,9 +251,6 @@ export class DatabaseCrud<T> {
   clear(): this {
     try {
       this.rdbStore.deleteSync(QueryPredicate.of(this.targetTable).getRdbPredicates())
-      this
-        .to(sqliteSequences)
-        .removeIf(it => it.equalTo(sqliteSequences.name, this.targetTable.tableName))
     } finally {
       return this
     }
@@ -421,8 +260,8 @@ export class DatabaseCrud<T> {
    * 清空整个Table的数据并重置自增主键计数
    * @returns 返回当前实例
    */
-  delete(): DatabaseCrudOnlyTo<T> {
-    this.database.delete(this.targetTable)
+  delete(): this {
+    //this.database.delete(this.targetTable)
     return this
   }
 
@@ -431,7 +270,7 @@ export class DatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns 满足条件的数据条数
    */
-  count(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it): number {
+  count(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it): number {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates())
     try {
       return resultSet.rowCount
@@ -445,12 +284,12 @@ export class DatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
-  toList<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): readonly QueryReturnTypes<T, Columns>[] {
+  toList<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    columns?: Columns): readonly QueryReturnTypes<Model, Columns>[] {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
       columns?.map(item => item.fieldName))
     try {
-      const list: T[] = []
+      const list: Model[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), columns))
       }
@@ -467,8 +306,8 @@ export class DatabaseCrud<T> {
    * @throws 如果结果为空，抛出错误
    */
   first<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): QueryReturnTypes<T, Columns> {
+    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    columns?: Columns): QueryReturnTypes<Model, Columns> {
     const first = this.firstOrNull(predicate, columns)
     if (first) {
       return first
@@ -482,8 +321,8 @@ export class DatabaseCrud<T> {
    * @returns 第一个满足条件的实体或null
    */
   firstOrNull<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): QueryReturnTypes<T, Columns> | null {
+    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    columns?: Columns): QueryReturnTypes<Model, Columns> | null {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
       columns?.map(item => item.fieldName))
     try {
@@ -502,8 +341,8 @@ export class DatabaseCrud<T> {
    * @returns 最后一个满足条件的实体
    * @throws 如果结果为空，抛出错误
    */
-  last<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): QueryReturnTypes<T, Columns> {
+  last<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    columns?: Columns): QueryReturnTypes<Model, Columns> {
     const last = this.lastOrNull(predicate, columns)
     if (last) {
       return last
@@ -516,8 +355,8 @@ export class DatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns 最后一个满足条件的实体或null
    */
-  lastOrNull<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): QueryReturnTypes<T, Columns> | null {
+  lastOrNull<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    columns?: Columns): QueryReturnTypes<Model, Columns> | null {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
       columns?.map(item => item.fieldName))
     try {
@@ -535,8 +374,8 @@ export class DatabaseCrud<T> {
    * @param predicate 查询条件
    * @returns 游标操作对象，用于遍历和操作查询结果，注意如果不使用了务必要关闭游标！
    */
-  toCursor<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<T>) => QueryPredicate<T> = it => it,
-    columns?: Columns): Cursor<QueryReturnTypes<T, Columns>> {
+  toCursor<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+    ...columns: Columns): Cursor<QueryReturnTypes<Model, Columns>> {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.of(this.targetTable)).getRdbPredicates(),
       columns?.map(item => item.fieldName))
     const rowCount = resultSet.rowCount
@@ -586,7 +425,7 @@ export class DatabaseCrud<T> {
       throw Error("Index out of range.")
     }
     const toListOrNull = () => {
-      const list: T[] = []
+      const list: Model[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), columns))
       }
@@ -613,39 +452,5 @@ export class DatabaseCrud<T> {
       toList: toList,
       close: close,
     }
-  }
-}
-
-export namespace database {
-  export declare let globalDatabase: Database
-
-  /**
-   * @see globalDatabase
-   */
-  export async function close(): Promise<void> {
-    return globalDatabase!!.close().finally(() => {
-      globalDatabase = null
-    })
-  }
-
-  /**
-   * @see globalDatabase
-   */
-  export function of<M>(targetTable: Table<M>): DatabaseCrud<M> {
-    return globalDatabase!!.of(targetTable)
-  }
-
-  /**
-   * @see globalDatabase
-   */
-  export function run(scope: (it: DatabaseCrudOnlyTo<never>) => void) {
-    return globalDatabase!!.run(scope)
-  }
-
-  /**
-   * @see globalDatabase
-   */
-  export function beginTransaction(scope: (it: DatabaseCrudOnlyTo<never>) => void) {
-    return globalDatabase!!.beginTransaction(scope)
   }
 }

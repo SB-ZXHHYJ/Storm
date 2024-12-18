@@ -1,11 +1,8 @@
-import { database } from '@zxhhyj/storm'
 import { AddTest } from '../logic/demo/AddTest'
 import { RemoveTest } from '../logic/demo/RemoveTest'
 import { Test } from '../logic/demo/Test'
 import { UpdateIfTest } from '../logic/demo/UpdateIfTest'
 import { UpdateTest } from '../logic/demo/UpdateTest'
-import { books } from '../logic/model/Book'
-import { bookcases } from '../logic/model/Bookcase'
 import { promptAction } from '@kit.ArkUI'
 import { TransactionTest } from '../logic/demo/TransactionTest'
 import { RemoveIfTest } from '../logic/demo/RemoveIfTest'
@@ -13,6 +10,8 @@ import { UpdateIfNullTest } from '../logic/demo/UpdateIfNullTest'
 import { BlobTest } from '../logic/demo/BlobTest'
 import { OtherTest } from '../logic/demo/OtherTest'
 import { IndexTest } from '../logic/demo/IndexTest'
+import { myDatabase } from '../logic/database/AppDatabase'
+import { AsyncTest } from '../logic/demo/AsyncTest'
 
 @Entry
 @ComponentV2
@@ -28,7 +27,8 @@ struct Index {
       TransactionTest,
       BlobTest,
       IndexTest,
-      OtherTest
+      OtherTest,
+      AsyncTest
     ]
 
   build() {
@@ -40,11 +40,9 @@ struct Index {
         .align(Alignment.Center)
         .onClick(() => {
           for (const worksElement of this.works) {
-            database
-              .of(bookcases)
-              .delete()
-              .to(books)
-              .delete()
+            myDatabase.bookcaseDao.clear()
+            myDatabase.bookDao.clear()
+            myDatabase.blobDao.clear()
             worksElement.main()
             if (!worksElement.verify()) {
               //throw Error(`任务${worksElement.name}测试失败`)
