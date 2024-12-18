@@ -1,5 +1,5 @@
 import { relationalStore } from '@kit.ArkData'
-import { Table, TableModelTypes, UseColumns, UseMigrations } from '../schema/Table'
+import { Table, ExtractTableModel, UseColumns, UseMigrations } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { SqliteSequencesTable } from '../model/SqliteSequence'
 import { Check } from '../utils/Check'
@@ -9,7 +9,7 @@ import { Cursor } from './Cursor'
 type QueryReturnTypes<Model, T
 extends ColumnTypes[]> = T['length'] extends 0 ? Model : Pick<Model, ColumnKey<T[number]>>
 
-export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> = TableModelTypes<T>> {
+export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T> = ExtractTableModel<T>> {
   private readonly useColumns = this.targetTable[UseColumns]()
 
   private readonly useMigrations = this.targetTable[UseMigrations]()
@@ -36,15 +36,15 @@ export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> 
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
         const useColumns = column.referencesTable[UseColumns]()
         const idColumn = useColumns.idColumns[0]
-        vb[column.fieldName] = model[column.key]?.[idColumn.key] ?? null
+        vb[column.fieldName] = model[column.prop]?.[idColumn.prop] ?? null
         continue
       }
       if (column instanceof Column) {
         if (column.typeConverters) {
-          vb[column.fieldName] = column.typeConverters.save(model[column.key] ?? null)
+          vb[column.fieldName] = column.typeConverters.save(model[column.prop] ?? null)
           continue
         }
-        vb[column.fieldName] = model[column.key]
+        vb[column.fieldName] = model[column.prop]
       }
     }
     return vb
@@ -59,7 +59,7 @@ export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> 
         const idColumn = useColumns.idColumns[0]
         const id = inputVb[column.fieldName] as SupportValueTypes
         if (id) {
-          vb[column.key] =
+          vb[column.prop] =
             new DatabaseDao(this.rdbStore, column.referencesTable).firstOrNull(it => it.equalTo(idColumn, id)) ?? null
           continue
         }
@@ -67,22 +67,13 @@ export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> 
       }
       if (column instanceof Column) {
         if (column.typeConverters) {
-          vb[column.key] = column.typeConverters.restore(inputVb[column.fieldName] ?? null)
+          vb[column.prop] = column.typeConverters.restore(inputVb[column.fieldName] ?? null)
           continue
         }
-        vb[column.key] = inputVb[column.fieldName]
+        vb[column.prop] = inputVb[column.fieldName]
       }
     }
     return vb as Model
-  }
-
-  /**
-   * 切换要操作的Table
-   * @param targetTable 目标Table
-   * @returns 返回这个Table的IDatabaseCrud
-   */
-  to(targetTable: Table<T>): DatabaseDao<T, Model> {
-    return;
   }
 
   /**
@@ -147,7 +138,7 @@ export class DatabaseDao<T extends Table<any>, Model extends TableModelTypes<T> 
       }
       const rowId = this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
       if (isRowIdAlias) {
-        models[index][idColumn.key] = rowId
+        models[index][idColumn.prop] = rowId
       }
     })
     return this

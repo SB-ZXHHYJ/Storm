@@ -31,7 +31,7 @@ export namespace Check {
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
     const useColumns = targetTable[UseColumns]()
-    const keys = useColumns.columns.map(it => it.key)
+    const keys = useColumns.columns.map(it => it.prop)
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }

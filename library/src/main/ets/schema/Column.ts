@@ -42,13 +42,25 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   ) {
   }
 
+  /**
+   * 是否是主键
+   */
   private _isPrimaryKey = false
 
+  /**
+   * 是否自增
+   */
   private _isAutoincrement = false
 
+  /**
+   * 列的类型等完整描述信息
+   */
   private _columnModifier = `${this.fieldName} ${this.dataType}`
 
-  private _key: Key
+  /**
+   * 绑定到实体中的属性名
+   */
+  private _prop: Key
 
   get isPrimaryKey() {
     return this._isPrimaryKey
@@ -62,8 +74,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
     return this._columnModifier
   }
 
-  get key() {
-    return this._key
+  get prop() {
+    return this._prop
   }
 
   /**
@@ -84,7 +96,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 使用 NOT NULL 修饰 Column
+   * 使用 NOT NULL 修饰列
    * @returns {this}
    */
   notNull(): this {
@@ -93,7 +105,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 使用 UNIQUE 修饰 Column
+   * 使用 UNIQUE 修饰列
    * @returns {this}
    */
   unique(): this {
@@ -102,7 +114,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 设置 Column 的默认值
+   * 设置列的默认值
    * @param value 默认值
    * @returns {this}
    */
@@ -112,13 +124,13 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 将 Column 绑定到目标 Table 中实体模型的指定属性
-   * @param targetTable 目标 Table
-   * @param key 实体模型中指定的属性
+   * 将列绑定到目标表中实体模型的指定属性
+   * @param targetTable 目标表
+   * @param prop 实体中指定属性名
    * @returns {this}
    */
-  bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
-    this._key = key
+  bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, prop: Key) {
+    this._prop = prop
     const useColumns = targetTable[UseColumns]()
     useColumns.addColumn(this)
     Object.freeze(this)
@@ -126,7 +138,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 INTEGER 类型的 Column
+   * 创建 INTEGER 类型的列
    * @param fieldName 列名
    */
   static integer<FieldName extends string, WriteType extends number>(
@@ -136,7 +148,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 REAL 类型的 Column
+   * 创建 REAL 类型的列
    * @param fieldName 列名
    */
   static real<FieldName extends string, WriteType extends number>(fieldName: FieldName,
@@ -145,7 +157,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 TEXT 类型的 Column
+   * 创建 TEXT 类型的列
    * @param fieldName 列名
    */
   static text<FieldName extends string, WriteType extends string>(fieldName: FieldName,
@@ -154,7 +166,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 Uint8Array 类型的 Column
+   * 创建 Uint8Array 类型的列
    * @param fieldName 列名
    */
   static blob<FieldName extends string>(fieldName: FieldName, typeConverters?: TypeConverters<Uint8Array, Uint8Array>) {
@@ -162,7 +174,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 INTEGER 类型的 Column 并通过 BooleanTypeConverters 将类型转换为 boolean
+   * 创建 INTEGER 类型的列并通过 BooleanTypeConverters 将类型转换为 boolean
    * @see BooleanTypeConverters
    * @param fieldName 列名
    */
@@ -171,7 +183,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 TEXT 类型的 Column 并通过 DateTypeConverters 将类型转换为 Date
+   * 创建 TEXT 类型的列并通过 DateTypeConverters 将类型转换为 Date
    * @see DateTypeConverters
    * @param fieldName 列名
    */
@@ -180,7 +192,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 INTEGER 类型的 Column 并通过 TimestampTypeConverters 将类型转换为 Date
+   * 创建 INTEGER 类型的列并通过 TimestampTypeConverters 将类型转换为 Date
    * @see TimestampTypeConverters
    * @param fieldName 列名
    */
@@ -189,8 +201,8 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 将 Column 绑定到参考 Table 中，相当于关系数据库中的外键，使用时需要确保参考 Table 和其实体都存在唯一主键
-   * Storm 会将参考 Table 中实体的主键存储到这个 Column 上，在查询时 Storm 会自动从参考 Table 中查询并填充到这个 Colum n所绑定的实体属性上
+   * 将列绑定到参考表中，相当于关系数据库中的外键，使用时需要确保参考表和其实体都存在唯一主键
+   * Storm 会将参考表中实体的主键存储到这个列上，在查询时 Storm 会自动从参考表中查询并填充到这个列所绑定的实体属性上
    * @param fieldName 列名
    * @param referencesTable 参考的 Table
    */
@@ -199,7 +211,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   }
 
   /**
-   * 创建 IndexColumn
+   * 创建索引列
    * @param fieldName 列名
    */
   static index(fieldName: string): IndexColumn {
@@ -221,7 +233,7 @@ export class ReferencesColumn<FieldName extends string, Key extends string, Read
 }
 
 /**
- * IndexColumn 的顺序
+ * 索引列的顺序
  */
 type Order = 'ASC' | 'DESC'
 

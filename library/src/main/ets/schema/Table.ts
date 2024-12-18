@@ -1,7 +1,10 @@
 import { Migration } from '../../../../Index';
 import { Column, ColumnTypes, IndexColumn } from './Column';
 
-export type TableModelTypes<T> = T extends Table<infer M> ? M : never
+/**
+ * 用于提取 Table 的泛型类型
+ */
+export type ExtractTableModel<T> = T extends Table<infer M> ? M : never
 
 export const UseMigrations = Symbol('UseMigrations')
 
@@ -70,7 +73,7 @@ export abstract class Table<Model> {
   private readonly indexColumns: IndexColumn[] = []
 
   /**
-   *
+   * 存储这个表的所有迁移操作对象
    */
   private readonly migrations: Migration<this>[] = []
 
@@ -93,7 +96,7 @@ interface UseMigrations {
 }
 
 interface UseColumn {
-  readonly  addColumn: (column: ColumnTypes | IndexColumn) => void
+  readonly addColumn: (column: ColumnTypes | IndexColumn) => void
   readonly columns: readonly ColumnTypes[]
   readonly idColumns: readonly ColumnTypes[]
   readonly indexColumns: readonly IndexColumn[]
