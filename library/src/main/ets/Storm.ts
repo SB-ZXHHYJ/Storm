@@ -3,12 +3,14 @@ import { Migration } from './database/Migration';
 import { Table, UseMigrations } from './schema/Table';
 import { Context } from '@kit.AbilityKit';
 import { Database } from './schema/Database';
+import { relationalStore } from '@kit.ArkData';
 
 type Constructor<T> = new (...args: any[]) => T
 
 type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as T[K] extends Table<any> ? K : never]: DatabaseDao<T[K]>
 } & {
+  rdbStore: relationalStore.RdbStore,
   init: (context: Context) => Promise<void>,
   beginTransaction: (scope: ((it: GenerateDaoTypes<T>) => void)) => void,
   beginAsync: (scope: ((it: GenerateDaoTypes<T>) => void)) => Promise<void>,
@@ -33,6 +35,7 @@ class DatabaseBuilder<T extends Database> {
     const instance = {} as GenerateDaoTypes<T>
     instance.init = async function (context: Context) {
       const rdbStore = await database.initDb(context)
+      instance.rdbStore = rdbStore
       instance.beginTransaction = function (scope) {
         try {
           rdbStore.beginTransaction()
