@@ -1,7 +1,7 @@
 import { Database, Storm } from '@zxhhyj/storm';
 import { relationalStore } from '@kit.ArkData';
 import { TableBookcase } from '../model/Bookcase';
-import { TableBook } from '../model/Book';
+import { DaoMyBook, TableBook } from '../model/Book';
 import { TableBlob } from '../model/Blob';
 import { Context } from '@kit.AbilityKit';
 
@@ -13,6 +13,8 @@ class AppDatabase extends Database {
   readonly blobDao = TableBlob
   readonly bookDao = TableBook
   readonly bookcaseDao = TableBookcase
+
+  readonly myBookDao = DaoMyBook
 }
 
 export const myDatabase = Storm.databaseBuilder(AppDatabase).build()

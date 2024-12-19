@@ -15,7 +15,8 @@ export const AddTest: Test = {
       visibility: true
     }
     myDatabase.bookcaseDao.add(bookcase)
-    myDatabase.bookDao.add(book)
+    //myDatabase.bookDao.add(book)
+    myDatabase.myBookDao.add(book)
   },
   verify: function (): boolean {
     const addBook = myDatabase.bookDao.first()

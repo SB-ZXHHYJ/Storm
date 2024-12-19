@@ -1,7 +1,7 @@
-import { Column, Table } from '@zxhhyj/storm';
+import { Column, Dao, Storm, Table } from '@zxhhyj/storm';
 import { Bookcase, TableBookcase } from './Bookcase';
 
-export class BookTable extends Table<Book> {
+class BookTable extends Table<Book> {
   readonly tableName = 't_book'
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
@@ -27,3 +27,12 @@ export interface Book {
   createDataTime: Date
   visibility: boolean
 }
+
+class MyBookDao extends Dao<BookTable> {
+  add(book: Book) {
+    this.dao.add(book)
+    //自定义你的逻辑
+  }
+}
+
+export const DaoMyBook = Storm.daoBuilder(MyBookDao).select(TableBook).build()

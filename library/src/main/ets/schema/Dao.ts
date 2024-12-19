@@ -1,11 +1,14 @@
 import { DatabaseDao } from '../../../../Index';
 import { Table } from './Table';
 
-export class Dao<T extends Table<any>> {
-  protected readonly table: T
-  protected readonly dao: DatabaseDao<T>
+export type ExtractDaoTable<T extends Dao<any>> = T extends Dao<infer M> ? M : never
 
-  static of<T extends Table<any>>(target: T) {
-    return
+export class Dao<T extends Table<any>> {
+  table: T
+  dao: DatabaseDao<T>
+
+  constructor(table: T, dao: DatabaseDao<T>) {
+    this.table = table
+    this.dao = dao
   }
 }

@@ -17,3 +17,5 @@ export { Storm } from './src/main/ets/storm/Storm'
 export { TableSqliteSequence, SqliteSequence } from './src/main/ets/model/SqliteSequence'
 
 export { TableSqliteMaster, SqliteMaster } from './src/main/ets/model/SqliteMaster'
+
+export { Dao } from './src/main/ets/schema/Dao'

@@ -7,10 +7,10 @@ import { Constructor } from '../common/Types'
 import { DatabaseMigration } from '../database/migration/DatabaseMigration'
 import { Check } from '../common/Check'
 import { SqlUtils } from '../common/SqlUtils'
-import { TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
+import { Dao, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
 
 type GenerateDaoTypes<T extends Record<string, any>> = {
-  [K in keyof T as T[K] extends Table<any> ? K : never]: DatabaseDao<T[K]>
+  [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
 } & {
   /**
    * 数据库的 RdbStore 对象，在初始化数据库后可调用，但建议尽可能不要直接使用 RdbStore
@@ -87,8 +87,7 @@ export class DatabaseBuilder<T extends Database> {
         return it
       }, TableSqliteMaster.name)
         .map(item => item.name)
-      for (const element of Object.entries(database)) {
-        const [key, value] = element
+      for (const [key, value] of Object.entries(database)) {
         if (value instanceof Table) {
           if (Object.is(value, TableSqliteMaster)) {
             instance[key] = sqliteMasterDao
@@ -99,16 +98,18 @@ export class DatabaseBuilder<T extends Database> {
             continue
           }
           Check.checkTableAndColumns(value)
-          instance[key] = new DatabaseDao(rdbStore, value)
-          if (hasTableNames.indexOf(value.tableName) === -1) {
-            instance.beginTransaction(() => {
-              const createTableSql = SqlUtils.getCreateTableSql(value)
-              rdbStore.executeSync(createTableSql)
-              const createIndexSql = SqlUtils.getCreateIndexSql(value)
-              if (createIndexSql.length !== 0) {
-                rdbStore.executeSync(createIndexSql)
-              }
-            })
+          instance[key] = Object.freeze(new DatabaseDao(rdbStore, value))
+          if (!hasTableNames.includes(value.tableName)) {
+            DatabaseBuilder.createTableAndIndex(instance, value)
+          }
+          continue
+        }
+        if (value instanceof Dao && value.table instanceof Table) {
+          Check.checkTableAndColumns(value.table)
+          value.dao = new DatabaseDao(rdbStore, value.table)
+          instance[key] = Object.freeze(value)
+          if (!hasTableNames.includes(value.table.tableName)) {
+            DatabaseBuilder.createTableAndIndex(instance, value.table)
           }
         }
       }
@@ -116,5 +117,16 @@ export class DatabaseBuilder<T extends Database> {
       Object.freeze(instance)
     }
     return instance
+  }
+
+  private static createTableAndIndex(instance: GenerateDaoTypes<any>, table: Table<any>) {
+    instance.beginTransaction(() => {
+      const createTableSql = SqlUtils.getCreateTableSql(table)
+      instance.rdbStore.executeSync(createTableSql)
+      const createIndexSql = SqlUtils.getCreateIndexSql(table)
+      if (createIndexSql.length !== 0) {
+        instance.rdbStore.executeSync(createIndexSql)
+      }
+    })
   }
 }

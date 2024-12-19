@@ -3,6 +3,8 @@ import { Database } from '../schema/Database';
 import { TableBuilder } from './TableBuilder';
 import { Constructor } from '../common/Types';
 import { DatabaseBuilder } from './DatabaseBuilder';
+import { Dao } from '../schema/Dao';
+import { DaoBuilder } from './DaoBuilder';
 
 export namespace Storm {
 
@@ -22,6 +24,10 @@ export namespace Storm {
    */
   export function tableBuilder<T extends Table<any>>(tableConstructor: Constructor<T>) {
     return new TableBuilder(tableConstructor)
+  }
+
+  export function daoBuilder<T extends Dao<any>>(daoConstructor: Constructor<T>) {
+    return new DaoBuilder(daoConstructor)
   }
 
 }
