@@ -8,6 +8,7 @@ import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
 import { SqlUtils } from '../common/SqlUtils'
 import { Dao, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
+import { Queue } from '@kit.ArkTS'
 
 type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
@@ -40,14 +41,19 @@ type GenerateDaoTypes<T extends Record<string, any>> = {
  * Database 的构建器
  */
 export class DatabaseBuilder<T extends Database> {
-  private readonly migrations: DatabaseMigration<T>[] = []
+  private readonly migrations: Queue<DatabaseMigration<T>> = new Queue()
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
   }
 
   addMigration(migration: DatabaseMigration<T>): this {
     if (migration) {
-      this.migrations.push(migration)
+      const first = this.migrations.getFirst()
+      if (migration.startVersion - migration.endVersion !== 1 && first &&
+        first.endVersion - migration.startVersion !== 1) {
+        throw new Error('The order of the added DatabaseMigration is wrong.')
+      }
+      this.migrations.add(migration)
     } else {
       throw new Error('The added DatabaseMigration is invalid.')
     }
@@ -80,53 +86,53 @@ export class DatabaseBuilder<T extends Database> {
         })
       }
       const sqliteMasterDao = new DatabaseDao(rdbStore, TableSqliteMaster)
-      const sqliteSequence = new DatabaseDao(rdbStore, TableSqliteSequence)
       const hasTableNames = sqliteMasterDao.toList(it => {
         it.equalTo(TableSqliteMaster.type, 'table')
           .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
         return it
       }, TableSqliteMaster.name)
         .map(item => item.name)
-      for (const [key, value] of Object.entries(database)) {
+      const tablesToCreate = Object.entries(database).reduce((acc, [key, value]) => {
         if (value instanceof Table) {
           if (Object.is(value, TableSqliteMaster)) {
             instance[key] = sqliteMasterDao
-            continue
+            return acc
           }
           if (Object.is(value, TableSqliteSequence)) {
-            instance[key] = sqliteSequence
-            continue
+            instance[key] = new DatabaseDao(rdbStore, TableSqliteSequence)
+            return acc
           }
           Check.checkTableAndColumns(value)
           instance[key] = Object.freeze(new DatabaseDao(rdbStore, value))
+
           if (!hasTableNames.includes(value.tableName)) {
-            DatabaseBuilder.createTableAndIndex(instance, value)
+            acc.push(value)
           }
-          continue
-        }
-        if (value instanceof Dao && value.table instanceof Table) {
+        } else if (value instanceof Dao && value.table instanceof Table) {
           Check.checkTableAndColumns(value.table)
           value.dao = new DatabaseDao(rdbStore, value.table)
           instance[key] = Object.freeze(value)
           if (!hasTableNames.includes(value.table.tableName)) {
-            DatabaseBuilder.createTableAndIndex(instance, value.table)
+            acc.push(value.table)
           }
         }
+        return acc
+      }, [])
+      if (tablesToCreate.length !== 0) {
+        instance.beginTransaction(() => {
+          for (const table of tablesToCreate) {
+            const createTableSql = SqlUtils.getCreateTableSql(table)
+            instance.rdbStore.executeSync(createTableSql)
+            const createIndexSql = SqlUtils.getCreateIndexSql(table)
+            if (createIndexSql.length !== 0) {
+              instance.rdbStore.executeSync(createIndexSql)
+            }
+          }
+        })
       }
       instance.init = null
       Object.freeze(instance)
     }
     return instance
-  }
-
-  private static createTableAndIndex(instance: GenerateDaoTypes<any>, table: Table<any>) {
-    instance.beginTransaction(() => {
-      const createTableSql = SqlUtils.getCreateTableSql(table)
-      instance.rdbStore.executeSync(createTableSql)
-      const createIndexSql = SqlUtils.getCreateIndexSql(table)
-      if (createIndexSql.length !== 0) {
-        instance.rdbStore.executeSync(createIndexSql)
-      }
-    })
   }
 }

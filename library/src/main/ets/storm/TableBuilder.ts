@@ -13,7 +13,7 @@ export class TableBuilder<T extends Table<any>> {
   constructor(private readonly tableConstructor: Constructor<T>) {
   }
 
-  createFormAuto() {
+  createFormStorm() {
     this.openOrCreate = true
     return this
   }

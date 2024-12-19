@@ -11,7 +11,7 @@ class StormTableVersionTable extends Table<StormTableVersion> {
   readonly version = Column.integer('table_version').bindTo(this, 'version')
 }
 
-export const TableVersions = Storm.tableBuilder(StormTableVersionTable).createFormAuto().build()
+export const TableVersions = Storm.tableBuilder(StormTableVersionTable).build()
 
 export interface StormTableVersion {
   readonly name: string
