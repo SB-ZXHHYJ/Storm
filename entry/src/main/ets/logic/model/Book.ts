@@ -33,6 +33,8 @@ class MyBookDao extends Dao<BookTable> {
     this.dao.add(book)
     //自定义你的逻辑
   }
+
+  //...
 }
 
 export const DaoMyBook = Storm.daoBuilder(MyBookDao).select(TableBook).build()

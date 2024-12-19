@@ -9,10 +9,6 @@ export type ExtractTableModel<T> = T extends Table<infer M> ? M : never
 export const UseTableOptions = Symbol('UseOptions')
 
 export abstract class Table<Model> {
-  [UseTableOptions]() {
-    return this.options
-  }
-
   /**
    * 默认版本号
    */
@@ -53,7 +49,7 @@ export abstract class Table<Model> {
    */
   private readonly migrations: TableMigration<this>[] = []
 
-  private readonly options = Object.freeze({
+  private readonly options: TableOptions = Object.freeze({
     addMigration: this.registerMigration,
     migrations: this.migrations,
     addColumn: this.registerColumn,
@@ -79,4 +75,17 @@ export abstract class Table<Model> {
       return
     }
   }
+
+  [UseTableOptions]() {
+    return this.options
+  }
+}
+
+interface TableOptions {
+  readonly addMigration: (migration: TableMigration<any>) => void
+  readonly migrations: readonly TableMigration<any> []
+  readonly addColumn: (column: ColumnTypes | IndexColumn) => void
+  readonly columns: readonly ColumnTypes[]
+  readonly idColumns: readonly ColumnTypes[]
+  readonly indexColumns: readonly IndexColumn[]
 }
