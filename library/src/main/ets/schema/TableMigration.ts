@@ -1,4 +1,4 @@
-import { Table } from '../../schema/Table';
+import { Table } from './Table';
 import { relationalStore } from '@kit.ArkData';
 
 export interface TableMigrationOptions<T extends Table<any>> {

@@ -1,5 +1,5 @@
 import { relationalStore } from '@kit.ArkData';
-import { Database } from '../../schema/Database';
+import { Database } from './Database';
 
 export interface DatabaseMigrationOptions<T extends Database> {
   readonly database: T

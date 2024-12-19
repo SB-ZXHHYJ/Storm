@@ -1,5 +1,5 @@
 import { Constructor } from '../common/Types'
-import { TableMigration } from '../database/migration/TableMigration'
+import { TableMigration } from '../schema/TableMigration'
 import { Table, UseTableOptions } from '../schema/Table'
 
 /**

@@ -6,7 +6,7 @@ export { TypeConverters } from './src/main/ets/schema/TypeConverters'
 
 export { DatabaseDao, Cursor } from './src/main/ets/database/DatabaseDao'
 
-export { TableMigrationOptions, TableMigration } from './src/main/ets/database/migration/TableMigration'
+export { TableMigrationOptions, TableMigration } from './src/main/ets/schema/TableMigration'
 
 export { QueryPredicate } from './src/main/ets/database/QueryPredicate'
 
