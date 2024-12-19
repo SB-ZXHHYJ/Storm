@@ -1,4 +1,4 @@
-import { Table, UseColumns } from './Table';
+import { Table, UseTableOptions } from './Table';
 import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, TypeConverters } from './TypeConverters';
 
 /**
@@ -53,14 +53,18 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
   private _isAutoincrement = false
 
   /**
-   * 列的类型等完整描述信息
+   * 是否不可为 NULL
    */
-  private _columnModifier = `${this.fieldName} ${this.dataType}`
+  private _isNotNull = false
+
+  private _isUnique = false
+
+  private _defaultStr: string
 
   /**
    * 绑定到实体中的属性名
    */
-  private _prop: Key
+  private _key: string
 
   get isPrimaryKey() {
     return this._isPrimaryKey
@@ -70,12 +74,20 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
     return this._isAutoincrement
   }
 
-  get columnModifier() {
-    return this._columnModifier
+  get isNotNull() {
+    return this._isNotNull
   }
 
-  get prop() {
-    return this._prop
+  get isUnique() {
+    return this._isUnique
+  }
+
+  get defaultStr() {
+    return this._defaultStr
+  }
+
+  get key() {
+    return this._key
   }
 
   /**
@@ -85,9 +97,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    */
   primaryKey(autoincrement: boolean = false): this {
     this._isPrimaryKey = true
-    this._columnModifier += ' PRIMARY KEY'
     if (autoincrement && this.dataType === 'INTEGER') {
-      this._columnModifier += ' AUTOINCREMENT'
       this._isAutoincrement = true
     } else {
       throw new Error('The autoincrement option can only be set for INTEGER data types.')
@@ -100,7 +110,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @returns {this}
    */
   notNull(): this {
-    this._columnModifier += ' NOT NULL';
+    this._isNotNull = true
     return this
   }
 
@@ -109,7 +119,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @returns {this}
    */
   unique(): this {
-    this._columnModifier += ' UNIQUE';
+    this._isUnique = true
     return this
   }
 
@@ -119,20 +129,20 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @returns {this}
    */
   default(value: WriteType): this {
-    this._columnModifier += ` DEFAULT '${value}'`;
+    this._defaultStr = value?.toString()
     return this
   }
 
   /**
    * 将列绑定到目标表中实体模型的指定属性
    * @param targetTable 目标表
-   * @param prop 实体中指定属性名
+   * @param key 实体中指定属性名
    * @returns {this}
    */
-  bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, prop: Key) {
-    this._prop = prop
-    const useColumns = targetTable[UseColumns]()
-    useColumns.addColumn(this)
+  bindTo<T, Key extends string = SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
+    this._key = key
+    const useOptions = targetTable[UseTableOptions]()
+    useOptions.addColumn(this)
     Object.freeze(this)
     return this as Column<FieldName, Key, WriteType, ReadType>
   }
@@ -296,8 +306,8 @@ export class IndexColumn {
       throw new Error('Duplicate columns exist in the index.')
     }
     this._columns = columns
-    const useColumns = targetTable[UseColumns]()
-    useColumns.addColumn(this)
+    const useOptions = targetTable[UseTableOptions]()
+    useOptions.addColumn(this)
     Object.freeze(this)
     return this
   }

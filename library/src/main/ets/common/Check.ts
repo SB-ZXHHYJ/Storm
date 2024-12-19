@@ -1,4 +1,4 @@
-import { Table, UseColumns } from '../schema/Table';
+import { Table, UseTableOptions } from '../schema/Table';
 
 export namespace Check {
 
@@ -7,8 +7,8 @@ export namespace Check {
    * @param targetTable 要检查的 Table
    */
   export function checkTableHasIdColumn(targetTable: Table<any>) {
-    const useColumns = targetTable[UseColumns]()
-    if (useColumns.idColumns.length === 0) {
+    const useOptions = targetTable[UseTableOptions]()
+    if (useOptions.idColumns.length === 0) {
       throw new Error(`In "${targetTable.tableName}", there is no primary key.`)
     }
   }
@@ -19,8 +19,8 @@ export namespace Check {
    */
   export function checkTableHasAtMostOneIdColumn(targetTable: Table<any>) {
     checkTableHasIdColumn(targetTable)
-    const useColumns = targetTable[UseColumns]()
-    if (useColumns.idColumns.length > 1) {
+    const useOptions = targetTable[UseTableOptions]()
+    if (useOptions.idColumns.length > 1) {
       throw new Error(`In "${targetTable.tableName}", there is more than one primary key. Only one primary key is allowed.`)
     }
   }
@@ -30,12 +30,13 @@ export namespace Check {
    * @param targetTable 要检查的 Table
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
-    const useColumns = targetTable[UseColumns]()
-    const keys = useColumns.columns.map(it => it.prop)
+    const useOptions = targetTable[UseTableOptions]()
+    const keys = useOptions.columns.map(it => it.key)
     if (new Set(keys).size !== keys.length) {
       throw new Error(`In ${targetTable.tableName}, different columns are bound to the same entity property.`)
     }
-    const fieldNames = useColumns.columns.map(it => it.fieldName).concat(useColumns.indexColumns.map(it => it.fieldName))
+    const fieldNames =
+      useOptions.columns.map(it => it.fieldName).concat(useOptions.indexColumns.map(it => it.fieldName))
     if (new Set(fieldNames).size !== fieldNames.length) {
       throw new Error(`In ${targetTable.tableName}, there is a problem with duplicate column names.`)
     }

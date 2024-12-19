@@ -4,16 +4,16 @@ export { Column } from './src/main/ets/schema/Column'
 
 export { TypeConverters } from './src/main/ets/schema/TypeConverters'
 
-export { DatabaseDao } from './src/main/ets/database/DatabaseDao'
+export { DatabaseDao, Cursor } from './src/main/ets/database/DatabaseDao'
 
-export { Cursor } from './src/main/ets/database/Cursor'
-
-export { Operate, Migration } from './src/main/ets/database/Migration'
+export { TableMigrationOptions, TableMigration } from './src/main/ets/database/migration/TableMigration'
 
 export { QueryPredicate } from './src/main/ets/database/QueryPredicate'
 
 export { Database } from './src/main/ets/schema/Database'
 
-export { Storm } from './src/main/ets/Storm'
+export { Storm } from './src/main/ets/storm/Storm'
 
-export { SqliteSequencesTable } from './src/main/ets/model/SqliteSequence'
+export { TableSqliteSequence, SqliteSequence } from './src/main/ets/model/SqliteSequence'
+
+export { TableSqliteMaster, SqliteMaster } from './src/main/ets/model/SqliteMaster'

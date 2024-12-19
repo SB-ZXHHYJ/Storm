@@ -9,7 +9,7 @@ export const UpdateTest: Test = {
     }
     myDatabase.bookcaseDao
       .add(bookcase)
-      .run(() => {
+      .begin(() => {
         bookcase.name = "女生小说" //修改name
       })
       .update(bookcase) //将修改后的name更新到数据库中

@@ -1,86 +1,66 @@
 import { relationalStore } from '@kit.ArkData'
-import { ExtractTableModel, Table, UseColumns, UseMigrations } from '../schema/Table'
+import { ExtractTableModel, Table, UseTableOptions } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
-import { SqliteSequencesTable } from '../model/SqliteSequence'
-import { Check } from '../utils/Check'
+import { Check } from '../common/Check'
 import { Column, ColumnTypes, ExtractColumnKey, ReferencesColumn, SupportValueTypes } from '../schema/Column'
-import { Cursor } from './Cursor'
 
 type QueryReturnTypes<Model, QueryColumns extends ColumnTypes[]> =
   QueryColumns['length'] extends 0 ? Model : Pick<Model, ExtractColumnKey<QueryColumns[number]>>
 
 export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T> = ExtractTableModel<T>> {
-  private readonly useColumns = this.targetTable[UseColumns]()
+  private readonly useOptions = this.targetTable[UseTableOptions]()
 
-  private readonly useMigrations = this.targetTable[UseMigrations]()
-
-  constructor(private readonly rdbStore: relationalStore.RdbStore, private readonly targetTable: T) {
-    Check.checkTableAndColumns(targetTable)
-    if (!Object.is(targetTable, SqliteSequencesTable)) {
-      this.rdbStore.executeSync(`CREATE TABLE IF NOT EXISTS ${this.targetTable.tableName}(${this.useColumns.columns
-        .map(column => column.columnModifier)
-        .join(',')})`)
-      for (const index of this.useColumns.indexColumns) {
-        const columns = index.columns.map(it => it.fieldName).join(',')
-        const unique = index.isUnique ? 'UNIQUE' : ''
-        const order = index.sortOrder ? index.sortOrder : ''
-        this.rdbStore.executeSync(`CREATE ${unique} INDEX IF NOT EXISTS ${index.fieldName} ON ${targetTable.tableName} (${columns} ${order})`)
-      }
-    }
+  constructor(
+    private readonly rdbStore: relationalStore.RdbStore,
+    private readonly targetTable: T) {
   }
 
   private modelToValueBucket(
     model: Model,
-    columns: readonly ColumnTypes[] = this.useColumns.columns): relationalStore.ValuesBucket {
+    columns: readonly ColumnTypes[] = this.useOptions.columns): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
     for (const column of columns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
-        const useColumns = column.referencesTable[UseColumns]()
-        const idColumn = useColumns.idColumns[0]
-        vb[column.fieldName] = model[column.prop]?.[idColumn.prop] ?? null
+        const useOptions = column.referencesTable[UseTableOptions]()
+        const idColumn = useOptions.idColumns[0]
+        vb[column.fieldName] = model[column.key]?.[idColumn.key] ?? null
         continue
       }
       if (column instanceof Column) {
         if (column.typeConverters) {
-          vb[column.fieldName] = column.typeConverters.save(model[column.prop] ?? null)
+          vb[column.fieldName] = column.typeConverters.save(model[column.key] ?? null)
           continue
         }
-        vb[column.fieldName] = model[column.prop]
+        vb[column.fieldName] = model[column.key]
       }
     }
     return vb
   }
 
-  /**
-   * 将 valueBucket 转回 Model
-   * @param inputVb 需要转换的 valueBucket
-   * @param columns 对哪些列进行处理
-   * @returns {Model}
-   */
   private valueBucketToModel(
     inputVb: relationalStore.ValuesBucket,
-    columns: readonly ColumnTypes[] = this.useColumns.columns): Model {
+    columns: readonly ColumnTypes[] = this.useOptions.columns): Model {
     const vb = {}
     for (const column of columns) {
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
-        const useColumns = column.referencesTable[UseColumns]()
-        const idColumn = useColumns.idColumns[0]
+        const useOptions = column.referencesTable[UseTableOptions]()
+        const idColumn = useOptions.idColumns[0]
         const id = inputVb[column.fieldName] as SupportValueTypes
         if (id) {
-          vb[column.prop] =
-            new DatabaseDao(this.rdbStore, column.referencesTable).firstOrNull(it => it.equalTo(idColumn, id)) ?? null
+          vb[column.key] = new DatabaseDao(this.rdbStore, column.referencesTable)
+            .firstOrNull(it => it.equalTo(idColumn, id)) ?? null
           continue
         }
         continue
       }
       if (column instanceof Column) {
         if (column.typeConverters) {
-          vb[column.prop] = column.typeConverters.restore(inputVb[column.fieldName] ?? null)
+          vb[column.key] = column.typeConverters.restore(inputVb[column.fieldName] ?? null)
           continue
         }
-        vb[column.prop] = inputVb[column.fieldName]
+        vb[column.key] = inputVb[column.fieldName]
       }
     }
     return vb as Model
@@ -92,7 +72,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @param scope 普通lambda
    * @returns 返回当前实例
    */
-  run(scope: (it: this) => void): this {
+  begin(scope: (it: this) => void): this {
     scope.call(scope, this)
     return this
   }
@@ -138,7 +118,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }))
 
     Check.checkTableHasAtMostOneIdColumn(this.targetTable)
-    const idColumn = this.useColumns.idColumns[0]
+    const idColumn = this.useOptions.idColumns[0]
     const isRowIdAlias = idColumn && idColumn.isAutoincrement && idColumn.dataType === 'INTEGER';
 
     valueBuckets.forEach((valueBucket, index) => {
@@ -148,7 +128,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       }
       const rowId = this.rdbStore.insertSync(this.targetTable.tableName, valueBucket)
       if (isRowIdAlias) {
-        models[index][idColumn.prop] = rowId
+        models[index][idColumn.key] = rowId
       }
     })
     return this
@@ -174,7 +154,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       return this
     }
     Check.checkTableHasIdColumn(this.targetTable)
-    const idColumn = this.useColumns.idColumns[0]
+    const idColumn = this.useOptions.idColumns[0]
     models
       .map(item => this.modelToValueBucket(item))
       .forEach(item => {
@@ -222,7 +202,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       return this
     }
     Check.checkTableHasIdColumn(this.targetTable)
-    const idColumn = this.useColumns.idColumns[0]
+    const idColumn = this.useOptions.idColumns[0]
     const valueBuckets = models.map((item => {
       return this.modelToValueBucket(item)
     }))
@@ -458,4 +438,70 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       close: close,
     }
   }
+}
+
+export interface Cursor<T> {
+  /**
+   * 获取集合中元素的数量
+   * @returns 获取到的数量
+   */
+  get length(): number
+
+  /**
+   * 返回集合中的第一个元素，如果集合为空，则返回 null
+   * @returns 第一个元素或 null
+   */
+  firstOrNull(): T | null
+
+  /**
+   * 返回集合中的第一个元素
+   * @returns 第一个元素
+   * @throws 如果结果为空，则抛出错误
+   */
+  first(): T
+
+  /**
+   * 返回集合中的最后一个元素
+   * @returns 最后一个元素或 null
+   */
+  lastOrNull(): T | null
+
+  /**
+   * 返回集合中的最后一个元素
+   * @returns 最后一个元素
+   * @throws 如果结果为空，则抛出错误
+   */
+  last(): T
+
+  /**
+   * 根据索引返回集合中的元素
+   * @param index 索引位置
+   * @returns 对应的元素
+   * @throws 如果结果为空，则抛出错误
+   */
+  get(index: number): T
+
+  /**
+   * 根据索引返回集合中的元素
+   * @param index 索引位置
+   * @returns 对应的元素或 null
+   */
+  getOrNull(index: number): T | null
+
+  /**
+   * 返回集合中所有元素的数组
+   * @returns 所有元素的数组
+   */
+  toList(): ReadonlyArray<T>
+
+  /**
+   * 返回集合中所有元素的只读数组
+   * @returns 所有元素的数组或 null
+   */
+  toListOrNull(): ReadonlyArray<T> | null
+
+  /**
+   * 关闭游标
+   */
+  close(): void
 }

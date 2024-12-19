@@ -1,4 +1,4 @@
-import { Migration } from '../../../../Index';
+import { TableMigration } from '../../../../Index';
 import { Column, ColumnTypes, IndexColumn } from './Column';
 
 /**
@@ -6,35 +6,11 @@ import { Column, ColumnTypes, IndexColumn } from './Column';
  */
 export type ExtractTableModel<T> = T extends Table<infer M> ? M : never
 
-export const UseMigrations = Symbol('UseMigrations')
-
-export const UseColumns = Symbol('UseColumns')
+export const UseTableOptions = Symbol('UseOptions')
 
 export abstract class Table<Model> {
-  [UseMigrations]() {
-    return this.useMigrations
-  }
-
-  [UseColumns]() {
-    return this.useColumns
-  }
-
-  private addMigration(migration: Migration<any>) {
-    this.migrations.push(migration)
-  }
-
-  private addColumn(column: ColumnTypes | IndexColumn) {
-    if (column instanceof Column) {
-      this.columns.push(column)
-      if (column.isPrimaryKey) {
-        this.idColumns.push(column)
-      }
-      return
-    }
-    if (column instanceof IndexColumn) {
-      this.indexColumns.push(column)
-      return
-    }
+  [UseTableOptions]() {
+    return this.options
   }
 
   /**
@@ -75,29 +51,32 @@ export abstract class Table<Model> {
   /**
    * 存储这个表的所有迁移操作对象
    */
-  private readonly migrations: Migration<this>[] = []
+  private readonly migrations: TableMigration<this>[] = []
 
-  private readonly useMigrations: UseMigrations = {
-    addMigration: this.addMigration,
-    migrations: this.migrations as readonly Migration<any>[]
+  private readonly options = Object.freeze({
+    addMigration: this.registerMigration,
+    migrations: this.migrations,
+    addColumn: this.registerColumn,
+    columns: this.columns,
+    idColumns: this.idColumns,
+    indexColumns: this.indexColumns
+  })
+
+  private registerMigration(migration: TableMigration<any>) {
+    this.migrations.push(migration)
   }
 
-  private readonly useColumns: UseColumn = {
-    addColumn: this.addColumn,
-    columns: this.columns as readonly ColumnTypes[],
-    idColumns: this.idColumns as readonly ColumnTypes[],
-    indexColumns: this.indexColumns as readonly IndexColumn[]
+  private registerColumn(column: ColumnTypes | IndexColumn) {
+    if (column instanceof Column) {
+      this.columns.push(column)
+      if (column.isPrimaryKey) {
+        this.idColumns.push(column)
+      }
+      return
+    }
+    if (column instanceof IndexColumn) {
+      this.indexColumns.push(column)
+      return
+    }
   }
-}
-
-interface UseMigrations {
-  readonly addMigration: (migration: Migration<any>) => void
-  readonly migrations: readonly Migration<any>[]
-}
-
-interface UseColumn {
-  readonly addColumn: (column: ColumnTypes | IndexColumn) => void
-  readonly columns: readonly ColumnTypes[]
-  readonly idColumns: readonly ColumnTypes[]
-  readonly indexColumns: readonly IndexColumn[]
 }

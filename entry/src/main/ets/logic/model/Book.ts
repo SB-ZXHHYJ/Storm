@@ -1,7 +1,7 @@
 import { Column, Table } from '@zxhhyj/storm';
 import { Bookcase, TableBookcase } from './Bookcase';
 
-class BookTable extends Table<Book> {
+export class BookTable extends Table<Book> {
   readonly tableName = 't_book'
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')

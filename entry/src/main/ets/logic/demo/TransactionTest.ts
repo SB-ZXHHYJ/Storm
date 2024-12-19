@@ -10,7 +10,7 @@ export const TransactionTest: Test = {
       }
       myDatabase.bookcaseDao.beginTransaction(it => {
         it.add(bookcase)
-          .run(() => {
+          .begin(() => {
             throw new Error('强制停止，让事务回滚')
           })
       })
