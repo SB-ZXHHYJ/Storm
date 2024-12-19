@@ -40,9 +40,9 @@ struct Index {
         .align(Alignment.Center)
         .onClick(() => {
           for (const worksElement of this.works) {
-            myDatabase.bookcaseDao.clear()
-            myDatabase.bookDao.clear()
-            myDatabase.blobDao.clear()
+            myDatabase.bookcaseDao.removeIf(it => it)
+            myDatabase.bookDao.removeIf(it => it)
+            myDatabase.blobDao.removeIf(it => it)
             worksElement.main()
             if (!worksElement.verify()) {
               //throw Error(`任务${worksElement.name}测试失败`)

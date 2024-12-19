@@ -226,27 +226,6 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
   }
 
   /**
-   * 清空整个Table的数据并重置自增主键计数
-   * @returns 返回当前实例
-   */
-  clear(): this {
-    try {
-      this.rdbStore.deleteSync(QueryPredicate.select(this.targetTable).getRdbPredicates())
-    } finally {
-      return this
-    }
-  }
-
-  /**
-   * 清空整个Table的数据并重置自增主键计数
-   * @returns 返回当前实例
-   */
-  delete(): this {
-    //this.database.delete(this.targetTable)
-    return this
-  }
-
-  /**
    * 查询符合指定条件的数据条数
    * @param predicate 查询条件
    * @returns 满足条件的数据条数
