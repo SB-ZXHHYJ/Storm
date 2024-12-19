@@ -10,7 +10,7 @@ import { SqlUtils } from '../common/SqlUtils'
 import { Dao, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
 import { Queue } from '@kit.ArkTS'
 
-type GenerateDaoTypes<T extends Record<string, any>> = {
+export type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
 } & {
   /**
@@ -41,16 +41,18 @@ type GenerateDaoTypes<T extends Record<string, any>> = {
  * Database 的构建器
  */
 export class DatabaseBuilder<T extends Database> {
-  private readonly migrations: Queue<DatabaseMigration<T>> = new Queue()
+  private readonly migrations: Queue<DatabaseMigration> = new Queue()
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
   }
 
-  addMigration(migration: DatabaseMigration<T>): this {
+  addMigration(migration: DatabaseMigration): this {
     if (migration) {
       const first = this.migrations.getFirst()
-      if (migration.startVersion - migration.endVersion !== 1 && first &&
-        first.endVersion - migration.startVersion !== 1) {
+      if (migration.endVersion - migration.startVersion !== 1) {
+        throw new Error('The version number does not follow the rules.')
+      }
+      if ((first && first.endVersion !== migration.startVersion)) {
         throw new Error('The order of the added DatabaseMigration is wrong.')
       }
       this.migrations.add(migration)
@@ -64,8 +66,9 @@ export class DatabaseBuilder<T extends Database> {
    * 构建数据库
    * @returns {GenerateDaoTypes<T>}
    */
-  build(): GenerateDaoTypes<T> {
+  build() {
     const database = new this.databaseConstructor()
+    const migrations = this.migrations
     const instance = {} as GenerateDaoTypes<T>
     instance.init = async function (context: Context) {
       const rdbStore = await database.initDb(context)
@@ -83,6 +86,13 @@ export class DatabaseBuilder<T extends Database> {
       instance.beginAsync = function (scope) {
         return new Promise((resolve) => {
           resolve(scope(instance))
+        })
+      }
+      if (migrations.length > 0) {
+        instance.beginTransaction(() => {
+          while (migrations.length > 0) {
+            migrations.pop().migrate({ rdbStore: rdbStore })
+          }
         })
       }
       const sqliteMasterDao = new DatabaseDao(rdbStore, TableSqliteMaster)
