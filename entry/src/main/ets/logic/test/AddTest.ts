@@ -16,7 +16,6 @@ export const AddTest: Test = {
     }
     myDatabase.bookcaseDao.add(bookcase)
     myDatabase.bookDao.add(book)
-//    myDatabase.myBookDao.add(book)
   },
   verify: function (): boolean {
     const addBook = myDatabase.bookDao.first()

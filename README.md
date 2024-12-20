@@ -69,6 +69,8 @@ PS:_推荐使用使用`interface`或`declare class`来修饰`model`_
 
 #### 2.定义书本类
 
+创建`Book.ts`文件，并实现以下代码。
+
 ```typescript
 import { Column, Dao, Storm, Table } from '@zxhhyj/storm';
 import { Bookcase, TableBookcase } from './Bookcase';
@@ -100,12 +102,14 @@ export class BookTable extends Table<Book> {
 }
 
 export const TableBook = new BookTable()
-```
+``` 
 
 ### 初始化数据库
 
-至此，我们已经拥有了`BookcaseTable`和`BookTable`两张表的映射信息。现在我们需要把这两张表写到`AppDatabase`中，这样`Storm`
-就能识别并为这两张表创建`Dao`。
+至此，我们已经拥有了`BookcaseTable`和`BookTable`两张表的映射信息。现在需要把这两张表写到`AppDatabase`中，这样`Storm`
+就能识别并为这两张表创建`Dao`了。
+
+你可以利用这个特性，将不同的表与数据库分隔开。
 
 ```typescript
 import { AutoMigration, Database, Storm } from '@zxhhyj/storm';
@@ -122,7 +126,7 @@ class AppDatabase extends Database {
 
   readonly bookDao = TableBook
   readonly bookcaseDao = TableBookcase
-  //将前文中定义的两个表写到 AppDatabase 下，建议以 xxxDao 的形式命名
+  //将前文中定义的两个表写到 AppDatabase 下，建议以 Dao 结尾
 }
 
 export const myDatabase = Storm
@@ -132,7 +136,11 @@ export const myDatabase = Storm
   .build()
 ```
 
-最后在使用前，调用`myDatabase.init(context)`函数进行初始化即可，可以在`AbilityStage`中初始化。
+现在你会发现，`AppDatabase`中的`TableBook`、`TableBookcase`都变成了`Dao`，你现在可以调用它们来进行增删改查等操作了。
+
+![screenshot_01.jpg](screenshot/screenshot_01.jpg)
+
+最后在使用前，必须调用`myDatabase.init(context)`函数进行初始化，你可以在`AbilityStage`中初始化。
 
 ```typescript
 import { AbilityStage, Want } from '@kit.AbilityKit';
