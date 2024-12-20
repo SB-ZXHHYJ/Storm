@@ -1,11 +1,11 @@
-import { Column, Storm, Table, TableMigration, TableMigrationOptions } from '@zxhhyj/storm';
+import { Column, MigrationHelper, Storm, Table, TableMigration } from '@zxhhyj/storm';
 
 export interface Bookcase {
   id?: number
   name: string
 }
 
-class BookcaseTable extends Table<Bookcase> {
+export class BookcaseTable extends Table<Bookcase> {
   readonly tableName = 't_bookcase'
   readonly targetVersion: number = 1
 
@@ -17,12 +17,11 @@ class Migration_1_2 extends TableMigration<BookcaseTable> {
   readonly startVersion: number = 1
   readonly endVersion: number = 2
 
-  migrate(options: TableMigrationOptions<BookcaseTable>): void {
-
+  migrate(table: BookcaseTable, helper: MigrationHelper): void {
   }
 }
 
 export const TableBookcase = Storm
   .tableBuilder(BookcaseTable)
-  .addMigration(new Migration_1_2())
+  .addMigrations(new Migration_1_2())
   .build()

@@ -6,7 +6,7 @@ import { Database } from '../schema/Database'
 import { Constructor } from '../common/Types'
 import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
-import { Dao, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
+import { Dao, MigrationHelper, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
 import { HashSet, Queue } from '@kit.ArkTS'
 import { SupportSqliteCmds } from '../common/SupportSqliteCmds'
 
@@ -41,23 +41,21 @@ export type GenerateDaoTypes<T extends Record<string, any>> = {
  * Database 的构建器
  */
 export class DatabaseBuilder<T extends Database> {
-  private readonly migrations: Queue<DatabaseMigration> = new Queue()
+  private readonly migrations: Queue<DatabaseMigration<T>> = new Queue()
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
   }
 
-  addMigration(migration: DatabaseMigration): this {
-    if (migration) {
+  addMigrations(...migrations: DatabaseMigration<T>[]): this {
+    for (const element of migrations) {
       const first = this.migrations.getFirst()
-      if (migration.endVersion - migration.startVersion !== 1) {
+      if (element.endVersion - element.startVersion !== 1) {
         throw new Error('The version number does not follow the rules.')
       }
-      if ((first && first.endVersion !== migration.startVersion)) {
+      if ((first && first.endVersion !== element.startVersion)) {
         throw new Error('The order of the added DatabaseMigration is wrong.')
       }
-      this.migrations.add(migration)
-    } else {
-      throw new Error('The added DatabaseMigration is invalid.')
+      this.migrations.add(element)
     }
     return this
   }
@@ -86,17 +84,6 @@ export class DatabaseBuilder<T extends Database> {
       instance.beginAsync = function (scope) {
         return new Promise((resolve) => {
           resolve(scope(instance))
-        })
-      }
-      if (migrations.length > 0) {
-        instance.beginTransaction(() => {
-          while (migrations.length > 0) {
-            const pop = migrations.pop()
-            pop.migrate({ rdbStore: rdbStore })
-            if (rdbStore.version !== pop.endVersion) {
-              throw new Error('The database did not migrate to the target version.')
-            }
-          }
         })
       }
       const sqliteMasterDao = new DatabaseDao(rdbStore, TableSqliteMaster)
@@ -132,6 +119,19 @@ export class DatabaseBuilder<T extends Database> {
         }
         return acc
       }, new HashSet<Table<any>>())
+      if (migrations.length > 0) {
+        instance.beginTransaction(() => {
+          while (migrations.length > 0) {
+            const pop = migrations.pop()
+            for (const table of tablesToCreate) {
+              pop.migrate(table as any, new MigrationHelper(rdbStore))
+            }
+            if (rdbStore.version !== pop.endVersion) {
+              throw new Error('The database did not migrate to the target version.')
+            }
+          }
+        })
+      }
       if (tablesToCreate.length !== 0) {
         instance.beginTransaction(() => {
           for (const table of tablesToCreate) {

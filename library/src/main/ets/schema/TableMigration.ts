@@ -1,10 +1,5 @@
 import { Table } from './Table';
-import { relationalStore } from '@kit.ArkData';
-
-export interface TableMigrationOptions<T extends Table<any>> {
-  readonly table: T
-  readonly rdbStore: relationalStore.RdbStore
-}
+import { MigrationHelper } from '../common/MigrationHelper';
 
 export abstract class TableMigration<T extends Table<any>> {
   /**
@@ -20,5 +15,5 @@ export abstract class TableMigration<T extends Table<any>> {
   /**
    * 重写以实现迁移逻辑
    */
-  abstract migrate(options: TableMigrationOptions<T>): void
+  abstract migrate(table: T, helper: MigrationHelper): void
 }

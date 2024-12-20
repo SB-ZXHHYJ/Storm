@@ -6,7 +6,9 @@ export { TypeConverters } from './src/main/ets/schema/TypeConverters'
 
 export { DatabaseDao, Cursor } from './src/main/ets/database/DatabaseDao'
 
-export { TableMigrationOptions, TableMigration } from './src/main/ets/schema/TableMigration'
+export { TableMigration } from './src/main/ets/schema/TableMigration'
+
+export { DatabaseMigration } from './src/main/ets/schema/DatabaseMigration'
 
 export { QueryPredicate } from './src/main/ets/database/QueryPredicate'
 
@@ -19,3 +21,5 @@ export { TableSqliteSequence, SqliteSequence } from './src/main/ets/model/Sqlite
 export { TableSqliteMaster, SqliteMaster } from './src/main/ets/model/SqliteMaster'
 
 export { Dao } from './src/main/ets/schema/Dao'
+
+export { MigrationHelper } from './src/main/ets/common/MigrationHelper'

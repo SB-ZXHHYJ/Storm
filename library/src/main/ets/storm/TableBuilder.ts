@@ -23,7 +23,7 @@ export class TableBuilder<T extends Table<any>> {
    * @param migration 需要添加的迁移操作对象
    * @returns {this}
    */
-  addMigration(migration: TableMigration<T>): this {
+  addMigrations(migration: TableMigration<T>): this {
     if (migration) {
       this.migrations.push(migration)
     } else {
