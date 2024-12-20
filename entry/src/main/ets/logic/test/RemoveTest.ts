@@ -12,8 +12,6 @@ export const RemoveTest: Test = {
     myDatabase.bookcaseDao
       .add(bookcase)
       .remove(bookcase) //移除数据
-    const list = myDatabase.bookcaseDao.toList()
-    console.log(list.toString())
   },
   verify: function (): boolean {
     return myDatabase.bookcaseDao.count(it => it.equalTo(TableBook.name, bookcase.name)) === 0

@@ -1,6 +1,14 @@
 import { Column, Dao, Storm, Table } from '@zxhhyj/storm';
 import { Bookcase, TableBookcase } from './Bookcase';
 
+export interface Book {
+  id?: number
+  name: string
+  bookcase: Bookcase
+  createDataTime: Date
+  visibility: boolean
+}
+
 export class BookTable extends Table<Book> {
   readonly tableName = 't_book'
 
@@ -16,23 +24,20 @@ export class BookTable extends Table<Book> {
   readonly visibility = Column.boolean('visibility').bindTo(this, 'visibility')
 
   readonly datetimeIndex =
-    Column.index('t_book_create_data_time_index').column(this.name, 'ASC').column(this.visibility).bindTo(this)
+    Column.index('t_book_index_name').column(this.name, 'ASC').column(this.visibility).bindTo(this)
 }
 
 export const TableBook = new BookTable()
 
-export interface Book {
-  id?: number
-  name: string
-  bookcase: Bookcase
-  createDataTime: Date
-  visibility: boolean
-}
-
 class MyBookDao extends Dao<BookTable> {
   add(book: Book) {
     this.dao.add(book)
-    //自定义你的逻辑
+    //...
+  }
+
+  remove(book: Book) {
+    this.dao.remove(book)
+    //...
   }
 
   //...

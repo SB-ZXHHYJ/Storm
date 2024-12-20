@@ -10,9 +10,10 @@ export const UpdateTest: Test = {
     myDatabase.bookcaseDao
       .add(bookcase)
       .begin(() => {
-        bookcase.name = "女生小说" //修改name
+        bookcase.name = "女生小说"
+        //修改 name 的值
       })
-      .update(bookcase) //将修改后的name更新到数据库中
+      .update(bookcase)//将修改后的值更新到数据库中
   },
   verify: function (): boolean {
     return myDatabase.bookcaseDao.first(it => it.equalTo(TableBookcase.name, "女生小说")) !== undefined

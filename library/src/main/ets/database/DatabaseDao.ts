@@ -244,7 +244,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @param predicate 查询条件
    * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
    */
-  toList<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+  toList<Columns extends ColumnTypes[]>(
+    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
     ...columns: Columns): readonly QueryReturnTypes<Model, Columns>[] {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
@@ -337,7 +338,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
    * @param predicate 查询条件
    * @returns 游标操作对象，用于遍历和操作查询结果，注意如果不使用了务必要关闭游标！
    */
-  toCursor<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
+  toCursor<Columns extends ColumnTypes[]>(
+    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
     ...columns: Columns): Cursor<QueryReturnTypes<Model, Columns>> {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),

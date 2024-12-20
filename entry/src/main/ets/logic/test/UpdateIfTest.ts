@@ -9,7 +9,7 @@ export const UpdateIfTest: Test = {
     }
     myDatabase.bookcaseDao
       .add(bookcase)
-      .updateIf(it => it.equalTo(TableBookcase.id, bookcase.id), { name: '女生小说' }) //指定更新某一项
+      .updateIf(it => it.equalTo(TableBookcase.id, bookcase.id), { name: '女生小说' })
   },
   verify: function (): boolean {
     return myDatabase.bookcaseDao.first(it => it.equalTo(TableBookcase.name, "女生小说")) !== undefined

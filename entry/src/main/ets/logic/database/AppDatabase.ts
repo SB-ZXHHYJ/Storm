@@ -1,8 +1,8 @@
-import { AutoMigration, Database, DatabaseMigration, MigrationHelper, Storm } from '@zxhhyj/storm';
+import { AutoMigration, Database, Storm } from '@zxhhyj/storm';
 import { relationalStore } from '@kit.ArkData';
-import { BookcaseTable, TableBookcase } from '../model/Bookcase';
-import { BookTable, DaoMyBook, TableBook } from '../model/Book';
-import { BlobTable, TableBlob } from '../model/Blob';
+import { TableBookcase } from '../model/Bookcase';
+import { DaoMyBook, TableBook } from '../model/Book';
+import { TableBlob } from '../model/Blob';
 import { Context } from '@kit.AbilityKit';
 
 class AppDatabase extends Database {
@@ -17,16 +17,8 @@ class AppDatabase extends Database {
   readonly myBookDao = DaoMyBook
 }
 
-class Migration_0_1 extends DatabaseMigration<AppDatabase> {
-  readonly startVersion: number = 0
-  readonly endVersion: number = 1
-
-  migrate(tables: (BlobTable | BookTable | BookcaseTable)[], helper: MigrationHelper): void {
-
-  }
-}
-
 export const myDatabase = Storm
   .databaseBuilder(AppDatabase)
-  .addMigrations(AutoMigration)/*  .addMigrations(new Migration_0_1())*/
+  .setVersion(1)//设置数据库的版本
+  .addMigrations(AutoMigration)//设置当数据库未初始化时自动初始化，初始化后的版本号为 setVersion 设置版本号，即 1
   .build()

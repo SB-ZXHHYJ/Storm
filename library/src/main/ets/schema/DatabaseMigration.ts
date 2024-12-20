@@ -25,7 +25,7 @@ export abstract class DatabaseMigration<T extends Database> {
   abstract migrate(tables: ExtractTableTypes<T>[keyof ExtractTableTypes<T>][], helper: MigrationHelper): void
 
   static create<T extends Database>(startVersion: number, endVersion: number): DatabaseMigration<T> {
-    return {
+    return Object.freeze({
       startVersion: startVersion,
       endVersion: endVersion,
       migrate: function (tables: Table<any>[], helper: MigrationHelper) {
@@ -36,13 +36,13 @@ export abstract class DatabaseMigration<T extends Database> {
           migration?.migrate(table, helper)
         }
       }
-    }
+    })
   }
 }
 
 export const AutoMigration = new class AutoMigration<T extends Database> extends DatabaseMigration<T> {
   readonly startVersion: number = 0
-  readonly endVersion: number = 1
+  readonly endVersion: number = NaN
 
   migrate(tables: ExtractTableTypes<T>[keyof ExtractTableTypes<T>][], helper: MigrationHelper): void {
     for (const table of tables) {

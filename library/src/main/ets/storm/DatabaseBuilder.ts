@@ -7,7 +7,7 @@ import { Constructor } from '../common/Types'
 import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
 import { Dao, MigrationHelper, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
-import { HashSet, Queue } from '@kit.ArkTS'
+import { HashSet } from '@kit.ArkTS'
 
 export type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
@@ -40,21 +40,35 @@ export type GenerateDaoTypes<T extends Record<string, any>> = {
  * Database 的构建器
  */
 export class DatabaseBuilder<T extends Database> {
-  private readonly migrations: Queue<DatabaseMigration<T>> = new Queue()
+  private databaseMigrations: DatabaseMigration<T>[]
+  private databaseVersion: number
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
   }
 
+  /**
+   * 设置数据库版本号
+   * @param version 版本号
+   * @returns {this}
+   */
+  setVersion(version) {
+    this.databaseVersion = version
+    return this
+  }
+
+  /**
+   *
+   * @param migrations
+   * @returns {this}
+   */
   addMigrations(...migrations: DatabaseMigration<T>[]): this {
-    for (const element of migrations) {
-      const first = this.migrations.getFirst()
-      if (element.endVersion - element.startVersion !== 1) {
-        throw new Error('The version number does not follow the rules.')
+    if (migrations.length > 0) {
+      if (!this.databaseMigrations) {
+        this.databaseMigrations = []
       }
-      if ((first && first.endVersion !== element.startVersion)) {
-        throw new Error('The order of the added DatabaseMigration is wrong.')
+      for (const element of migrations) {
+        this.databaseMigrations.push(element)
       }
-      this.migrations.add(element)
     }
     return this
   }
@@ -65,7 +79,8 @@ export class DatabaseBuilder<T extends Database> {
    */
   build() {
     const database = new this.databaseConstructor()
-    const migrations = this.migrations
+    const databaseVersion = this.databaseVersion
+    const pendingMigrations = this.databaseMigrations
     const instance = {} as GenerateDaoTypes<T>
     instance.init = async function (context: Context) {
       const rdbStore = await database.initDb(context)
@@ -108,7 +123,23 @@ export class DatabaseBuilder<T extends Database> {
         return acc
       }, new HashSet<Table<any>>())
 
-      if (migrations.length > 0) {
+      if (pendingMigrations.length > 0) {
+        if (!databaseVersion) {
+          throw new Error('Database does not set version.')
+        }
+        const firstMigration = pendingMigrations[0]
+        if (firstMigration.startVersion !== 0) {
+          throw new Error('The first migration start version should be 0.')
+        }
+        for (let i = 1; i < pendingMigrations.length; i++) {
+          const migration = pendingMigrations[i]
+          if (migration.endVersion - migration.startVersion !== 1) {
+            throw new Error('The version number does not follow the rules.')
+          }
+          if (i === pendingMigrations.length && migration.endVersion !== databaseVersion) {
+            throw new Error('The database migration path is not correct.')
+          }
+        }
         instance.beginTransaction(() => {
           const hasTableNames = sqliteMasterDao.toList(it => {
             it.equalTo(TableSqliteMaster.type, 'table')
@@ -118,11 +149,16 @@ export class DatabaseBuilder<T extends Database> {
             .map(item => item.name)
           const tablesToCreate = Array.from(databaseTables).filter(item =>!hasTableNames.includes(item.tableName))
           const helper = new MigrationHelper(rdbStore)
-          while (migrations.length > 0) {
-            const pop = migrations.pop()
-            if (rdbStore.version === pop.startVersion) {
-              pop.migrate(tablesToCreate as any, helper)
-              rdbStore.version = pop.endVersion
+          if (rdbStore.version === 0) {
+            const migration_0_x = pendingMigrations.pop()
+            migration_0_x.migrate(tablesToCreate as any, helper)
+            rdbStore.version = databaseVersion
+          } else {
+            for (const migration of pendingMigrations) {
+              if (rdbStore.version === migration.startVersion) {
+                migration.migrate(tablesToCreate as any, helper)
+                rdbStore.version = migration.endVersion
+              }
             }
           }
         })
