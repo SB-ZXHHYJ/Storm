@@ -16,6 +16,7 @@ ohpm install @zxhhyj/storm
 
 ### 创建数据库
 
+创建`AppDatabase.ts`文件，并实现以下代码。
 
 ```typescript
 import { AutoMigration, Database, DatabaseMigration, MigrationHelper, Storm } from '@zxhhyj/storm';
@@ -33,11 +34,14 @@ export const myDatabase = Storm
   .build()
 ```
 
+1. 重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`。
+2. 使用`Storm .databaseBuilder(AppDatabase).build()`来构建你的`AppDatabase`并导出。
+
 ### 定义表结构
 
-出于演示的目的，文档将会创建两个表来演示如何使用`Storm`。
-
 #### 1.定义书架类
+
+创建`Bookcase.ts`文件，并实现以下代码。
 
 ```typescript
 import { Column, Table } from '@zxhhyj/storm';
@@ -49,7 +53,6 @@ name: string
 
 export class BookcaseTable extends Table<Bookcase> {
   readonly tableName = 't_bookcase'
-  readonly targetVersion: number = 1
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
   readonly name = Column.text('name').notNull().bindTo(this, 'name')
@@ -58,7 +61,11 @@ export class BookcaseTable extends Table<Bookcase> {
 export const TableBookcase = new BookcaseTable()
 ```
 
-_推荐使用使用`interface`或`declare class`来修饰`model`_
+1. `Bookcase`是你的实体模式。
+2. `BookcaseTable`是你的表，`tableName`是你的表名，`id`和`name`是你表中的列。
+3. 最后`new BookcaseTable()`，然后导出。
+
+PS:_推荐使用使用`interface`或`declare class`来修饰`model`_
 
 #### 2.定义书本类
 

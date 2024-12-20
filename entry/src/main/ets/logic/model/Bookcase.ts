@@ -7,7 +7,6 @@ export interface Bookcase {
 
 export class BookcaseTable extends Table<Bookcase> {
   readonly tableName = 't_bookcase'
-  readonly targetVersion: number = 1
 
   readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
   readonly name = Column.text('name').notNull().bindTo(this, 'name')
