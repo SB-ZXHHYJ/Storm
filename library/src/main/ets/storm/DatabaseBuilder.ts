@@ -6,9 +6,9 @@ import { Database } from '../schema/Database'
 import { Constructor } from '../common/Types'
 import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
-import { SqlUtils } from '../common/SqlUtils'
 import { Dao, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
-import { Queue } from '@kit.ArkTS'
+import { HashSet, Queue } from '@kit.ArkTS'
+import { SupportSqliteCmds } from '../common/SupportSqliteCmds'
 
 export type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
@@ -91,7 +91,11 @@ export class DatabaseBuilder<T extends Database> {
       if (migrations.length > 0) {
         instance.beginTransaction(() => {
           while (migrations.length > 0) {
-            migrations.pop().migrate({ rdbStore: rdbStore })
+            const pop = migrations.pop()
+            pop.migrate({ rdbStore: rdbStore })
+            if (rdbStore.version !== pop.endVersion) {
+              throw new Error('The database did not migrate to the target version.')
+            }
           }
         })
       }
@@ -116,24 +120,24 @@ export class DatabaseBuilder<T extends Database> {
           instance[key] = Object.freeze(new DatabaseDao(rdbStore, value))
 
           if (!hasTableNames.includes(value.tableName)) {
-            acc.push(value)
+            acc.add(value)
           }
         } else if (value instanceof Dao && value.table instanceof Table) {
           Check.checkTableAndColumns(value.table)
           value.dao = new DatabaseDao(rdbStore, value.table)
           instance[key] = Object.freeze(value)
           if (!hasTableNames.includes(value.table.tableName)) {
-            acc.push(value.table)
+            acc.add(value.table)
           }
         }
         return acc
-      }, [])
+      }, new HashSet<Table<any>>())
       if (tablesToCreate.length !== 0) {
         instance.beginTransaction(() => {
           for (const table of tablesToCreate) {
-            const createTableSql = SqlUtils.getCreateTableSql(table)
+            const createTableSql = SupportSqliteCmds.select(table).createTable(false).build()
             instance.rdbStore.executeSync(createTableSql)
-            const createIndexSql = SqlUtils.getCreateIndexSql(table)
+            const createIndexSql = SupportSqliteCmds.select(table).createIndex(false).build()
             if (createIndexSql.length !== 0) {
               instance.rdbStore.executeSync(createIndexSql)
             }

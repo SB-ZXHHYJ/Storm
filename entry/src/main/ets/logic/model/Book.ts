@@ -15,7 +15,8 @@ class BookTable extends Table<Book> {
 
   readonly visibility = Column.boolean('visibility').bindTo(this, 'visibility')
 
-  readonly datetimeIndex = Column.index('t_book_create_data_time_index').bindTo(this, this.name)
+  readonly datetimeIndex =
+    Column.index('t_book_create_data_time_index').column(this.name, 'ASC').column(this.visibility).bindTo(this)
 }
 
 export const TableBook = new BookTable()

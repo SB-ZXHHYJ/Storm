@@ -95,7 +95,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @param autoincrement 是否是自增列
    * @returns {this}
    */
-  primaryKey(autoincrement: boolean = false): this {
+  primaryKey(autoincrement: boolean = false): Column<FieldName, Key, WriteType, ReadType> {
     this._isPrimaryKey = true
     if (autoincrement && this.dataType === 'INTEGER') {
       this._isAutoincrement = true
@@ -109,7 +109,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * 使用 NOT NULL 修饰列
    * @returns {this}
    */
-  notNull(): this {
+  notNull(): Column<FieldName, Key, WriteType, ReadType> {
     this._isNotNull = true
     return this
   }
@@ -118,7 +118,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * 使用 UNIQUE 修饰列
    * @returns {this}
    */
-  unique(): this {
+  unique(): Column<FieldName, Key, WriteType, ReadType> {
     this._isUnique = true
     return this
   }
@@ -128,7 +128,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @param value 默认值
    * @returns {this}
    */
-  default(value: WriteType): this {
+  default(value: WriteType): Column<FieldName, Key, WriteType, ReadType> {
     this._defaultStr = value?.toString()
     return this
   }
@@ -254,11 +254,9 @@ export class IndexColumn {
   constructor(readonly fieldName: string) {
   }
 
-  private _columns: ColumnTypes[] = []
+  private _columns: [ColumnTypes, Order | undefined][] = []
 
   private _isUnique = false
-
-  private _sortOrder: Order
 
   get columns() {
     return this._columns
@@ -266,10 +264,6 @@ export class IndexColumn {
 
   get isUnique() {
     return this._isUnique
-  }
-
-  get sortOrder() {
-    return this._sortOrder
   }
 
   /**
@@ -281,13 +275,8 @@ export class IndexColumn {
     return this
   }
 
-  /**
-   * 设置索引的顺序
-   * @param order {Order}
-   * @returns {this}
-   */
-  order(order: Order): this {
-    this._sortOrder = order
+  column(column: ColumnTypes, order: Order = undefined) {
+    this._columns.push([column, order])
     return this
   }
 
@@ -297,15 +286,14 @@ export class IndexColumn {
    * @param columns 需要创建索引的列
    * @returns {this}
    */
-  bindTo<T>(targetTable: Table<T>, ...columns: ColumnTypes[]) {
-    if (columns.length === 0) {
+  bindTo<T>(targetTable: Table<T>) {
+    if (this._columns.length === 0) {
       throw new Error('The index must contain at least one column.')
     }
-    const columnFieldName = columns.map(it => it.fieldName)
+    const columnFieldName = this._columns.map(([column]) => column.fieldName)
     if (new Set(columnFieldName).size !== columnFieldName.length) {
       throw new Error('Duplicate columns exist in the index.')
     }
-    this._columns = columns
     const useOptions = targetTable[UseTableOptions]()
     useOptions.addColumn(this)
     Object.freeze(this)

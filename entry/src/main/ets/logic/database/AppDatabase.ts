@@ -38,6 +38,6 @@ class Migration_2_3 extends DatabaseMigration {
 
 export const myDatabase = Storm
   .databaseBuilder(AppDatabase)
-  .addMigration(new Migration_1_2())
-  .addMigration(new Migration_2_3())
+  // .addMigration(new Migration_1_2())
+  // .addMigration(new Migration_2_3())
   .build()
