@@ -8,14 +8,7 @@ import { Table, UseTableOptions } from '../schema/Table'
 export class TableBuilder<T extends Table<any>> {
   private readonly migrations: TableMigration<T>[] = []
 
-  private openOrCreate = false
-
   constructor(private readonly tableConstructor: Constructor<T>) {
-  }
-
-  createFormStorm() {
-    this.openOrCreate = true
-    return this
   }
 
   /**

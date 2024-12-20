@@ -10,19 +10,9 @@ export const UseTableOptions = Symbol('UseOptions')
 
 export abstract class Table<Model> {
   /**
-   * 默认版本号
-   */
-  public static DEFAULT_TABLE_VERSION = 1
-
-  /**
    * Table 的名称
    */
   abstract readonly tableName: string
-
-  /**
-   * Table 的版本号
-   */
-  readonly targetVersion: number = Table.DEFAULT_TABLE_VERSION
 
   /**
    * 仅防止编译器认为泛型 Model 没有被使用而将其移除
@@ -82,6 +72,8 @@ export abstract class Table<Model> {
 }
 
 interface TableOptions {
+  // readonly setCreateFormStorm: (value: boolean) => void
+  // readonly createFormStorm: boolean
   readonly addMigration: (migration: TableMigration<any>) => void
   readonly migrations: readonly TableMigration<any> []
   readonly addColumn: (column: ColumnTypes | IndexColumn) => void

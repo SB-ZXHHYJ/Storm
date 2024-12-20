@@ -9,6 +9,13 @@ export class MigrationHelper {
   }
 
   executeSync(sql: string | SupportSqliteCmds) {
-    this.rdbStore.executeSql(sql.toString())
+    if (sql instanceof SupportSqliteCmds) {
+      const exeSql = sql.build()
+      if (exeSql.length > 0) {
+        this.rdbStore.executeSql(exeSql)
+      }
+      return
+    }
+    this.rdbStore.executeSql(sql)
   }
 }

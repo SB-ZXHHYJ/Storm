@@ -8,7 +8,6 @@ import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
 import { Dao, MigrationHelper, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
 import { HashSet, Queue } from '@kit.ArkTS'
-import { SupportSqliteCmds } from '../common/SupportSqliteCmds'
 
 export type GenerateDaoTypes<T extends Record<string, any>> = {
   [K in keyof T as (T[K] extends Table<any> ? K : T[K] extends Dao<any> ? K : never)]: (T[K] extends Table<any> ? DatabaseDao<T[K]> : T[K] extends Dao<any> ? T[K] : never)
@@ -87,13 +86,7 @@ export class DatabaseBuilder<T extends Database> {
         })
       }
       const sqliteMasterDao = new DatabaseDao(rdbStore, TableSqliteMaster)
-      const hasTableNames = sqliteMasterDao.toList(it => {
-        it.equalTo(TableSqliteMaster.type, 'table')
-          .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
-        return it
-      }, TableSqliteMaster.name)
-        .map(item => item.name)
-      const tablesToCreate = Object.entries(database).reduce((acc, [key, value]) => {
+      const databaseTables = Object.entries(database).reduce((acc, [key, value]) => {
         if (value instanceof Table) {
           if (Object.is(value, TableSqliteMaster)) {
             instance[key] = sqliteMasterDao
@@ -105,41 +98,31 @@ export class DatabaseBuilder<T extends Database> {
           }
           Check.checkTableAndColumns(value)
           instance[key] = Object.freeze(new DatabaseDao(rdbStore, value))
-
-          if (!hasTableNames.includes(value.tableName)) {
-            acc.add(value)
-          }
+          acc.add(value)
         } else if (value instanceof Dao && value.table instanceof Table) {
           Check.checkTableAndColumns(value.table)
           value.dao = new DatabaseDao(rdbStore, value.table)
           instance[key] = Object.freeze(value)
-          if (!hasTableNames.includes(value.table.tableName)) {
-            acc.add(value.table)
-          }
+          acc.add(value.table)
         }
         return acc
       }, new HashSet<Table<any>>())
+
       if (migrations.length > 0) {
         instance.beginTransaction(() => {
+          const hasTableNames = sqliteMasterDao.toList(it => {
+            it.equalTo(TableSqliteMaster.type, 'table')
+              .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
+            return it
+          }, TableSqliteMaster.name)
+            .map(item => item.name)
+          const tablesToCreate = Array.from(databaseTables).filter(item =>!hasTableNames.includes(item.tableName))
+          const helper = new MigrationHelper(rdbStore)
           while (migrations.length > 0) {
             const pop = migrations.pop()
-            for (const table of tablesToCreate) {
-              pop.migrate(table as any, new MigrationHelper(rdbStore))
-            }
-            if (rdbStore.version !== pop.endVersion) {
-              throw new Error('The database did not migrate to the target version.')
-            }
-          }
-        })
-      }
-      if (tablesToCreate.length !== 0) {
-        instance.beginTransaction(() => {
-          for (const table of tablesToCreate) {
-            const createTableSql = SupportSqliteCmds.select(table).createTable(false).build()
-            instance.rdbStore.executeSync(createTableSql)
-            const createIndexSql = SupportSqliteCmds.select(table).createIndex(false).build()
-            if (createIndexSql.length !== 0) {
-              instance.rdbStore.executeSync(createIndexSql)
+            if (rdbStore.version === pop.startVersion) {
+              pop.migrate(tablesToCreate as any, helper)
+              rdbStore.version = pop.endVersion
             }
           }
         })

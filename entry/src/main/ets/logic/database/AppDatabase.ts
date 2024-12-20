@@ -1,4 +1,4 @@
-import { Database, DatabaseMigration, MigrationHelper, Storm } from '@zxhhyj/storm';
+import { AutoMigration, Database, DatabaseMigration, MigrationHelper, Storm } from '@zxhhyj/storm';
 import { relationalStore } from '@kit.ArkData';
 import { BookcaseTable, TableBookcase } from '../model/Bookcase';
 import { BookTable, DaoMyBook, TableBook } from '../model/Book';
@@ -17,17 +17,16 @@ class AppDatabase extends Database {
   readonly myBookDao = DaoMyBook
 }
 
-class Migration_1_2 extends DatabaseMigration<AppDatabase> {
-  startVersion: number = 1;
-  endVersion: number = 2;
+class Migration_0_1 extends DatabaseMigration<AppDatabase> {
+  readonly startVersion: number = 0
+  readonly endVersion: number = 1
 
-  migrate(table: BlobTable | BookTable | BookcaseTable, helper: MigrationHelper): void {
-    console.log('1_2')
-    //执行迁移逻辑
+  migrate(tables: (BlobTable | BookTable | BookcaseTable)[], helper: MigrationHelper): void {
+
   }
 }
 
 export const myDatabase = Storm
   .databaseBuilder(AppDatabase)
-  // .addMigrations(new Migration_1_2())
+  .addMigrations(AutoMigration)/*  .addMigrations(new Migration_0_1())*/
   .build()

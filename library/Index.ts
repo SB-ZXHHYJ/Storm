@@ -23,3 +23,5 @@ export { TableSqliteMaster, SqliteMaster } from './src/main/ets/model/SqliteMast
 export { Dao } from './src/main/ets/schema/Dao'
 
 export { MigrationHelper } from './src/main/ets/common/MigrationHelper'
+
+export { AutoMigration } from './src/main/ets/schema/DatabaseMigration'
