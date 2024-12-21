@@ -25,18 +25,20 @@ export abstract class DatabaseMigration<T extends Database> {
   abstract migrate(tables: ExtractTableTypes<T>[keyof ExtractTableTypes<T>][], helper: MigrationHelper): void
 
   static create<T extends Database>(startVersion: number, endVersion: number): DatabaseMigration<T> {
-    return Object.freeze({
+    return {
       startVersion: startVersion,
       endVersion: endVersion,
       migrate: function (tables: Table<any>[], helper: MigrationHelper) {
         for (const table of tables) {
           const options = table[UseTableOptions]()
           const migration =
-            options.migrations.find(item => (item.startVersion === startVersion && item.endVersion === endVersion))
+            options.migrations.find(item =>
+            (item.startVersion === startVersion && item.endVersion === endVersion)
+            )
           migration?.migrate(table, helper)
         }
       }
-    })
+    }
   }
 }
 

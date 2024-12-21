@@ -15,5 +15,5 @@ export abstract class TableMigration<T extends Table<any>> {
   /**
    * 重写以实现迁移逻辑
    */
-  abstract migrate(table: T, helper: MigrationHelper): void
+  abstract migrate(targetTable: T, helper: MigrationHelper): void
 }

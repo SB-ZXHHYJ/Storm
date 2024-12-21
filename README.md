@@ -37,7 +37,7 @@ export const myDatabase = Storm
 
 另参[AppDatabase.ts](entry/src/main/ets/logic/database/AppDatabase.ts)。
 
-如果你想执行`sql`的方式来建表，参考[3.升级数据库](#3升级数据库)
+如果你想自己执行`sql`语句来建表，可以参考[3.升级数据库](#3升级数据库)
 
 ### 定义表结构
 
@@ -332,6 +332,66 @@ class AppDatabase extends Database {
 参考[创建数据库](#创建数据库)，创建不同的`Database`即可。
 
 #### 3.升级数据库
+
+我们这里假设你的数据库要从版本`1`升级至`2`，要在`Bookcase`中新增一个字段`alias`。以前文的`Bookcase.ts`为例。
+
+```typescript
+//...
+
+export interface Bookcase {
+id?: number
+name: string
+alias?: string
+//在实体中声明这个属性
+}
+
+class BookcaseTable extends Table<Bookcase> {
+  readonly tableName = 't_bookcase'
+
+  readonly id = Column.integer('id').primaryKey(true).bindTo(this, 'id')
+  readonly name = Column.text('name').notNull().bindTo(this, 'name')
+  readonly alias = Column.text('alias').default(null).bindTo(this, 'alias')
+  //在实体中声明这个属性
+}
+
+//export const TableBookcase = new BookcaseTable()
+
+const Migration_1_2 = new class extends TableMigration<BookcaseTable> {
+  readonly startVersion: number = 1
+  readonly endVersion: number = 2
+
+  migrate(targetTable: BookcaseTable, helper: MigrationHelper): void {
+    helper.executeSync(SupportSqliteCmds.select(targetTable).addColumn(targetTable.alias))
+    //执行命令升级数据库
+  }
+}
+
+export const TableBookcase = Storm
+  .tableBuilder(BookcaseTable)
+  .addMigrations(Migration_1_2)//将升级的逻辑添加到表的构建器中
+  .build()
+
+//...
+```
+
+转到`AppDatabase`中。将数据库最新版本设置为`2`，然后添加`DatabaseMigration.create(1, 2)`。
+
+```typescript
+//...
+
+export const myDatabase = Storm
+  .databaseBuilder(AppDatabase)
+  .setVersion(2)//将数据库的最新版本设置为2
+  .addMigrations(AutoMigration, DatabaseMigration.create(1, 2))
+  .build()
+```
+
+这里将数据库最新版本设置为`2`，然后添加了新的迁移逻辑`DatabaseMigration.create(1, 2)`，它的意思是：
+
+当数据库初始化时检查到当前的版本为`1`时，将触发数据库版本升级至`2`
+。然后触发在`Bookcase`中添加的迁移逻辑`Migration_1_2`，至此完成了数据库的版本升级。
+
+#### 4.手动初始化数据库
 
 待补充。
 

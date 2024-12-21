@@ -1,6 +1,9 @@
 import { ColumnTypes, IndexColumn } from '../schema/Column';
 import { Table, UseTableOptions } from '../schema/Table';
 
+/**
+ * 用于辅助创建 sql 语句
+ */
 export class SupportSqliteCmds {
   private commands = ''
 
@@ -27,9 +30,7 @@ export class SupportSqliteCmds {
     return modifier
   }
 
-  createTable(
-    ifNotExists: boolean = true,
-    columns?: ColumnTypes[]) {
+  createTable(ifNotExists: boolean = true, columns?: ColumnTypes[]) {
     const columnArgs = (columns ?? this.targetTable[UseTableOptions]().columns)
       .map(column => this.buildColumnModifier(column))
       .join(', ')
@@ -50,24 +51,27 @@ export class SupportSqliteCmds {
     return this
   }
 
-  alterTable(): Pick<SupportSqliteCmds, 'addColumn' | 'alterColumn'> {
+  alterTable() {
     this.commands += `ALTER TABLE ${this.targetTable.tableName} `
     return this
   }
 
-  addColumn(column: ColumnTypes): Omit<SupportSqliteCmds, 'addColumn' | 'alterColumn'> {
+  addColumn(column: ColumnTypes) {
     this.commands += `ADD COLUMN ${column.fieldName} ${this.buildColumnModifier(column)};`
     return this
   }
 
-  alterColumn(column: ColumnTypes): Omit<SupportSqliteCmds, 'addColumn' | 'alterColumn'> {
+  alterColumn(column: ColumnTypes) {
     this.commands += `ALTER COLUMN ${column.fieldName} ${this.buildColumnModifier(column)};`
     return this
   }
 
   build() {
-    Object.freeze(this)
-    return this.commands
+    try {
+      return this.commands
+    } finally {
+      delete this.commands
+    }
   }
 
   get [Symbol.toStringTag]() {

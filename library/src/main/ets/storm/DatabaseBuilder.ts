@@ -156,7 +156,7 @@ export class DatabaseBuilder<T extends Database> {
           } else {
             for (const migration of pendingMigrations) {
               if (rdbStore.version === migration.startVersion) {
-                migration.migrate(tablesToCreate as any, helper)
+                migration.migrate(Array.from(databaseTables) as any, helper)
                 rdbStore.version = migration.endVersion
               }
             }

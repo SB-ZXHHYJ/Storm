@@ -139,7 +139,7 @@ export class Column<FieldName extends string, Key extends string, WriteType exte
    * @param key 实体中指定属性名
    * @returns {this}
    */
-  bindTo<T, Key extends string = SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
+  bindTo<T, Key extends SafeKeys<T, ReadType>>(targetTable: Table<T>, key: Key) {
     this._key = key
     const useOptions = targetTable[UseTableOptions]()
     useOptions.addColumn(this)
