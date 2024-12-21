@@ -61,7 +61,7 @@ export class BookcaseTable extends Table<Bookcase> {
 export const TableBookcase = new BookcaseTable()
 ```
 
-1. `Bookcase`是你的实体模式。
+1. `Bookcase`是你的实体模型。
 2. `BookcaseTable`是你的表，`tableName`是你的表名，`id`和`name`是你表中的列。
 3. 最后`new BookcaseTable()`，然后导出。
 
@@ -270,11 +270,13 @@ try {
 }
 ```
 
-### 高级用法
+### 高阶用法
 
-有时候你需要对增删改查等操作进行封装，这时候自定义`Dao`就派上用场了。
+有时候你需要对增删改查等操作进行封装，这时候你可以使用自定义`Dao`。
 
 #### 1.自定义 Dao
+
+在`Book.ts`文件下补充以下代码。
 
 ```typescript
 class MyBookDao extends Dao<BookTable> {
@@ -293,6 +295,9 @@ class MyBookDao extends Dao<BookTable> {
 
 export const DaoMyBook = Storm.daoBuilder(MyBookDao).select(TableBook).build()
 ```
+
+1. `MyBookDao`是你的自定义`Dao`，你可以在其中创建自定义函数来对内置的`Dao`进行封装。
+2. 调用`Storm.daoBuilder(MyBookDao).select(TableBook).build()`并导出。
 
 ### 开源协议
 
