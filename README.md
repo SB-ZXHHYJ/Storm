@@ -1,8 +1,6 @@
 ## 介绍
 
-`Storm`是直接基于纯`TypeScript`编写的高效简洁的轻量级`OpenHarmonyOS SQL ORM`框架。
-
-其部分设计思想来源于[Ktorm](https://www.ktorm.org/zh-cn/)。
+`Storm`是直接基于纯`TypeScript`编写的高效简洁的`OpenHarmonyOS SQL ORM`框架。
 
 ## 安装
 
@@ -26,16 +24,20 @@ import { Context } from '@kit.AbilityKit';
 class AppDatabase extends Database {
   initDb(context: Context) {
     return relationalStore.getRdbStore(context, { name: "app.db", securityLevel: relationalStore.SecurityLevel.S1 })
+    //重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`
   }
 }
 
 export const myDatabase = Storm
   .databaseBuilder(AppDatabase)
+  .setVersion(1)//设置数据库的版本
+  .addMigrations(AutoMigration)//设置当数据库未初始化时自动初始化，初始化后的版本号为 setVersion 设置版本号，即 1
   .build()
 ```
 
-1. 重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`。
-2. 使用`Storm .databaseBuilder(AppDatabase).build()`来构建你的`AppDatabase`并导出。
+另参[AppDatabase.ts](entry/src/main/ets/logic/database/AppDatabase.ts)。
+
+如果你想执行`sql`的方式来建表，参考[3.升级数据库](#3升级数据库)
 
 ### 定义表结构
 
@@ -61,9 +63,14 @@ export class BookcaseTable extends Table<Bookcase> {
 export const TableBookcase = new BookcaseTable()
 ```
 
+另参[Bookcase.ts](entry/src/main/ets/logic/model/Bookcase.ts)。
+
+如果你有使用`sql`的经验，那么不难看出：
+
 1. `Bookcase`是你的实体模型。
-2. `BookcaseTable`是你的表，`tableName`是你的表名，`id`和`name`是你表中的列。
-3. 最后`new BookcaseTable()`，然后导出。
+2. `BookcaseTable`是你的表，`tableName`是你的表名，`id`和`name`是你表中的列，你可以调用`Column`来描述列。
+
+最后`new BookcaseTable()`，然后导出。大部分情况下，不建议你导出`Table`。
 
 PS:_推荐使用使用`interface`或`declare class`来修饰`model`_
 
@@ -104,12 +111,14 @@ export class BookTable extends Table<Book> {
 export const TableBook = new BookTable()
 ``` 
 
+另参[Book.ts](entry/src/main/ets/logic/model/Book.ts)。
+
 ### 初始化数据库
 
-至此，我们已经拥有了`BookcaseTable`和`BookTable`两张表的映射信息。现在需要把这两张表写到`AppDatabase`中，这样`Storm`
+现在需要把导出的`Table`实例在`AppDatabase.ts`中声明，这样`Storm`
 就能识别并为这两张表创建`Dao`了。
 
-你可以利用这个特性，将不同的表与数据库分隔开。
+另外你可以利用这个特性，将不同的表与数据库分隔开。
 
 ```typescript
 import { AutoMigration, Database, Storm } from '@zxhhyj/storm';
@@ -122,18 +131,13 @@ import { Context } from '@kit.AbilityKit';
 class AppDatabase extends Database {
   initDb(context: Context) {
     return relationalStore.getRdbStore(context, { name: "app.db", securityLevel: relationalStore.SecurityLevel.S1 })
+    //重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`
   }
 
   readonly bookDao = TableBook
   readonly bookcaseDao = TableBookcase
   //将前文中定义的两个表写到 AppDatabase 下，建议以 Dao 结尾
 }
-
-export const myDatabase = Storm
-  .databaseBuilder(AppDatabase)
-  .setVersion(1)//设置数据库的版本
-  .addMigrations(AutoMigration)//设置当数据库未初始化时自动初始化，初始化后的版本号为 setVersion 设置的版本号，即 1
-  .build()
 ```
 
 现在你会发现，`AppDatabase`中的`TableBook`、`TableBookcase`都变成了`Dao`，你现在可以调用它们来进行增删改查等操作了。
@@ -158,8 +162,6 @@ export default class AppAbilityStage extends AbilityStage {
 ```
 
 ### 增删改查
-
-经过上面的设置，你已经可以调用`myDatabase.bookcaseDao`和`myDatabase.bookDao`来访问`Storm`中内置的`Dao`来进行增删改查了。
 
 #### 1.增加数据
 
@@ -254,8 +256,6 @@ for (const listElement of list) {
 
 #### 5.使用事务
 
-使用`beginTransaction`API可以开启事务，处于`lambda`下的逻辑都将具有事务的原子性。
-
 ```typescript
 try {
   const bookcase: Bookcase = {
@@ -270,9 +270,17 @@ try {
 }
 ```
 
+#### 6.使用 Promise
+
+```typescript
+myDatabase.beginAsync((database) => {
+  //...
+})
+```
+
 ### 高阶用法
 
-有时候你需要对增删改查等操作进行封装，这时候你可以使用自定义`Dao`。
+构建健壮的代码所必须的功能。
 
 #### 1.自定义 Dao
 
@@ -296,8 +304,36 @@ class MyBookDao extends Dao<BookTable> {
 export const DaoMyBook = Storm.daoBuilder(MyBookDao).select(TableBook).build()
 ```
 
-1. `MyBookDao`是你的自定义`Dao`，你可以在其中创建自定义函数来对内置的`Dao`进行封装。
-2. 调用`Storm.daoBuilder(MyBookDao).select(TableBook).build()`并导出。
+然后将导出的实例在`AppDatabase`中声明。
+
+```typescript
+//...
+
+class AppDatabase extends Database {
+  initDb(context: Context) {
+    return relationalStore.getRdbStore(context, { name: "app.db", securityLevel: relationalStore.SecurityLevel.S1 })
+    //重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`
+  }
+
+  readonly bookDao = TableBook
+  readonly bookcaseDao = TableBookcase
+
+  readonly myBookDao = DaoMyBook
+  //在此声明
+}
+
+//...
+```
+
+现在你可以访问你的自定义`Dao`了。
+
+#### 2.多数据源
+
+参考[创建数据库](#创建数据库)，创建不同的`Database`即可。
+
+#### 3.升级数据库
+
+待补充。
 
 ### 开源协议
 

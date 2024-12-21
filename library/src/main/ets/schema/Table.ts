@@ -6,9 +6,16 @@ import { Column, ColumnTypes, IndexColumn } from './Column';
  */
 export type ExtractTableModel<T> = T extends Table<infer M> ? M : never
 
-export const UseTableOptions = Symbol('UseOptions')
+/**
+ * 用于实现"仅模块可见"
+ */
+export const UseTableOptions = Symbol('UseTableOptions')
 
 export abstract class Table<Model> {
+  [UseTableOptions]() {
+    return this.options
+  }
+
   /**
    * Table 的名称
    */
@@ -37,43 +44,33 @@ export abstract class Table<Model> {
   /**
    * 存储这个表的所有迁移操作对象
    */
-  private readonly migrations: TableMigration<this>[] = []
+  private readonly migrations: TableMigration<any>[] = []
 
-  private readonly options: TableOptions = Object.freeze({
-    addMigration: this.registerMigration,
+  private readonly options: TableOptions = {
+    addMigration: function (migration: TableMigration<any>) {
+      this.migrations.push(migration)
+    },
     migrations: this.migrations,
-    addColumn: this.registerColumn,
+    addColumn: function (column: ColumnTypes | IndexColumn) {
+      if (column instanceof Column) {
+        this.columns.push(column)
+        if (column.isPrimaryKey) {
+          this.idColumns.push(column)
+        }
+        return
+      }
+      if (column instanceof IndexColumn) {
+        this.indexColumns.push(column)
+        return
+      }
+    },
     columns: this.columns,
     idColumns: this.idColumns,
     indexColumns: this.indexColumns
-  })
-
-  private registerMigration(migration: TableMigration<any>) {
-    this.migrations.push(migration)
-  }
-
-  private registerColumn(column: ColumnTypes | IndexColumn) {
-    if (column instanceof Column) {
-      this.columns.push(column)
-      if (column.isPrimaryKey) {
-        this.idColumns.push(column)
-      }
-      return
-    }
-    if (column instanceof IndexColumn) {
-      this.indexColumns.push(column)
-      return
-    }
-  }
-
-  [UseTableOptions]() {
-    return this.options
   }
 }
 
 interface TableOptions {
-  // readonly setCreateFormStorm: (value: boolean) => void
-  // readonly createFormStorm: boolean
   readonly addMigration: (migration: TableMigration<any>) => void
   readonly migrations: readonly TableMigration<any> []
   readonly addColumn: (column: ColumnTypes | IndexColumn) => void

@@ -3,8 +3,8 @@ import { Test } from './Test'
 
 export const AsyncTest: Test = {
   main: async () => {
-     myDatabase.beginAsync((it) => {
-      it.bookDao.count()
+    myDatabase.beginAsync((database) => {
+      //...
     })
   },
   verify: function (): boolean {

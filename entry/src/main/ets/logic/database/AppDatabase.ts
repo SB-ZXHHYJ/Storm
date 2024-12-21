@@ -8,6 +8,7 @@ import { Context } from '@kit.AbilityKit';
 class AppDatabase extends Database {
   initDb(context: Context) {
     return relationalStore.getRdbStore(context, { name: "app.db", securityLevel: relationalStore.SecurityLevel.S1 })
+    //重写`AppDatabase`中的`initDb`函数，在此返回你的`RdbStore`
   }
 
   readonly blobDao = TableBlob

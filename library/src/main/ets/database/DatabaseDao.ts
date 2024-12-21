@@ -67,25 +67,35 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
   }
 
   /**
-   * 开启一个普通lambda
-   * 主要用于链式调用时执行额外的代码逻辑
-   * @param scope 普通lambda
-   * @returns 返回当前实例
+   * 开启一个 lambda 空间
+   * @param scope lambda
+   * @returns {this}
    */
   begin(scope: (it: this) => void): this {
-    scope.call(scope, this)
+    scope(this)
     return this
   }
 
   /**
-   * 开启一个事务lambda
-   * @param scope 事务lambda
-   * @returns 返回当前实例
+   * 开启一个异步的 lambda 空间
+   * @param scope lambda
+   * @returns {this}
+   */
+  async beginAsync(scope: (it: this) => void): Promise<void> {
+    return new Promise((resolve) => {
+      resolve(scope(this))
+    })
+  }
+
+  /**
+   * 开启一个事务的 lambda 空间
+   * @param scope lambda
+   * @returns {this}
    */
   beginTransaction(scope: (it: this) => void): this {
     try {
       this.rdbStore.beginTransaction()
-      scope.call(scope, this)
+      scope(this)
       this.rdbStore.commit()
     } catch (e) {
       this.rdbStore.rollBack()
