@@ -40,7 +40,7 @@ export type GenerateDaoTypes<T extends Record<string, any>> = {
  * Database 的构建器
  */
 export class DatabaseBuilder<T extends Database> {
-  private databaseMigrations: DatabaseMigration<T>[]
+  private databaseMigrations: DatabaseMigration[]
   private databaseVersion: number
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
@@ -61,7 +61,7 @@ export class DatabaseBuilder<T extends Database> {
    * @param migrations
    * @returns {this}
    */
-  addMigrations(...migrations: DatabaseMigration<T>[]): this {
+  addMigrations(...migrations: DatabaseMigration[]): this {
     if (migrations.length > 0) {
       if (!this.databaseMigrations) {
         this.databaseMigrations = []
@@ -141,22 +141,25 @@ export class DatabaseBuilder<T extends Database> {
           }
         }
         instance.beginTransaction(() => {
-          const hasTableNames = sqliteMasterDao.toList(it => {
-            it.equalTo(TableSqliteMaster.type, 'table')
-              .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
-            return it
-          }, TableSqliteMaster.name)
-            .map(item => item.name)
-          const tablesToCreate = Array.from(databaseTables).filter(item =>!hasTableNames.includes(item.tableName))
           const helper = new MigrationHelper(rdbStore)
           if (rdbStore.version === 0) {
+            const hasTableNames = sqliteMasterDao.toList(it => {
+              it.equalTo(TableSqliteMaster.type, 'table')
+                .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
+              return it
+            }, TableSqliteMaster.name)
+              .map(item => item.name)
             const migration_0_x = pendingMigrations.pop()
-            migration_0_x.migrate(tablesToCreate as any, helper)
+            const tablesToCreate = Array.from(databaseTables).filter(item =>!hasTableNames.includes(item.tableName))
+            Object.freeze(tablesToCreate)
+            migration_0_x.migrate(tablesToCreate, helper)
             rdbStore.version = databaseVersion
           } else {
+            const databaseTableArray = Array.from(databaseTables)
+            Object.freeze(databaseTableArray)
             for (const migration of pendingMigrations) {
               if (rdbStore.version === migration.startVersion) {
-                migration.migrate(Array.from(databaseTables) as any, helper)
+                migration.migrate(databaseTableArray, helper)
                 rdbStore.version = migration.endVersion
               }
             }

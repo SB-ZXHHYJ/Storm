@@ -37,7 +37,7 @@ export const myDatabase = Storm
 
 另参[AppDatabase.ts](entry/src/main/ets/logic/database/AppDatabase.ts)。
 
-如果你想自己执行`sql`语句来建表，可以参考[3.升级数据库](#3升级数据库)
+如果你想自己执行`sql`语句来建表，可以参考[手动初始化数据库](#4手动初始化数据库)
 
 ### 定义表结构
 
@@ -393,7 +393,38 @@ export const myDatabase = Storm
 
 #### 4.手动初始化数据库
 
-待补充。
+如果你只想使用`Storm`的`ORM`特性，可以参考以下代码。
+
+```typescript
+//...
+
+const Migration_0_NEW = new class extends DatabaseMigration {
+  readonly startVersion: number = 0
+  //当 startVersion 为 0 时，endVersion 将被忽略，转而去使用 setVersion 设置的值
+  readonly endVersion: number = NaN
+
+  migrate(tables: Table<any>[], helper: MigrationHelper): void {
+    for (const table of tables) {
+      helper.executeSync('xxx')
+      //在此处判断 table 然后根据 table 的类型类型来决定执行哪一条建表 sql
+    }
+  }
+}
+
+export const myDatabase = Storm
+  .databaseBuilder(AppDatabase)
+  .setVersion(1)//设置数据库的版本
+  .addMigrations(Migration_0_NEW)//替换掉 AutoMigration
+  .build()
+```
+
+### 特殊情况处理
+
+#### 1.兼容旧版 Storm (2.0.0之前的版本)
+
+```typescript
+
+```
 
 ### 开源协议
 

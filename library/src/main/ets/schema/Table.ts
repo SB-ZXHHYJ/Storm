@@ -24,7 +24,7 @@ export abstract class Table<Model> {
   /**
    * 仅防止编译器认为泛型 Model 没有被使用而将其移除
    */
-  protected readonly model: Model
+  protected readonly nothing: Model
 
   /**
    * Table 中所有 Column 的数组，但不包括 IndexColumn
