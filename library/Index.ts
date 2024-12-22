@@ -4,7 +4,9 @@ export { Column } from './src/main/ets/schema/Column'
 
 export { TypeConverters } from './src/main/ets/schema/TypeConverters'
 
-export { DatabaseDao, Cursor } from './src/main/ets/database/DatabaseDao'
+export { DatabaseDao } from './src/main/ets/database/DatabaseDao'
+
+export { Cursor } from './src/main/ets/database/Cursor'
 
 export { TableMigration } from './src/main/ets/schema/TableMigration'
 
