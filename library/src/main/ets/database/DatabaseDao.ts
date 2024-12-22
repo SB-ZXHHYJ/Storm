@@ -2,12 +2,12 @@ import { relationalStore } from '@kit.ArkData'
 import { ExtractTableModel, Table, UseTableOptions } from '../schema/Table'
 import { QueryPredicate } from './QueryPredicate'
 import { Check } from '../common/Check'
-import { Column, ColumnTypes, ExtractColumnKey, ReferencesColumn, SupportValueTypes } from '../schema/Column'
+import { Column, ColumnTypes, ReferencesColumn, SupportValueTypes } from '../schema/Column'
+import { IDatabaseDao, QueryReturnTypes } from './IDatabaseDao'
+import { Cursor } from './Cursor'
 
-type QueryReturnTypes<Model, QueryColumns extends ColumnTypes[]> =
-  QueryColumns['length'] extends 0 ? Model : Pick<Model, ExtractColumnKey<QueryColumns[number]>>
-
-export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T> = ExtractTableModel<T>> {
+export class DatabaseDao<T extends Table<any>, M
+extends ExtractTableModel<T> = ExtractTableModel<T>> implements IDatabaseDao<T, M> {
   private readonly useOptions = this.targetTable[UseTableOptions]()
 
   constructor(
@@ -16,7 +16,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
   }
 
   private modelToValueBucket(
-    model: Model,
+    model: M,
     columns: readonly ColumnTypes[] = this.useOptions.columns): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
     for (const column of columns) {
@@ -40,7 +40,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
 
   private valueBucketToModel(
     inputVb: relationalStore.ValuesBucket,
-    columns: readonly ColumnTypes[] = this.useOptions.columns): Model {
+    columns: readonly ColumnTypes[] = this.useOptions.columns): M {
     const vb = {}
     for (const column of columns) {
       if (column instanceof ReferencesColumn) {
@@ -63,35 +63,20 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
         vb[column.key] = inputVb[column.fieldName]
       }
     }
-    return vb as Model
+    return vb as M
   }
 
-  /**
-   * 开启一个 lambda 空间
-   * @param scope lambda
-   * @returns {this}
-   */
   begin(scope: (it: this) => void): this {
     scope(this)
     return this
   }
 
-  /**
-   * 开启一个异步的 lambda 空间
-   * @param scope lambda
-   * @returns {this}
-   */
   async beginAsync(scope: (it: this) => void): Promise<void> {
     return new Promise((resolve) => {
       resolve(scope(this))
     })
   }
 
-  /**
-   * 开启一个事务的 lambda 空间
-   * @param scope lambda
-   * @returns {this}
-   */
   beginTransaction(scope: (it: this) => void): this {
     try {
       this.rdbStore.beginTransaction()
@@ -104,21 +89,11 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     return this
   }
 
-  /**
-   * 插入一条数据
-   * @param model 要插入的数据模型
-   * @returns 返回当前实例
-   */
-  add(model: Model): this {
+  add(model: M): this {
     return this.adds([model])
   }
 
-  /**
-   * 插入一组数据
-   * @param models 要插入的数据模型数组
-   * @returns 返回当前实例
-   */
-  adds(models: Model[]): this {
+  adds(models: M[]): this {
     if (!models.length) {
       return this
     }
@@ -144,22 +119,11 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     return this
   }
 
-  /**
-   * 更新一条数据
-   * @param model 要更新的数据模型
-   * @returns 返回当前实例
-   */
-  update(model: Model): this {
+  update(model: M): this {
     return this.updates([model])
   }
 
-  /**
-   * 更新一组数据
-   * @param models 要更新的数据模型数组
-   *
-   * @returns 返回当前实例
-   */
-  updates(models: Model[]): this {
+  updates(models: M[]): this {
     if (!models.length) {
       return this
     }
@@ -177,37 +141,21 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     return this
   }
 
-  /**
-   * 更新所有符合条件的数据
-   * @param predicate 查询条件
-   * @param model 要更新的数据
-   * @returns 返回当前实例
-   */
-  updateIf(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model>, model: Partial<Model>): this {
+  updateIf(predicate: (it: QueryPredicate<M>) => QueryPredicate<M>, model: Partial<M>): this {
     if (Object.keys(model).length === 0) {
       return this
     }
     const rdbPredicates = predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates()
-    this.rdbStore.updateSync(this.modelToValueBucket(model as Model), rdbPredicates)
+    this.rdbStore.updateSync(this.modelToValueBucket(model as M), rdbPredicates)
     return this
   }
 
-  /**
-   * 删除一条数据
-   * @param model 要删除的数据模型
-   * @returns 返回当前实例
-   */
-  remove(model: Model): this {
+  remove(model: M): this {
     this.removes([model])
     return this
   }
 
-  /**
-   * 删除一组数据
-   * @param models 要删除的数据模型数组
-   * @returns 返回当前实例
-   */
-  removes(models: Model[]): this {
+  removes(models: M[]): this {
     if (!models.length) {
       return this
     }
@@ -225,22 +173,12 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     return this
   }
 
-  /**
-   * 根据条件删除Table中的数据
-   * @param predicate 查询条件
-   * @returns 返回当前实例
-   */
-  removeIf(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model>): this {
+  removeIf(predicate: (it: QueryPredicate<M>) => QueryPredicate<M>): this {
     this.rdbStore.deleteSync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates())
     return this
   }
 
-  /**
-   * 查询符合指定条件的数据条数
-   * @param predicate 查询条件
-   * @returns 满足条件的数据条数
-   */
-  count(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it): number {
+  count(predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it): number {
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates())
     try {
       return resultSet.rowCount
@@ -249,19 +187,14 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }
   }
 
-  /**
-   * 根据指定条件查询实体
-   * @param predicate 查询条件
-   * @returns 满足条件的实体的只读数组，如果结果为空则返回空数组
-   */
   toList<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): readonly QueryReturnTypes<Model, Columns>[] {
+    predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): readonly QueryReturnTypes<M, Columns>[] {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
       realColumns?.map(item => item.fieldName))
     try {
-      const list: Model[] = []
+      const list: M[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), realColumns))
       }
@@ -271,15 +204,9 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }
   }
 
-  /**
-   * 获取满足指定条件的第一个实体
-   * @param predicate 查询条件
-   * @returns 第一个满足条件的实体
-   * @throws 如果结果为空，抛出错误
-   */
   first<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): QueryReturnTypes<Model, Columns> {
+    predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): QueryReturnTypes<M, Columns> {
     const first = this.firstOrNull(predicate, ...columns)
     if (first) {
       return first
@@ -287,14 +214,9 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     throw Error("Query is empty.")
   }
 
-  /**
-   * 获取满足指定条件的第一个实体
-   * @param predicate 查询条件
-   * @returns 第一个满足条件的实体或null
-   */
   firstOrNull<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): QueryReturnTypes<Model, Columns> | null {
+    predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): QueryReturnTypes<M, Columns> | null {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
       realColumns?.map(item => item.fieldName))
@@ -308,14 +230,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }
   }
 
-  /**
-   * 获取满足指定条件的最后一个实体
-   * @param predicate 查询条件
-   * @returns 最后一个满足条件的实体
-   * @throws 如果结果为空，抛出错误
-   */
-  last<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): QueryReturnTypes<Model, Columns> {
+  last<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): QueryReturnTypes<M, Columns> {
     const last = this.lastOrNull(predicate, ...columns)
     if (last) {
       return last
@@ -323,13 +239,8 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     throw Error("Query is empty.")
   }
 
-  /**
-   * 获取满足指定条件的最后一个实体
-   * @param predicate 查询条件
-   * @returns 最后一个满足条件的实体或null
-   */
-  lastOrNull<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): QueryReturnTypes<Model, Columns> | null {
+  lastOrNull<Columns extends ColumnTypes[]>(predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): QueryReturnTypes<M, Columns> | null {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
       realColumns?.map(item => item.fieldName))
@@ -343,14 +254,9 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
     }
   }
 
-  /**
-   * 返回一个游标对象，以便对符合条件的数据进行操作
-   * @param predicate 查询条件
-   * @returns 游标操作对象，用于遍历和操作查询结果，注意如果不使用了务必要关闭游标！
-   */
   toCursor<Columns extends ColumnTypes[]>(
-    predicate: (it: QueryPredicate<Model>) => QueryPredicate<Model> = it => it,
-    ...columns: Columns): Cursor<QueryReturnTypes<Model, Columns>> {
+    predicate: (it: QueryPredicate<M>) => QueryPredicate<M> = it => it,
+    ...columns: Columns): Cursor<QueryReturnTypes<M, Columns>> {
     const realColumns = columns.length === 0 ? undefined : columns
     const resultSet = this.rdbStore.querySync(predicate(QueryPredicate.select(this.targetTable)).getRdbPredicates(),
       realColumns?.map(item => item.fieldName))
@@ -401,7 +307,7 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       throw Error("Index out of range.")
     }
     const toListOrNull = () => {
-      const list: Model[] = []
+      const list: M[] = []
       while (resultSet.goToNextRow()) {
         list.push(this.valueBucketToModel(resultSet.getRow(), columns))
       }
@@ -429,70 +335,4 @@ export class DatabaseDao<T extends Table<any>, Model extends ExtractTableModel<T
       close: close,
     }
   }
-}
-
-export interface Cursor<T> {
-  /**
-   * 获取集合中元素的数量
-   * @returns 获取到的数量
-   */
-  get length(): number
-
-  /**
-   * 返回集合中的第一个元素，如果集合为空，则返回 null
-   * @returns 第一个元素或 null
-   */
-  firstOrNull(): T | null
-
-  /**
-   * 返回集合中的第一个元素
-   * @returns 第一个元素
-   * @throws 如果结果为空，则抛出错误
-   */
-  first(): T
-
-  /**
-   * 返回集合中的最后一个元素
-   * @returns 最后一个元素或 null
-   */
-  lastOrNull(): T | null
-
-  /**
-   * 返回集合中的最后一个元素
-   * @returns 最后一个元素
-   * @throws 如果结果为空，则抛出错误
-   */
-  last(): T
-
-  /**
-   * 根据索引返回集合中的元素
-   * @param index 索引位置
-   * @returns 对应的元素
-   * @throws 如果结果为空，则抛出错误
-   */
-  get(index: number): T
-
-  /**
-   * 根据索引返回集合中的元素
-   * @param index 索引位置
-   * @returns 对应的元素或 null
-   */
-  getOrNull(index: number): T | null
-
-  /**
-   * 返回集合中所有元素的数组
-   * @returns 所有元素的数组
-   */
-  toList(): ReadonlyArray<T>
-
-  /**
-   * 返回集合中所有元素的只读数组
-   * @returns 所有元素的数组或 null
-   */
-  toListOrNull(): ReadonlyArray<T> | null
-
-  /**
-   * 关闭游标
-   */
-  close(): void
 }

@@ -418,13 +418,50 @@ export const myDatabase = Storm
   .build()
 ```
 
-### 特殊情况处理
+### 兼容旧版 Storm (2.0.0之前的版本)
 
-#### 1.兼容旧版 Storm (2.0.0之前的版本)
+要兼容旧版的`Storm`，有两个地方需要注意：
+
+1. 旧版`Storm`不会更新`RdbStore`的`version`。
+2. 旧版`Storm`对表的版本升级不是参考的`RdbStore`的`version`，参考的是`Storm`的内置表`t_storm_table_version`。
+
+因此，可能会出现以下几种情况：
+
+如果你没有更新过`RdbStore`的`version`，即`version`为`0`，同时也没有使用过旧版的`表自动升级功能`：
+
+在这样的情况下，使用过的`APP`中的数据库可能已经完成了建表，自带的`AutoMigration`功能建表时的语句没有`IF NOT EXISTS`。
+所有需要使用下面的代码来建表`createTable(true)`和`createTable(true)`，这样生成的`SQL`语句中就包含`IF NOT EXISTS`
+，可以保证在已经建表的情况下跳过，然后将`RdbStore`的`version`设置为`1`
+
+如果是上面的情况，你只需要使用下面的代码就可以解决：
 
 ```typescript
+//...
 
+const Migration_0_NEW = new class extends DatabaseMigration {
+  readonly startVersion: number = 0
+  readonly endVersion: number = NaN
+
+  migrate(tables: Table<any>[], helper: MigrationHelper): void {
+    for (const table of tables) {
+      helper.executeSync(SupportSqliteCmds.select(table).createTable(true).createIndex(true))
+    }
+  }
+}
+
+export const myDatabase = Storm
+  .databaseBuilder(AppDatabase)
+  .setVersion(1)//设置数据库的版本
+  .addMigrations(Migration_0_NEW)
+  .build()
 ```
+
+如果你更新过`RdbStore`的`version`，且没有使用旧版的`表自动升级功能`：
+
+这样的情况下，你只需要将从`0`至`1`至`2`至`3`到最新版本的更新逻辑都创建各自的`Migration`
+，然后添加到`Database`中即可。
+
+如果是你曾在旧版中使用过`表自动升级功能`，请在[这里](#交流)找到我的邮箱致信给我，我可以为你提供帮助。
 
 ### 开源协议
 
