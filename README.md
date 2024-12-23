@@ -39,9 +39,9 @@ export const myDatabase = Storm
 
 如果你想自己执行`sql`语句来建表，可以参考[手动初始化数据库](#4手动初始化数据库)
 
-### 定义表结构
+### 定义表和实体
 
-#### 1.定义书架类
+#### 1.定义 Bookcase 表和其实体
 
 创建`Bookcase.ts`文件，并实现以下代码。
 
@@ -74,7 +74,7 @@ export const TableBookcase = new BookcaseTable()
 
 PS:_推荐使用使用`interface`或`declare class`来修饰`model`_
 
-#### 2.定义表和实体
+#### 2.定义 Book 表和其实体
 
 创建`Book.ts`文件，并实现以下代码。
 
