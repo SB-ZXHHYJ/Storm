@@ -3,8 +3,8 @@ import { Table, UseTableOptions } from '../schema/Table';
 export namespace Check {
 
   /**
-   * 检查 Table 是否存在主键
-   * @param targetTable 要检查的 Table
+   * 检查表是否存在主键
+   * @param targetTable 要检查的表
    */
   export function checkTableHasIdColumn(targetTable: Table<any>) {
     const useOptions = targetTable[UseTableOptions]()
@@ -14,8 +14,8 @@ export namespace Check {
   }
 
   /**
-   * 检查 Table 是否是多主键
-   * @param targetTable 要检查的 Table
+   * 检查表是否是多主键
+   * @param targetTable 要检查的表
    */
   export function checkTableHasAtMostOneIdColumn(targetTable: Table<any>) {
     checkTableHasIdColumn(targetTable)
@@ -26,8 +26,8 @@ export namespace Check {
   }
 
   /**
-   * 检查 Table 是否符合规范
-   * @param targetTable 要检查的 Table
+   * 检查表是否符合规范
+   * @param targetTable 要检查的表
    */
   export function checkTableAndColumns(targetTable: Table<any>) {
     const useOptions = targetTable[UseTableOptions]()

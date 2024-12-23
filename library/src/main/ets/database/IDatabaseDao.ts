@@ -17,28 +17,28 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
   /**
    * 开启一个异步的 lambda 空间
    * @param scope lambda
-   * @returns {this}
+   * @returns this
    */
   beginAsync(scope: (it: this) => void): Promise<void>
 
   /**
    * 开启一个事务的 lambda 空间
    * @param scope lambda
-   * @returns {this}
+   * @returns this
    */
   beginTransaction(scope: (it: this) => void): this
 
   /**
    * 插入一条数据
    * @param model 要插入的数据
-   * @returns {this}
+   * @returns this
    */
   add(model: M): this
 
   /**
    * 插入一组数据
    * @param models 要插入的数据
-   * @returns {this}
+   * @returns this
    */
   adds(models: M[]): this
 
@@ -47,7 +47,7 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
    *
    * 注意表中要存在唯一主键，否则将会抛出异常
    * @param model 要更新的数据
-   * @returns {this}
+   * @returns this
    */
   update(model: M): this
 
@@ -56,7 +56,7 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
    *
    * 注意表中要存在唯一主键，否则将会抛出异常
    * @param models 要更新的数据
-   * @returns {this}
+   * @returns this
    */
   updates(models: M[]): this
 
@@ -64,7 +64,7 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
    * 更新所有符合条件的数据
    * @param predicate 查询条件
    * @param model 要更新的数据
-   * @returns {this}
+   * @returns this
    */
   updateIf(predicate: (it: QueryPredicate<M>) => QueryPredicate<M>, model: Partial<M>): this
 
@@ -73,7 +73,7 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
    *
    * 注意表中要存在唯一主键，否则将会抛出异常
    * @param model 要删除的数据
-   * @returns {this}
+   * @returns this
    */
   remove(model: M): this
 
@@ -82,14 +82,14 @@ export interface IDatabaseDao<T extends Table<any>, M extends ExtractTableModel<
    *
    * 注意表中要存在唯一主键，否则将会抛出异常
    * @param models 要删除的数据
-   * @returns {this}
+   * @returns this
    */
   removes(models: M[]): this
 
   /**
    * 根据条件删除表中的数据
    * @param predicate 查询条件
-   * @returns {this}
+   * @returns this
    */
   removeIf(predicate: (it: QueryPredicate<M>) => QueryPredicate<M>): this
 

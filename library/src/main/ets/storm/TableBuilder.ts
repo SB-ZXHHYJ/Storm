@@ -2,38 +2,37 @@ import { Constructor } from '../common/Types'
 import { TableMigration } from '../schema/TableMigration'
 import { Table, UseTableOptions } from '../schema/Table'
 
-/**
- * 表的构建器
- */
 export class TableBuilder<T extends Table<any>> {
-  private readonly migrations: TableMigration<T>[] = []
+  private readonly tableMigrations: TableMigration<T>[] = []
 
   constructor(private readonly tableConstructor: Constructor<T>) {
   }
 
   /**
-   * 为这个表添加迁移操作
-   * @param migration 需要添加的迁移操作对象
-   * @returns {this}
+   * 添加迁移到迁移列表
+   *
+   * @param migration 要添加的表迁移对象
+   * @returns this
    */
-  addMigrations(migration: TableMigration<T>): this {
-    if (migration) {
-      this.migrations.push(migration)
-    } else {
-      throw new Error('The added TableMigration is invalid.')
+  addMigrations(...migrations: TableMigration<T>[]): this {
+    if (migrations.length > 0) {
+      for (const element of migrations) {
+        this.tableMigrations.push(element)
+      }
     }
     return this
   }
 
   /**
-   * 构建表
-   * @returns {T}
+   * 构建表实例
+   *
+   * @returns 返回构建好的表实例
    */
   build(): T {
     const instance = new this.tableConstructor()
-    if (this.migrations.length > 0) {
+    if (this.tableMigrations.length > 0) {
       const useOptions = instance[UseTableOptions]()
-      for (const element of this.migrations) {
+      for (const element of this.tableMigrations) {
         useOptions.addMigration(element)
       }
     }

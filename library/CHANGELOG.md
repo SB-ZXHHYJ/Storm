@@ -1,6 +1,6 @@
 ## 版本更新记录
 
-### 2024/12/24 - 2.0.0-rc.1
+### 2024/12/24 - 2.0.0-rc1
 
 全新的`2.0.0`版本已经到来，本次更新内容较多，如果你是从旧版本升级而来，请务必详细阅读`README.md`。
 
@@ -15,9 +15,9 @@
 
 #### 优化
 
-- `DatabaseCrud`更名为`DatabaseDao`。
-- `run`API名称重命名为`begin`。
-- `query`API被移除，名下的所有API都移至与原`quey`API同层级的位置（不包括迭代器），`length`API更名为`count`。
+- 将`DatabaseCrud`更名为`DatabaseDao`。
+- 将`run`API名称重命名为`begin`。
+- 移除`query`API，所有相关API移至与原`query`API同层级位置（不包括迭代器），`length`API更名为 `count`。
 
 #### 新增
 
@@ -25,6 +25,7 @@
 - 新增了自定义`Dao`的功能。
 - 新增了自定义`Database`的功能。
 - `DatabaseDao`新增`beginAsync`API来异步访问`Dao`。
+- `DatabaseDao`新增`Cursor`API来查询数据。
 - `Column`新增`index`API来创建索引列。
 - `Column`新增内部实现为`timestamp`的`date`列。
 - 新增了`SupportSqliteCmds`API来快速创建`SQL`语句。
@@ -32,8 +33,8 @@
 
 #### 修复
 
-- 修正了`QueryPredicate`下的`endWrap`API没效果的问题。
-- 修复了`Column`下的`bindTo`API中`key`类型会推导错误和无法识别可选属性的问题。
+- 修正了`QueryPredicate`下的`endWrap`API效果不正确的问题。
+- 修复了`Column`下的`bindTo`API中`key`类型会推导错误和无法识别可选属性`(?:)`的问题。
 
 ### 2024/12/04 - 1.7.6
 

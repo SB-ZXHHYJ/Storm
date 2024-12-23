@@ -18,12 +18,8 @@ export { Database } from './src/main/ets/schema/Database'
 
 export { Storm } from './src/main/ets/storm/Storm'
 
-export { TableSqliteSequence, SqliteSequence } from './src/main/ets/model/SqliteSequence'
-
-export { TableSqliteMaster, SqliteMaster } from './src/main/ets/model/SqliteMaster'
-
 export { Dao } from './src/main/ets/schema/Dao'
 
-export { MigrationHelper } from './src/main/ets/common/MigrationHelper'
+export { RdbStoreHelper as MigrationHelper } from './src/main/ets/common/RdbStoreHelper'
 
 export { AutoMigration } from './src/main/ets/schema/DatabaseMigration'

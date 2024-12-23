@@ -8,6 +8,12 @@ export class DaoBuilder<T extends Dao<any>> {
   constructor(private readonly daoConstructor: Constructor<T>) {
   }
 
+  /**
+   * 设置为哪个表来创建 Dao
+   *
+   * @param targetTable 目标表
+   * @returns this
+   */
   select(targetTable: ExtractDaoTable<T>) {
     if (targetTable && this.targetTable === undefined) {
       this.targetTable = targetTable
@@ -17,6 +23,11 @@ export class DaoBuilder<T extends Dao<any>> {
     return this
   }
 
+  /**
+   * 构建 Dao 实例
+   *
+   * @returns Dao 实例
+   */
   build() {
     return new this.daoConstructor(this.targetTable, undefined)
   }

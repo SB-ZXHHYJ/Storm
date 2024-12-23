@@ -6,7 +6,7 @@ import { Database } from '../schema/Database'
 import { Constructor } from '../common/Types'
 import { DatabaseMigration } from '../schema/DatabaseMigration'
 import { Check } from '../common/Check'
-import { Dao, MigrationHelper, TableSqliteMaster, TableSqliteSequence } from '../../../../Index'
+import { Dao, MigrationHelper } from '../../../../Index'
 import { HashSet } from '@kit.ArkTS'
 
 export type GenerateDaoTypes<T extends Record<string, any>> = {
@@ -36,11 +36,8 @@ export type GenerateDaoTypes<T extends Record<string, any>> = {
   beginAsync: (scope: ((it: GenerateDaoTypes<T>) => void)) => Promise<void>,
 }
 
-/**
- * Database 的构建器
- */
 export class DatabaseBuilder<T extends Database> {
-  private databaseMigrations: DatabaseMigration[]
+  private readonly databaseMigrations: DatabaseMigration[] = []
   private databaseVersion: number
 
   constructor(private readonly databaseConstructor: Constructor<T>) {
@@ -49,7 +46,7 @@ export class DatabaseBuilder<T extends Database> {
   /**
    * 设置数据库版本号
    * @param version 版本号
-   * @returns {this}
+   * @returns this
    */
   setVersion(version) {
     this.databaseVersion = version
@@ -57,15 +54,13 @@ export class DatabaseBuilder<T extends Database> {
   }
 
   /**
+   * 添加迁移到迁移列表
    *
-   * @param migrations
-   * @returns {this}
+   * @param migration 要添加的表迁移对象
+   * @returns this
    */
   addMigrations(...migrations: DatabaseMigration[]): this {
     if (migrations.length > 0) {
-      if (!this.databaseMigrations) {
-        this.databaseMigrations = []
-      }
       for (const element of migrations) {
         this.databaseMigrations.push(element)
       }
@@ -100,17 +95,8 @@ export class DatabaseBuilder<T extends Database> {
           resolve(scope(instance))
         })
       }
-      const sqliteMasterDao = new DatabaseDao(rdbStore, TableSqliteMaster)
-      const databaseTables = Object.entries(database).reduce((acc, [key, value]) => {
+      const databaseTables = Array.from(Object.entries(database).reduce((acc, [key, value]) => {
         if (value instanceof Table) {
-          if (Object.is(value, TableSqliteMaster)) {
-            instance[key] = sqliteMasterDao
-            return acc
-          }
-          if (Object.is(value, TableSqliteSequence)) {
-            instance[key] = new DatabaseDao(rdbStore, TableSqliteSequence)
-            return acc
-          }
           Check.checkTableAndColumns(value)
           instance[key] = Object.freeze(new DatabaseDao(rdbStore, value))
           acc.add(value)
@@ -121,7 +107,7 @@ export class DatabaseBuilder<T extends Database> {
           acc.add(value.table)
         }
         return acc
-      }, new HashSet<Table<any>>())
+      }, new HashSet<Table<any>>()))
 
       if (pendingMigrations.length > 0) {
         if (!databaseVersion) {
@@ -143,23 +129,13 @@ export class DatabaseBuilder<T extends Database> {
         instance.beginTransaction(() => {
           const helper = new MigrationHelper(rdbStore)
           if (rdbStore.version === 0) {
-            const hasTableNames = sqliteMasterDao.toList(it => {
-              it.equalTo(TableSqliteMaster.type, 'table')
-                .notEqualTo(TableSqliteMaster.name, TableSqliteSequence.tableName)
-              return it
-            }, TableSqliteMaster.name)
-              .map(item => item.name)
             const migration_0_x = pendingMigrations.pop()
-            const tablesToCreate = Array.from(databaseTables).filter(item =>!hasTableNames.includes(item.tableName))
-            Object.freeze(tablesToCreate)
-            migration_0_x.migrate(tablesToCreate, helper)
+            migration_0_x.migrate(databaseTables, helper)
             rdbStore.version = databaseVersion
           } else {
-            const databaseTableArray = Array.from(databaseTables)
-            Object.freeze(databaseTableArray)
             for (const migration of pendingMigrations) {
               if (rdbStore.version === migration.startVersion) {
-                migration.migrate(databaseTableArray, helper)
+                migration.migrate(databaseTables, helper)
                 rdbStore.version = migration.endVersion
               }
             }

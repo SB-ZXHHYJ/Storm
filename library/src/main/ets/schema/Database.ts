@@ -3,10 +3,11 @@ import { Context } from '@ohos.arkui.UIContext';
 
 export abstract class Database {
   /**
-   * 实现这个函数，并在最后返回这个数据库的 RdbStore 对象
-   * 这个函数将在被初始化时调用
-   * @param context 上下文
-   * @returns RdbStore 对象
+   * 实现该函数并返回数据库的 RdbStore 对象
+   * 该函数将在初始化时调用
+   *
+   * @param context 应用上下文
+   * @returns RdbStore 实例
    */
   abstract initDb(context: Context): Promise<relationalStore.RdbStore>
 }

@@ -2,11 +2,17 @@ import { SupportValueTypes } from './Column'
 
 export type TypeConverters<W extends SupportValueTypes, R> = {
   /**
-   * 将实体转换为数据库支持的类型保存
+   * 将 R 类型的值转换为数据库支持的 W 类型以进行存储
+   *
+   * @param value 要保存的值，类型为 R
+   * @returns 转换后的数据库支持类型的值
    */
   save: (value: R) => W
   /**
-   * 将从数据库中读出的数据转换回实体
+   * 将从数据库读取的 W 类型值转换为原始的 R 类型
+   *
+   * @param value 从数据库读取的值，类型为 W
+   * @returns 转换后的原始输入类型的值
    */
   restore: (value: W) => R
 }
