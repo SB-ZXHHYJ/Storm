@@ -370,8 +370,8 @@ const Migration_1_2 = new class extends TableMigration<BookcaseTable> {
   readonly startVersion: number = 1
   readonly endVersion: number = 2
 
-  migrate(targetTable: BookcaseTable, helper: MigrationHelper): void {
-    helper.executeSync(SupportSqliteCmds.select(targetTable).addColumn(targetTable.alias))
+  migrate(targetTable: BookcaseTable, rdbStore: RdbStoreHelper): void {
+    rdbStore.executeSync(SupportSqliteCmds.select(targetTable).addColumn(targetTable.alias))
     //执行命令升级数据库
   }
 }
@@ -413,9 +413,9 @@ const Migration_0_NEW = new class extends DatabaseMigration {
   //当 startVersion 为 0 时，endVersion 将被忽略，转而去使用 setVersion 设置的值
   readonly endVersion: number = NaN
 
-  migrate(tables: Table<any>[], helper: MigrationHelper): void {
+  migrate(tables: Table<any>[], rdbStore: RdbStoreHelper): void {
     for (const table of tables) {
-      helper.executeSync('xxx')
+      rdbStore.executeSync('xxx')
       //在此处判断 table 然后根据 table 的类型类型来决定执行哪一条建表 sql
     }
   }
@@ -455,9 +455,9 @@ const Migration_0_NEW = new class extends DatabaseMigration {
   readonly startVersion: number = 0
   readonly endVersion: number = NaN
 
-  migrate(tables: Table<any>[], helper: MigrationHelper): void {
+  migrate(tables: Table<any>[], rdbStore: RdbStoreHelper): void {
     for (const table of tables) {
-      helper.executeSync(SupportSqliteCmds.select(table).createTable(true).createIndex(true))
+      rdbStore.executeSync(SupportSqliteCmds.select(table).createTable(true).createIndex(true))
     }
   }
 }

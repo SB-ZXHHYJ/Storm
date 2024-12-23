@@ -32,8 +32,14 @@ export class TableBuilder<T extends Table<any>> {
     const instance = new this.tableConstructor()
     if (this.tableMigrations.length > 0) {
       const useOptions = instance[UseTableOptions]()
-      for (const element of this.tableMigrations) {
-        useOptions.addMigration(element)
+      for (let i = 1; i < this.tableMigrations.length; i++) {
+        const current = this.tableMigrations[i]
+        const previous = this.tableMigrations[i-=1]
+        if ((current.endVersion - current.startVersion !== 1) ||
+          (previous && current.startVersion !== previous.endVersion)) {
+          throw new Error('The version number does not follow the rules.')
+        }
+        useOptions.addMigration(current)
       }
     }
     return instance
