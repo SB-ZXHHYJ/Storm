@@ -484,4 +484,4 @@ export const myDatabase = Storm
 
 ### 交流
 
-如有疑问，请提`issues`或者致信到我的邮箱`957447668@qq.com`。
+如有疑问或建议，请提`issues`或者写一封邮件发送到`957447668@qq.com`。
