@@ -4,7 +4,7 @@ import { BooleanTypeConverters, DateTypeConverters, TimestampTypeConverters, Typ
 /**
  * Storm 支持存储的基本类型
  */
-export type SupportValueTypes = null | number | string | boolean | Uint8Array
+export type SupportValueTypes = null | number | string | Uint8Array
 
 /**
  * 用于提取 Column 的泛型 Key
@@ -238,7 +238,7 @@ export class ReferencesColumn<FieldName extends string, Key extends string, Read
     readonly fieldName: FieldName,
     readonly referencesTable: Table<ReadType>
   ) {
-    super(fieldName, 'INTEGER', undefined)
+    super(fieldName, 'INTEGER', null)
   }
 }
 

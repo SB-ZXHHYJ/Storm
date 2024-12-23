@@ -6,7 +6,7 @@
 
 在命令行中执行以下命令。
 
-```text
+```
 ohpm install @zxhhyj/storm
 ```
 
@@ -74,7 +74,7 @@ export const TableBookcase = new BookcaseTable()
 
 PS:_推荐使用使用`interface`或`declare class`来修饰`model`_
 
-#### 2.定义书本类
+#### 2.定义表和实体
 
 创建`Book.ts`文件，并实现以下代码。
 
@@ -252,7 +252,15 @@ for (const listElement of list) {
 //查询 BookTable 在数据库中符合条件的全部数据，同时指定只查询 name 列
 ```
 
-更多查询方式另参[DatabaseDao](library/src/main/ets/database/DatabaseDao.ts)。
+```typescript
+const list = myDatabase.bookDao.first()
+//查询 BookTable 在数据库中的第一条的数据，如果不存在数据将抛出异常
+```
+
+```typescript
+const list = myDatabase.bookDao.firstOrNull()
+//查询 BookTable 在数据库中的第一条的数据，如果不存在则返回 Null
+```
 
 #### 5.使用事务
 
@@ -277,6 +285,8 @@ myDatabase.beginAsync((database) => {
   //...
 })
 ```
+
+另参[DatabaseDao](library/src/main/ets/database/IDatabaseDao.ts)。
 
 ### 高阶用法
 
@@ -420,16 +430,19 @@ export const myDatabase = Storm
 
 ### 兼容旧版 Storm (2.0.0之前的版本)
 
-要兼容旧版的`Storm`，有两个地方需要注意：
+旧版的`Storm`有两个不成熟的地方：
 
 1. 旧版`Storm`不会更新`RdbStore`的`version`。
 2. 旧版`Storm`对表的版本升级不是参考的`RdbStore`的`version`，参考的是`Storm`的内置表`t_storm_table_version`。
 
+第一点，一般初始化数据库后应该将`version`设置为大于`0`的整数。第二点，旧版的`自动更新数据库(实验性)`的灵活性太差了，
+`2.0.0`中解决了这些问题。
+
 因此，可能会出现以下几种情况：
 
-如果你没有更新过`RdbStore`的`version`，即`version`为`0`，同时也没有使用过旧版的`表自动升级功能`：
+没有更新过`RdbStore`的`version`，即`version`为`0`，同时也没有使用过旧版的`自动更新数据库(实验性)`：
 
-在这样的情况下，使用过的`APP`中的数据库可能已经完成了建表，自带的`AutoMigration`功能建表时的语句没有`IF NOT EXISTS`。
+在这样的情况下，已安装并使用过的`APP`中的数据库已经完成了建表，自带的`AutoMigration`功能建表时的语句没有`IF NOT EXISTS`。
 所有需要使用下面的代码来建表`createTable(true)`和`createTable(true)`，这样生成的`SQL`语句中就包含`IF NOT EXISTS`
 ，可以保证在已经建表的情况下跳过，然后将`RdbStore`的`version`设置为`1`
 
@@ -456,12 +469,14 @@ export const myDatabase = Storm
   .build()
 ```
 
-如果你更新过`RdbStore`的`version`，且没有使用旧版的`表自动升级功能`：
+参考[AutoMigration](library/src/main/ets/schema/DatabaseMigration.ts)。
+
+如果你发现了这个问题，在初始化后主动更新过`RdbStore`的`version`，且没有使用旧版的`自动更新数据库(实验性)`：
 
 这样的情况下，你只需要将从`0`至`1`至`2`至`3`到最新版本的更新逻辑都创建各自的`Migration`
 ，然后添加到`Database`中即可。
 
-如果是你曾在旧版中使用过`表自动升级功能`，请在[这里](#交流)找到我的邮箱致信给我，我可以为你提供帮助。
+最后，如果是你曾在旧版中使用过`自动更新数据库(实验性)`，请在[这里](#交流)找到我的邮箱致信给我，我可以为你提供帮助。
 
 ### 开源协议
 

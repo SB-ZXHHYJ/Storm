@@ -20,19 +20,24 @@ extends ExtractTableModel<T> = ExtractTableModel<T>> implements IDatabaseDao<T, 
     columns: readonly ColumnTypes[] = this.useOptions.columns): relationalStore.ValuesBucket {
     const vb: relationalStore.ValuesBucket = {}
     for (const column of columns) {
+      const value = model[column.key]
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
         const useOptions = column.referencesTable[UseTableOptions]()
         const idColumn = useOptions.idColumns[0]
-        vb[column.fieldName] = model[column.key]?.[idColumn.key] ?? null
+        if (value) {
+          vb[column.fieldName] = value?.[idColumn.key]
+        } else {
+          vb[column.fieldName] = value
+        }
         continue
       }
       if (column instanceof Column) {
-        if (column.typeConverters) {
-          vb[column.fieldName] = column.typeConverters.save(model[column.key] ?? null)
-          continue
+        if (value && column.typeConverters) {
+          vb[column.fieldName] = column.typeConverters.save(value)
+        } else {
+          vb[column.fieldName] = value
         }
-        vb[column.fieldName] = model[column.key]
       }
     }
     return vb
@@ -43,24 +48,25 @@ extends ExtractTableModel<T> = ExtractTableModel<T>> implements IDatabaseDao<T, 
     columns: readonly ColumnTypes[] = this.useOptions.columns): M {
     const vb = {}
     for (const column of columns) {
+      const value = inputVb[column.fieldName] as SupportValueTypes
       if (column instanceof ReferencesColumn) {
         Check.checkTableHasAtMostOneIdColumn(column.referencesTable)
         const useOptions = column.referencesTable[UseTableOptions]()
         const idColumn = useOptions.idColumns[0]
-        const id = inputVb[column.fieldName] as SupportValueTypes
-        if (id) {
-          vb[column.key] = new DatabaseDao(this.rdbStore, column.referencesTable)
-            .firstOrNull(it => it.equalTo(idColumn, id)) ?? null
-          continue
+        if (value) {
+          vb[column.key] =
+            new DatabaseDao(this.rdbStore, column.referencesTable).firstOrNull(it => it.equalTo(idColumn, value))
+        } else {
+          vb[column.key] = value
         }
         continue
       }
       if (column instanceof Column) {
-        if (column.typeConverters) {
-          vb[column.key] = column.typeConverters.restore(inputVb[column.fieldName] ?? null)
-          continue
+        if (value && column.typeConverters) {
+          vb[column.key] = column.typeConverters.restore(value)
+        } else {
+          vb[column.key] = value
         }
-        vb[column.key] = inputVb[column.fieldName]
       }
     }
     return vb as M

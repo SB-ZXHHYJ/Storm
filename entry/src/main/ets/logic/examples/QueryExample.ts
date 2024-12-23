@@ -29,3 +29,13 @@ import { TableBook } from '../model/Book';
   }
   //查询 BookTable 在数据库中符合条件的全部数据，同时指定只查询 name 列
 };
+
+() => {
+  const list = myDatabase.bookDao.first()
+  //查询 BookTable 在数据库中的第一条的数据，如果不存在数据将抛出异常
+};
+
+() => {
+  const list = myDatabase.bookDao.firstOrNull()
+  //查询 BookTable 在数据库中的第一条的数据，如果不存在则返回 Null
+};
