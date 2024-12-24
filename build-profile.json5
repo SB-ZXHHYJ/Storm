@@ -1,20 +1,5 @@
 {
   "app": {
-    "signingConfigs": [
-      {
-        "name": "default",
-        "type": "HarmonyOS",
-        "material": {
-          "certpath": "C:\\Users\\ZXHHYJ\\.ohos\\config\\default_storm_lBQSbPd3LbmylPrPixg31wUvuupZB0X7p_OKaN7z42Q=.cer",
-          "storePassword": "0000001B8C093A5441CF48957B3048FB5C99D6ED374D65C3A81DC312B2D91762AAD43C37A2A2552D126BBD",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B30BCE49E6DF3450CE04BB306069FB5E8842891418EC8913B14940C23FEC7EA85730578B9942A5F",
-          "profile": "C:\\Users\\ZXHHYJ\\.ohos\\config\\default_storm_lBQSbPd3LbmylPrPixg31wUvuupZB0X7p_OKaN7z42Q=.p7b",
-          "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\ZXHHYJ\\.ohos\\config\\default_storm_lBQSbPd3LbmylPrPixg31wUvuupZB0X7p_OKaN7z42Q=.p12"
-        }
-      }
-    ],
     "products": [
       {
         "name": "default",
@@ -31,10 +16,25 @@
     ],
     "buildModeSet": [
       {
-        "name": "debug",
+        "name": "debug"
       },
       {
         "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\95744\\.ohos\\config\\default_storm_Hy-WYzb9P1082RaLwTlzIcymAkk0c_rwm-mLmWcQ0F4=.cer",
+          "storePassword": "0000001B42D0E6DC93961AAD9BA22DE51EAD90705A1F20C4E07EC5A2B133BC20D82124F1702F15E854511F",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B33BDABD4E5639D8B2B5CFAC09F5CB39995EA4BDB81D9C18A37E35E7B3690846E7CA6CD01F8DCC4",
+          "profile": "C:\\Users\\95744\\.ohos\\config\\default_storm_Hy-WYzb9P1082RaLwTlzIcymAkk0c_rwm-mLmWcQ0F4=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\95744\\.ohos\\config\\default_storm_Hy-WYzb9P1082RaLwTlzIcymAkk0c_rwm-mLmWcQ0F4=.p12"
+        }
       }
     ]
   },
